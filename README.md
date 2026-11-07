@@ -10,7 +10,14 @@ Generic scanners compare upstream versions and report CVEs that your distributio
 
 ## Install
 
-No releases exist yet. Every release will ship with SHA-256 checksums, GitHub artifact attestations, a cosign signature and a CycloneDX SBOM. Verification, once a release exists:
+No release is published yet. Each release will provide:
+
+- Static `musl` binaries (`x86_64`, `aarch64`) that run on any Linux distribution.
+- `gnu` binaries (`x86_64`, `aarch64`) linked against glibc 2.34 or newer (Debian 12, Ubuntu 22.04, Fedora 35, RHEL 9 and later).
+- `.deb`, `.rpm`, `.apk` and Arch (`.pkg.tar.zst`) packages wrapping the static binary.
+- `SHA256SUMS` signed with cosign (keyless), GitHub build provenance attestations, and a CycloneDX SBOM.
+
+Verify a download before running it:
 
 ```bash
 gh attestation verify amivuln-x86_64-unknown-linux-musl.tar.zst --repo nubian-ibex/amivuln
@@ -19,6 +26,8 @@ cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum -c SHA256SUMS --ignore-missing
 ```
+
+The `.rpm` and `.deb` packages are not signed with a package-manager key yet. Install the `.rpm` with `rpm -i --nosignature` only after the checks above.
 
 ## Usage
 
