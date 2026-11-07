@@ -1,0 +1,91 @@
+# ============================================================
+# amivuln — .gitignore
+# Cargo.lock É versionado (projeto entrega binário).
+# ============================================================
+
+# --- Rust / Cargo ---
+/target/
+**/target/
+**/*.rs.bk
+*.pdb
+
+# --- cargo-fuzz ---
+/fuzz/target/
+/fuzz/artifacts/
+/fuzz/coverage/
+# Seeds mínimos ficam em fuzz/seeds/ (versionado); corpus gerado não.
+/fuzz/corpus/
+
+# --- Cobertura / profiling ---
+/coverage/
+lcov.info
+*.profraw
+*.profdata
+flamegraph.svg
+perf.data*
+
+# --- insta (snapshots pendentes) ---
+*.snap.new
+*.pending-snap
+
+# --- cargo-mutants ---
+/mutants.out/
+/mutants.out.old/
+
+# --- Release local (dist / cosign) ---
+/dist/
+*.sig
+*.bundle
+!tests/fixtures/**/*.sig
+!tests/fixtures/**/*.bundle
+
+# --- Runtime local do amivuln durante desenvolvimento ---
+/.amivuln/
+/.amivuln-cache/
+*.amivuln-db
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# --- Segredos (nunca versionar) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+!tests/fixtures/**/*.pem
+minisign.key
+cosign.key
+NVD_API_KEY*
+
+# --- Editores / SO ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+.DS_Store
+.direnv/
+result
+result-*
+
+# --- Estado local de agentes de IA ---
+.claude/settings.local.json
+CLAUDE.local.md
+.opencode/
+.aider*
+
+# ============================================================
+# Planejamento interno (NÃO publicar)
+# Roadmap, prompt de desenvolvimento e notas de progresso.
+# ============================================================
+/docs/ROADMAP.md
+/docs/PROMPT.md
+/docs/_private/
+
+# --- mdBook output ---
+/docs/book/book/
+
+# --- Generated SBOMs ---
+*.cdx.json

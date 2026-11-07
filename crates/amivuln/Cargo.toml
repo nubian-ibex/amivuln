@@ -1,0 +1,16 @@
+[package]
+name = "amivuln"
+description = "Am I vulnerable? Backport-aware CVE check for binaries, services and packages on this host."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
+
+[lints]
+workspace = true
