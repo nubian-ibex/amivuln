@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 amivuln contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Package definition for deb, rpm, apk and Arch packages. The static musl
+# binary is repackaged, so every format ships the same bytes as the tarball.
+# Environment: ARCH (amd64|arm64), VERSION, BIN (path to the binary).
+name: amivuln
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+section: utils
+priority: optional
+maintainer: amivuln contributors <security@ibexwall.com>
+description: |
+  Backport-aware CVE check for binaries, services and packages on this host.
+homepage: https://amivuln.dev
+license: MIT OR Apache-2.0
+contents:
+  - src: ${BIN}
+    dst: /usr/bin/amivuln
+    expand: true
+    file_info:
+      mode: 0755
+  - src: LICENSE-MIT
+    dst: /usr/share/licenses/amivuln/LICENSE-MIT
+  - src: LICENSE-APACHE
+    dst: /usr/share/licenses/amivuln/LICENSE-APACHE

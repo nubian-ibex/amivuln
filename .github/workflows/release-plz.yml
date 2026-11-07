@@ -1,7 +1,7 @@
 name: release-plz
 on:
-  # Manual only: the PR it opens is created with GITHUB_TOKEN, so its commits
-  # are unsigned and no checks run on it, which the main ruleset rejects.
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions: {}
 concurrency:
@@ -9,20 +9,31 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release-pr:
+    # A GitHub App token is required: PRs opened with GITHUB_TOKEN trigger no
+    # checks, so they could never satisfy the main ruleset. Set the repository
+    # variable RELEASE_PLZ_APP_ID and the secret RELEASE_PLZ_APP_PRIVATE_KEY.
+    if: ${{ vars.RELEASE_PLZ_APP_ID != '' }}
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with: { egress-policy: audit }
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ vars.RELEASE_PLZ_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLZ_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: true # release-plz pushes the release branch
+          token: ${{ steps.app-token.outputs.token }}
       - run: rustup show
       - uses: release-plz/action@66b324fd6c72d05d2a08568492ecdd62bfb8a62b # v0.5.148
         with:
           command: release-pr
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
