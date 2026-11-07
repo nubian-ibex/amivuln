@@ -7,3 +7,4 @@ publish = false
 [[package]]
 name = "amivuln"
 publish = true
+changelog_path = "CHANGELOG.md"
