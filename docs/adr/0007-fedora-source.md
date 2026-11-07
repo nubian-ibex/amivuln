@@ -10,10 +10,12 @@ Fedora packages must be matched against advisories that account for Fedora's own
 - The OSV ecosystem list (`https://osv-vulnerabilities.storage.googleapis.com/ecosystems.txt`) contains AlmaLinux, Alpine, Debian, Red Hat, Rocky Linux, SUSE, Ubuntu, openSUSE and others, but **no Fedora** entry. OSV cannot be the distro source for Fedora.
 - The Bodhi API (`https://bodhi.fedoraproject.org/updates/?type=security&releases=F42&rows_per_page=N`) returns paginated JSON. Each update has `builds[]` (with `nvr` and `epoch`), `release`, `status`, `severity` and `bugs[]`. CVE IDs appear in the bug titles (for example "CVE-2026-22020 libpng: ..."), not in a dedicated field. The update `status` includes `obsolete`, so superseded updates need handling.
 
+- `updateinfo` evidence (2026-11-07, Fedora 43 `updates` repo, found through `repomd.xml` from the metalink `https://mirrors.fedoraproject.org/metalink?repo=updates-released-f43&arch=x86_64`): one `updateinfo.xml.zst` of about 2.9 MB (4513 updates, checksum listed in `repomd.xml`). Each `<update>` has `id`, `severity`, `issued`, and a `pkglist` with `name`, `epoch`, `version`, `release`, `arch` per package, so fixed EVRs are structured. There is **no** `type="cve"` reference: CVE IDs appear only in the free-text `description` and in the `title` of `bugzilla` references (for example "CVE-2026-28356 python-multipart: ..."). Most updates are `type="unspecified"`, so security relevance cannot be taken from `type` alone.
+
 ## Options
 
 - Bodhi security updates: map bug-title CVE IDs to builds and fixed NVRs. Pros: authoritative for what Fedora shipped. Cons: CVE extraction from free text; updates marked obsolete; only covers CVEs that produced an update.
-- Repository `updateinfo` metadata: structured, per-repo, includes CVE references. Cons: needs repo metadata download and parsing; verify availability for Fedora repos.
+- Repository `updateinfo` metadata: one bulk file per release and repo, structured package EVRs, checksum chain through `repomd.xml`, no per-request API load. Cons: CVE IDs only in free text, needs mirror selection and zstd plus XML parsing (two new dependencies to vet), and the file holds all updates, not only security ones.
 - Upstream data (OSV by upstream ecosystem, NVD): ignores Fedora patch status and produces false positives from backports.
 
 ## Decision
@@ -23,4 +25,6 @@ Pending. Recommendation: Bodhi (with updateinfo evaluated as a cross-check) as t
 ## Consequences
 
 - A package with no Bodhi record cannot be proven fixed, so its CVEs from upstream sources must be reported as `unknown` (unverified), never `affected`.
-- TODO(verify): updateinfo URL layout and CVE reference fields; Bodhi rate limits.
+- Both Fedora sources carry CVE IDs only in free text, so extraction must be a strict regex over bugzilla titles and descriptions, covered by fixtures.
+- Offline and cache design favors `updateinfo` (bulk, verifiable); Bodhi is better for freshness. A combination remains open.
+- TODO(verify): Bodhi rate limits; whether the `updates-testing` repo must be excluded (it is by using `updates-released`).
