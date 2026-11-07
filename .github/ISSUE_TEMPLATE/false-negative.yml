@@ -1,0 +1,28 @@
+name: False negative
+description: A known CVE is not reported
+labels: [false-negative]
+body:
+  - type: textarea
+    id: distro_and_version
+    attributes:
+      label: Distro and version
+    validations:
+      required: true
+  - type: textarea
+    id: package_and_installed_version
+    attributes:
+      label: Package and installed version
+    validations:
+      required: true
+  - type: textarea
+    id: output_of_amivuln_format_json
+    attributes:
+      label: Output of amivuln --format json
+    validations:
+      required: true
+  - type: textarea
+    id: evidence_the_cve_applies
+    attributes:
+      label: Evidence the CVE applies
+    validations:
+      required: true
