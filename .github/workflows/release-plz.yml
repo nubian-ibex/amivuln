@@ -1,0 +1,27 @@
+name: release-plz
+on:
+  push:
+    branches: [main]
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+jobs:
+  release-pr:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: true # release-plz pushes the release branch
+      - run: rustup show
+      - uses: release-plz/action@66b324fd6c72d05d2a08568492ecdd62bfb8a62b # v0.5.148
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

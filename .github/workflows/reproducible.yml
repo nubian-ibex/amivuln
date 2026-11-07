@@ -1,0 +1,50 @@
+name: reproducible
+on:
+  pull_request:
+    paths: ["Cargo.*", "crates/**", "rust-toolchain.toml", ".github/workflows/reproducible.yml"]
+  push:
+    branches: [main]
+permissions: {}
+env:
+  TARGET: x86_64-unknown-linux-musl
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    permissions: { contents: read }
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-24.04, dir: build-a }
+          - { os: ubuntu-24.04, dir: build-b }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: ${{ matrix.dir }}
+      - name: Build
+        working-directory: ${{ matrix.dir }}
+        run: |
+          rustup show
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          export RUSTFLAGS="--remap-path-prefix=$HOME=/home/builder --remap-path-prefix=$PWD=/src"
+          cargo build --release --locked --target "$TARGET" -p amivuln
+          sha256sum "target/$TARGET/release/amivuln" | cut -d' ' -f1 > "$RUNNER_TEMP/hash.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hash-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/hash.txt
+  compare:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with: { path: hashes }
+      - run: |
+          cat hashes/*/hash.txt
+          test "$(cat hashes/*/hash.txt | sort -u | wc -l)" -eq 1
