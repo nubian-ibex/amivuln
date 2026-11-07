@@ -1,0 +1,8 @@
+[book]
+title = "amivuln"
+authors = ["amivuln contributors"]
+language = "en"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/nubian-ibex/amivuln"
