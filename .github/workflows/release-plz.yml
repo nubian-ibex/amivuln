@@ -1,7 +1,8 @@
 name: release-plz
 on:
-  push:
-    branches: [main]
+  # Manual only: the PR it opens is created with GITHUB_TOKEN, so its commits
+  # are unsigned and no checks run on it, which the main ruleset rejects.
+  workflow_dispatch:
 permissions: {}
 concurrency:
   group: ${{ github.workflow }}
