@@ -1,0 +1,2 @@
+[files]
+extend-exclude = ["tests/fixtures/**", "supply-chain/**", "Cargo.lock", "LICENSES/**", "LICENSE-*"]

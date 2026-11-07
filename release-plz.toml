@@ -1,0 +1,9 @@
+[workspace]
+changelog_config = "cliff.toml"
+git_release_enable = false
+git_tag_enable = false
+publish = false
+
+[[package]]
+name = "amivuln"
+publish = true
