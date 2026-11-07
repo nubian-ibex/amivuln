@@ -1,6 +1,6 @@
 # ADR-0008: Source of truth for Arch Linux
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-07
 
 ## Context
@@ -18,7 +18,7 @@ Evidence gathered on 2026-11-07 (preliminary spike S2):
 
 ## Decision
 
-Pending. Recommendation: Arch Security Tracker as the required distro source, with `all.json` cached locally and queried by package name; `fixed` compared with the pacman `vercmp` algorithm.
+Accepted by the maintainer on 2026-11-07. Arch Security Tracker as the required distro source, with `all.json` cached locally and queried by package name; `fixed` compared with the pacman `vercmp` algorithm.
 
 ## Consequences
 
