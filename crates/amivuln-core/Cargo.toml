@@ -10,7 +10,7 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-amivuln-version = { path = "../amivuln-version", version = "0.0.1" }
+amivuln-version = { path = "../amivuln-version", version = "0.0.2" }
 
 [lints]
 workspace = true
