@@ -1,0 +1,22 @@
+name: Source request
+description: Suggest a new data source or distro
+labels: [source-request]
+body:
+  - type: textarea
+    id: source_or_distro
+    attributes:
+      label: Source or distro
+    validations:
+      required: true
+  - type: textarea
+    id: official_documentation_url
+    attributes:
+      label: Official documentation URL
+    validations:
+      required: true
+  - type: textarea
+    id: why_it_is_needed
+    attributes:
+      label: Why it is needed
+    validations:
+      required: true
