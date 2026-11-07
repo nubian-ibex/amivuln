@@ -13,6 +13,9 @@ version = "0.0.1"
 [[package]]
 name = "amivuln-core"
 version = "0.0.1"
+dependencies = [
+ "amivuln-version",
+]
 
 [[package]]
 name = "amivuln-report"

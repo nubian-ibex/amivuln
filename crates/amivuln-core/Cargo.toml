@@ -9,5 +9,8 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[dependencies]
+amivuln-version = { path = "../amivuln-version", version = "0.0.1" }
+
 [lints]
 workspace = true
