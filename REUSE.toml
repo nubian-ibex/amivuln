@@ -1,0 +1,11 @@
+version = 1
+
+[[annotations]]
+path = [
+  "**/*.md", "**/*.toml", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.lock",
+  ".editorconfig", ".gitignore", "justfile", "CITATION.cff",
+  "assets/**", "tests/fixtures/**", "supply-chain/**", "docs/book/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 amivuln contributors"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
