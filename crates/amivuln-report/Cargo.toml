@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 homepage.workspace = true
+documentation.workspace = true
 keywords = ["security", "cve", "vulnerability", "linux"]
 categories = ["command-line-utilities"]
 

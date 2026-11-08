@@ -9,7 +9,8 @@ edition = "2024"
 rust-version = "1.97"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/nubian-ibex/amivuln"
-homepage = "https://amivuln.dev"
+homepage = "https://nubian-ibex.github.io/amivuln/"
+documentation = "https://nubian-ibex.github.io/amivuln/"
 authors = ["amivuln contributors"]
 
 [workspace.lints.rust]
