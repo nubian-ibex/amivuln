@@ -29,3 +29,13 @@ not visible in this data.
 
 OSV for Debian, Ubuntu, Alpine and RHEL-family distributions, the Fedora Bodhi
 API as a cross-check, NVD by CPE as a fallback, and endoflife.date.
+
+## Arch specifics
+
+The tracker marks a group *Vulnerable* with no fixed version for the build
+that was current when the entry was written, and some entries stay that way
+for years. amivuln reports an installed package as affected only when it has
+the same upstream version as the recorded build (a rebuild of it is still
+affected). A newer upstream version is reported as *unverified*, because the
+entry cannot say whether it still applies. An install older than the recorded
+build is outside the entry and is not reported.

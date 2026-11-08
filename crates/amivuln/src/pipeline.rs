@@ -54,6 +54,18 @@ fn merge(a: (Verdict, Severity), b: (Verdict, Severity)) -> (Verdict, Severity) 
     (verdict, severity)
 }
 
+/// The version without its package release: `1.7.0-2` gives `1.7.0`.
+fn upstream(v: &Version) -> String {
+    let text = v.to_string();
+    text.rsplit_once('-')
+        .map_or_else(|| text.clone(), |(up, _)| up.to_owned())
+}
+
+fn same_upstream(a: &Version, b: &Version) -> bool {
+    let (a, b) = (upstream(a), upstream(b));
+    amivuln_version::pacman_vercmp(&a, &b) == core::cmp::Ordering::Equal
+}
+
 fn one_arch_entry(installed: &Version, e: &ArchEntry) -> Option<Verdict> {
     // A group covers [affected_since, fixed). Older installs are outside it.
     if let (Some(since), DistroStatus::Fixed(_) | DistroStatus::Affected) =
@@ -61,6 +73,16 @@ fn one_arch_entry(installed: &Version, e: &ArchEntry) -> Option<Verdict> {
         && installed.compare(since) == Some(core::cmp::Ordering::Less)
     {
         return None;
+    }
+    // "Vulnerable" with no fixed version describes the build that was current
+    // when the tracker entry was written. A rebuild of that same upstream
+    // version is still affected; a newer upstream version may or may not be
+    // (the entry can be years stale), so it is reported as unverified instead
+    // of affected. A false positive here would erode trust in every result.
+    if let (DistroStatus::Affected, Some(since)) = (&e.status, &e.affected_since)
+        && !same_upstream(installed, since)
+    {
+        return Some(Verdict::Unverified);
     }
     Some(classify(installed, &e.status))
 }
@@ -201,6 +223,21 @@ mod tests {
         let t = ArchTracker::parse(ARCH).unwrap();
         // The AVG starts at 3.5.28-6; an older build is outside its range.
         assert!(arch_findings(&arch_pkg("djvulibre", "3.5.20-1"), &t).is_empty());
+    }
+
+    #[test]
+    fn arch_vulnerable_entry_for_an_older_upstream_version_is_only_unverified() {
+        let t = ArchTracker::parse(ARCH).unwrap();
+        // The tracker recorded pam 1.7.0-2 as vulnerable and never published a
+        // fix. A newer upstream version must not be claimed as affected.
+        let newer = arch_findings(&arch_pkg("pam", "1.8.0-1"), &t);
+        assert_eq!(newer.len(), 1);
+        assert_eq!(newer[0].verdict, Verdict::Unverified);
+        // A rebuild of the same upstream version is still affected.
+        let rebuild = arch_findings(&arch_pkg("pam", "1.7.0-3"), &t);
+        assert!(matches!(rebuild[0].verdict, Verdict::Affected { .. }));
+        // An install older than the recorded build is outside the entry.
+        assert!(arch_findings(&arch_pkg("pam", "1.6.0-1"), &t).is_empty());
     }
 
     #[test]

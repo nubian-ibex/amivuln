@@ -36,6 +36,9 @@ struct Case {
     forbid: Vec<String>,
     #[serde(default)]
     forbid_all: bool,
+    /// CVEs that must not be reported as affected (unverified is acceptable).
+    #[serde(default)]
+    forbid_affected: Vec<String>,
     #[serde(default)]
     expect_update_id: bool,
 }
@@ -73,6 +76,13 @@ fn check(case: &Case, findings: &[Finding]) {
         assert!(
             !all.contains(&bad.as_str()),
             "[{}] FALSE POSITIVE {bad}; got {all:?}",
+            case.name
+        );
+    }
+    for bad in &case.forbid_affected {
+        assert!(
+            !affected.contains(&bad.as_str()),
+            "[{}] FALSE POSITIVE (affected) {bad}; got {affected:?}",
             case.name
         );
     }
