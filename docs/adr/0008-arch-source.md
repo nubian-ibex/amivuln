@@ -24,3 +24,9 @@ Accepted by the maintainer on 2026-11-07. Arch Security Tracker as the required 
 
 - `Unknown` and `Vulnerable` without a `fixed` version map to `unknown` and `affected` respectively; `Not affected` suppresses the CVE with the tracker as justification.
 - TODO(verify): conditional request support (ETag, Last-Modified), file size growth, and an official statement on API stability.
+
+## Measurement (2026-11-08)
+
+`tests/integration/arch-vs-arch-audit.sh` compares amivuln with `arch-audit` in an archlinux container (295 packages). arch-audit lists 11 packages as affected; amivuln lists 0 as affected and 12 as unverified. The difference is deliberate: the tracker keeps "Vulnerable" groups with no fixed version for years (for example CVE-2022-2068 recorded against openssl 1.1.1.o, still "Vulnerable" while Arch ships openssl 3.6), and arch-audit reports every installed version as affected by them. amivuln reports a Vulnerable group as affected only for the same upstream version as the recorded build, and as unverified for newer ones, so the findings stay visible without being asserted. `--strict` makes them count for `--fail-on`.
+
+The corpus `tests/ground-truth/arch-boundaries.toml` (92 cases from 31 real tracker groups) probes each Fixed group one build before the fix, at the fix, after it and before the range, and the stale-Vulnerable rule.

@@ -367,6 +367,25 @@ mod tests {
     }
 
     #[test]
+    fn output_validates_against_the_published_schema() {
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("../../../docs/book/src/schema/v1.json")).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        for complete in [true, false] {
+            let doc = json(complete);
+            let errors: Vec<String> = validator.iter_errors(&doc).map(|e| e.to_string()).collect();
+            assert!(errors.is_empty(), "schema violations: {errors:?}");
+        }
+        // The validator is not vacuous: a wrong version and an extra key fail.
+        let mut bad = json(true);
+        bad["schema_version"] = serde_json::json!(2);
+        assert!(!validator.is_valid(&bad));
+        let mut extra = json(true);
+        extra["host"]["hostname"] = serde_json::json!("leak");
+        assert!(!validator.is_valid(&extra));
+    }
+
+    #[test]
     fn purl_encoding() {
         assert_eq!(purl_encode("libstdc++"), "libstdc%2B%2B");
         assert_eq!(purl_encode("1:2.0-1"), "1%3A2.0-1");

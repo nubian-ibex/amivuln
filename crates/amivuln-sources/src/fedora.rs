@@ -28,22 +28,51 @@ pub const MAX_XML_BYTES: usize = 256 * 1024 * 1024;
 /// Deepest element nesting accepted.
 const MAX_DEPTH: usize = 16;
 
+/// Where `repomd.xml` says the `updateinfo` file is, and its checksum.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UpdateinfoLocation {
+    /// Path relative to the repository root, for example
+    /// `repodata/<sha256>-updateinfo.xml.zst`.
+    pub href: String,
+    /// Lower-case hex SHA-256 of the compressed file, from `repomd.xml`.
+    pub sha256: String,
+}
+
+impl UpdateinfoLocation {
+    /// True when `data` hashes to the checksum `repomd.xml` promised.
+    #[must_use]
+    pub fn verify(&self, data: &[u8]) -> bool {
+        use core::fmt::Write as _;
+        use sha2::{Digest, Sha256};
+        let hex = Sha256::digest(data)
+            .iter()
+            .fold(String::with_capacity(64), |mut acc, b| {
+                let _ = write!(acc, "{b:02x}");
+                acc
+            });
+        hex == self.sha256
+    }
+}
+
 /// Finds the `updateinfo` file in `repomd.xml`.
 ///
-/// Returns the path relative to the repository root, for example
-/// `repodata/<sha256>-updateinfo.xml.zst`. Only zstd-compressed files are
-/// accepted and the path is checked so it cannot escape `repodata/`.
+/// Returns the path relative to the repository root and the SHA-256 the
+/// metadata declares for it, so a mirror that serves different bytes is
+/// detected. Only zstd-compressed files are accepted and the path is checked
+/// so it cannot escape `repodata/`.
 ///
 /// # Errors
 ///
 /// Fails when `repomd.xml` is malformed, lists no `updateinfo`, or lists one
 /// in an unsupported or suspicious form.
-pub fn updateinfo_location(repomd: &[u8]) -> Result<String, UpdateinfoError> {
+pub fn updateinfo_location(repomd: &[u8]) -> Result<UpdateinfoLocation, UpdateinfoError> {
     if repomd.len() > 4 * 1024 * 1024 {
         return Err(UpdateinfoError::TooLarge);
     }
     let mut reader = Reader::from_reader(repomd);
     let mut in_updateinfo = false;
+    let mut sha256: Option<String> = None;
+    let mut href: Option<String> = None;
     loop {
         let event = reader
             .read_event()
@@ -53,20 +82,37 @@ pub fn updateinfo_location(repomd: &[u8]) -> Result<String, UpdateinfoError> {
                 in_updateinfo = attr(&e, "type").as_deref() == Some("updateinfo");
             }
             Event::End(e) if e.name().as_ref() == "data" => in_updateinfo = false,
+            Event::Start(e) if in_updateinfo && e.name().as_ref() == "checksum" => {
+                if attr(&e, "type").as_deref() == Some("sha256") {
+                    // The digest is the element text, read on the next event.
+                    sha256 = Some(String::new());
+                }
+            }
+            Event::Text(t) if in_updateinfo && sha256.as_deref() == Some("") => {
+                sha256 = Some(
+                    t.xml_content(XmlVersion::Implicit1_0)
+                        .trim()
+                        .to_ascii_lowercase(),
+                );
+            }
             Event::Empty(e) | Event::Start(e)
                 if in_updateinfo && e.name().as_ref() == "location" =>
             {
-                let href = attr(&e, "href")
-                    .ok_or_else(|| UpdateinfoError::Xml("location without href".into()))?;
-                return validate_location(&href);
+                href = Some(
+                    attr(&e, "href")
+                        .ok_or_else(|| UpdateinfoError::Xml("location without href".into()))?,
+                );
             }
             Event::Eof => break,
             _ => {}
         }
     }
-    Err(UpdateinfoError::Xml(
-        "repomd.xml lists no updateinfo".into(),
-    ))
+    let href = href.ok_or_else(|| UpdateinfoError::Xml("repomd.xml lists no updateinfo".into()))?;
+    let href = validate_location(&href)?;
+    let sha256 = sha256
+        .filter(|h| h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+        .ok_or_else(|| UpdateinfoError::Xml("repomd.xml gives no sha256 for updateinfo".into()))?;
+    Ok(UpdateinfoLocation { href, sha256 })
 }
 
 fn validate_location(href: &str) -> Result<String, UpdateinfoError> {
@@ -367,11 +413,36 @@ mod tests {
 </repomd>"#;
 
     #[test]
-    fn repomd_location_is_found() {
+    fn repomd_location_and_checksum_are_found() {
+        let loc = updateinfo_location(REPOMD).unwrap();
         assert_eq!(
-            updateinfo_location(REPOMD).unwrap(),
+            loc.href,
             "repodata/625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c-updateinfo.xml.zst"
         );
+        assert_eq!(
+            loc.sha256,
+            "625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c"
+        );
+    }
+
+    #[test]
+    fn checksum_verification_accepts_only_the_promised_bytes() {
+        // sha256("abc")
+        let loc = UpdateinfoLocation {
+            href: "repodata/x-updateinfo.xml.zst".into(),
+            sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad".into(),
+        };
+        assert!(loc.verify(b"abc"));
+        assert!(!loc.verify(b"xyz"));
+        assert!(!loc.verify(b""));
+    }
+
+    #[test]
+    fn repomd_without_a_valid_checksum_is_rejected() {
+        let no_sum = br#"<repomd><data type="updateinfo"><location href="repodata/a-updateinfo.xml.zst"/></data></repomd>"#;
+        assert!(updateinfo_location(no_sum).is_err());
+        let bad = br#"<repomd><data type="updateinfo"><checksum type="sha256">xyz</checksum><location href="repodata/a-updateinfo.xml.zst"/></data></repomd>"#;
+        assert!(updateinfo_location(bad).is_err());
     }
 
     #[test]

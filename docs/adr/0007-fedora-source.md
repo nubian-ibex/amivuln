@@ -40,3 +40,11 @@ The parser in `amivuln_sources::fedora` implements the `updateinfo` option:
 - Dependencies: quick-xml and ruzstd (pure Rust, so static musl builds stay simple).
 
 Still open before acceptance: the false-positive measurement on 50 real packages (spike S1) and the Bodhi cross-check.
+
+## Measurement (spike S1, 2026-11-08)
+
+Setup: a `fedora:latest` container (Fedora 45) with 383 packages, 50 of them installed from the release repository only (updates repo disabled for the install), so many have a pending security update. Oracle: `dnf updateinfo list --security` with the updates repo enabled, which is Fedora's own tooling. Script: `tests/integration/fedora-vs-dnf.sh`.
+
+Result: dnf lists 19 packages with pending security advisories; amivuln reports the same 19 packages, with 0 false positives and 0 false negatives among the 382 packages checked. For every one of the 19 the highest fixed version amivuln reports equals the NEVRA dnf prints, which the ground-truth corpus `tests/ground-truth/fedora-f45-dnf.toml` (49 cases: 19 positives, 30 negatives, with the matching `updateinfo` subset as a fixture) now asserts in CI.
+
+Recommendation: accept `updateinfo` as the primary Fedora source. The Bodhi cross-check stays optional. The remaining blind spot is the one stated above: a CVE with no published Fedora fix is not visible.

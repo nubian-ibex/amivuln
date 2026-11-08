@@ -1,0 +1,5 @@
+{
+  "url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/45/Everything/x86_64/repodata/777a075096bec2ec5b18c3182f825970a2110a2158dbb5a3d5b9ee348434c59c-updateinfo.xml.zst",
+  "recorded": "2026-11-08",
+  "note": "Updates (unmodified <update> elements) that mention the packages used by tests/ground-truth/fedora-f45-dnf.toml. Oracle: `dnf updateinfo list --security` run in a fedora:latest (F45) container with 50 packages installed from the release repo only; see tests/integration/fedora-vs-dnf.sh."
+}

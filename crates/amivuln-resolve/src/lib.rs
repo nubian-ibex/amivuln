@@ -13,6 +13,7 @@ mod pacman;
 mod rpm;
 mod system;
 mod target;
+mod unit;
 
 pub use build::{from_name_version, from_purl};
 pub use host::{HostInfo, parse_os_release};
@@ -20,6 +21,7 @@ pub use pacman::PacmanResolver;
 pub use rpm::RpmResolver;
 pub use system::SystemRunner;
 pub use target::{Target, parse_target};
+pub use unit::{UnitExe, exe_for_unit};
 
 use amivuln_core::{PackageRef, ProcessError};
 

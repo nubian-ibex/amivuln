@@ -41,6 +41,11 @@ struct Case {
     forbid_affected: Vec<String>,
     #[serde(default)]
     expect_update_id: bool,
+    /// At least one affected finding.
+    #[serde(default)]
+    expect_affected: bool,
+    /// The highest fixed version among affected findings, as an EVR.
+    expect_fixed_in: Option<String>,
 }
 
 fn package(eco: Ecosystem, case: &Case) -> PackageRef {
@@ -93,6 +98,31 @@ fn check(case: &Case, findings: &[Finding]) {
             case.name
         );
     }
+    if case.expect_affected {
+        assert!(
+            !affected.is_empty(),
+            "[{}] expected an affected finding, got {all:?}",
+            case.name
+        );
+    }
+    if let Some(want) = &case.expect_fixed_in {
+        let want: amivuln_version::RpmEvr = want.parse().unwrap_or_else(|n| match n {});
+        let best = findings
+            .iter()
+            .filter_map(|f| match &f.verdict {
+                Verdict::Affected {
+                    fixed_in: Some(Version::Rpm(v)),
+                } => Some(v.clone()),
+                _ => None,
+            })
+            .max();
+        assert_eq!(
+            best.as_ref(),
+            Some(&want),
+            "[{}] highest fixed version",
+            case.name
+        );
+    }
     if case.expect_update_id {
         assert!(
             affected.iter().any(|id| id.starts_with("FEDORA-")),
@@ -112,6 +142,47 @@ fn arch_corpus() {
         check(
             case,
             &arch_findings(&package(Ecosystem::Arch, case), &tracker),
+        );
+    }
+}
+
+const FEDORA_F45_FIXTURE: &[u8] = include_bytes!(
+    "../../../tests/fixtures/http/fedora-updateinfo/2026-11-08-f45/updateinfo.xml.zst"
+);
+
+const ARCH_2026_11_08: &[u8] =
+    include_bytes!("../../../tests/fixtures/http/arch-tracker/2026-11-08/all.json");
+
+#[test]
+fn arch_boundary_corpus_from_real_tracker_groups() {
+    let file: File = toml::from_str(include_str!(
+        "../../../tests/ground-truth/arch-boundaries.toml"
+    ))
+    .unwrap();
+    assert_eq!(file.distro, "arch");
+    let tracker = ArchTracker::parse(ARCH_2026_11_08).unwrap();
+    assert!(file.cases.len() >= 60, "{} cases", file.cases.len());
+    for case in &file.cases {
+        check(
+            case,
+            &arch_findings(&package(Ecosystem::Arch, case), &tracker),
+        );
+    }
+}
+
+#[test]
+fn fedora_f45_corpus_from_the_dnf_oracle() {
+    let file: File = toml::from_str(include_str!(
+        "../../../tests/ground-truth/fedora-f45-dnf.toml"
+    ))
+    .unwrap();
+    assert_eq!(file.distro, "fedora:45");
+    let info = Updateinfo::parse_zst(FEDORA_F45_FIXTURE).unwrap();
+    assert!(file.cases.len() >= 40, "{} cases", file.cases.len());
+    for case in &file.cases {
+        check(
+            case,
+            &fedora_findings(&package(Ecosystem::Fedora(45), case), &info),
         );
     }
 }
