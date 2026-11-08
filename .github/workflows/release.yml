@@ -274,7 +274,8 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
-          mkdir -p out unpack
+          mkdir -p out unpack man-gz
+          for page in contrib/man/*.1; do gzip -9nc "$page" > "man-gz/$(basename "$page").gz"; done
           for pair in "x86_64-unknown-linux-musl amd64" "aarch64-unknown-linux-musl arm64"; do
             set -- $pair
             mkdir -p "unpack/$1"

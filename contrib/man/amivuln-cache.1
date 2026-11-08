@@ -1,0 +1,23 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH AMIVULN-CACHE 1  "cache " 
+.SH NAME
+cache \- Inspect or clear the on\-disk cache
+.SH SYNOPSIS
+\fBcache\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Inspect or clear the on\-disk cache
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+cache\-info(1)
+Show where the cache lives and how big it is
+.TP
+cache\-clear(1)
+Delete every cached response
+.TP
+cache\-help(1)
+Print this message or the help of the given subcommand(s)

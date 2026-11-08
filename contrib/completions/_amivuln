@@ -1,0 +1,644 @@
+#compdef amivuln
+
+autoload -U is-at-least
+
+_amivuln() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'--all[Check every installed package]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+'::targets -- Targets to check\: package name, file path, `name@version` or purl:_default' \
+":: :_amivuln_commands" \
+"*::: :->amivuln" \
+&& ret=0
+    case $state in
+    (amivuln)
+        words=($line[2] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-command-$line[2]:"
+        case $line[2] in
+            (check)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--all[Check every installed package]' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::targets -- Targets to check:_default' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_amivuln__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+'--path=[Where to write; defaults to the user configuration path]:FILE:_files' \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__config__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-config-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_amivuln__subcmd__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-cache-command-$line[1]:"
+        case $line[1] in
+            (info)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__cache__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-cache-help-command-$line[1]:"
+        case $line[1] in
+            (info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':shell -- Target shell:((bash\:"Bash"
+zsh\:"Zsh"
+fish\:"Fish"
+elvish\:"Elvish"
+powershell\:"PowerShell"))' \
+&& ret=0
+;;
+(version)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--json[Machine-readable output]' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-help-command-$line[1]:"
+        case $line[1] in
+            (check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__help__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-help-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__help__subcmd__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-help-cache-command-$line[1]:"
+        case $line[1] in
+            (info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(version)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_amivuln_commands] )) ||
+_amivuln_commands() {
+    local commands; commands=(
+'check:Check packages, files, versions or purls' \
+'config:Show, create or validate the configuration' \
+'cache:Inspect or clear the on-disk cache' \
+'completions:Print shell completions' \
+'version:Print version and build information' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache_commands] )) ||
+_amivuln__subcmd__cache_commands() {
+    local commands; commands=(
+'info:Show where the cache lives and how big it is' \
+'clear:Delete every cached response' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln cache commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__clear_commands] )) ||
+_amivuln__subcmd__cache__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cache clear commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__help_commands] )) ||
+_amivuln__subcmd__cache__subcmd__help_commands() {
+    local commands; commands=(
+'info:Show where the cache lives and how big it is' \
+'clear:Delete every cached response' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln cache help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__help__subcmd__clear_commands] )) ||
+_amivuln__subcmd__cache__subcmd__help__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cache help clear commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__help__subcmd__help_commands] )) ||
+_amivuln__subcmd__cache__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cache help help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__help__subcmd__info_commands] )) ||
+_amivuln__subcmd__cache__subcmd__help__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cache help info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__cache__subcmd__info_commands] )) ||
+_amivuln__subcmd__cache__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cache info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__check_commands] )) ||
+_amivuln__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln check commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__completions_commands] )) ||
+_amivuln__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln completions commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config_commands] )) ||
+_amivuln__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the effective configuration' \
+'init:Write a commented default configuration file' \
+'validate:Load the configuration and report problems' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln config commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__help_commands] )) ||
+_amivuln__subcmd__config__subcmd__help_commands() {
+    local commands; commands=(
+'show:Print the effective configuration' \
+'init:Write a commented default configuration file' \
+'validate:Load the configuration and report problems' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln config help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__help__subcmd__help_commands] )) ||
+_amivuln__subcmd__config__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config help help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__help__subcmd__init_commands] )) ||
+_amivuln__subcmd__config__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config help init commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__help__subcmd__show_commands] )) ||
+_amivuln__subcmd__config__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config help show commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__help__subcmd__validate_commands] )) ||
+_amivuln__subcmd__config__subcmd__help__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config help validate commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__init_commands] )) ||
+_amivuln__subcmd__config__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config init commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__show_commands] )) ||
+_amivuln__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config show commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__config__subcmd__validate_commands] )) ||
+_amivuln__subcmd__config__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln config validate commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help_commands] )) ||
+_amivuln__subcmd__help_commands() {
+    local commands; commands=(
+'check:Check packages, files, versions or purls' \
+'config:Show, create or validate the configuration' \
+'cache:Inspect or clear the on-disk cache' \
+'completions:Print shell completions' \
+'version:Print version and build information' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__cache_commands] )) ||
+_amivuln__subcmd__help__subcmd__cache_commands() {
+    local commands; commands=(
+'info:Show where the cache lives and how big it is' \
+'clear:Delete every cached response' \
+    )
+    _describe -t commands 'amivuln help cache commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__cache__subcmd__clear_commands] )) ||
+_amivuln__subcmd__help__subcmd__cache__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help cache clear commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__cache__subcmd__info_commands] )) ||
+_amivuln__subcmd__help__subcmd__cache__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help cache info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__check_commands] )) ||
+_amivuln__subcmd__help__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help check commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__completions_commands] )) ||
+_amivuln__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help completions commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__config_commands] )) ||
+_amivuln__subcmd__help__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the effective configuration' \
+'init:Write a commented default configuration file' \
+'validate:Load the configuration and report problems' \
+    )
+    _describe -t commands 'amivuln help config commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__config__subcmd__init_commands] )) ||
+_amivuln__subcmd__help__subcmd__config__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help config init commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__config__subcmd__show_commands] )) ||
+_amivuln__subcmd__help__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help config show commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__config__subcmd__validate_commands] )) ||
+_amivuln__subcmd__help__subcmd__config__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help config validate commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__help_commands] )) ||
+_amivuln__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__version_commands] )) ||
+_amivuln__subcmd__help__subcmd__version_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help version commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__version_commands] )) ||
+_amivuln__subcmd__version_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln version commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_amivuln" ]; then
+    _amivuln "$@"
+else
+    compdef _amivuln amivuln
+fi
