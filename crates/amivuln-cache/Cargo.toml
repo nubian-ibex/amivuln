@@ -1,13 +1,15 @@
 [package]
 name = "amivuln-cache"
-description = "SQLite-backed HTTP cache and offline database."
+description = "SQLite-backed HTTP cache for amivuln. Internal crate: no API stability."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+homepage.workspace = true
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 rusqlite = { version = "0.41.1", features = ["bundled"] }

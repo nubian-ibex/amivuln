@@ -1,13 +1,15 @@
 [package]
 name = "amivuln-report"
-description = "Output formatters: summary, detail, JSON, SARIF, Markdown, CSV."
+description = "Output formatters (summary, detail, JSON) for amivuln. Internal crate: no API stability."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+homepage.workspace = true
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 amivuln-core = { path = "../amivuln-core", version = "0.0.2" }
