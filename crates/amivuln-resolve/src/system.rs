@@ -36,6 +36,7 @@ fn locate(program: Program) -> Option<&'static str> {
     let candidates: &[&str] = match program {
         Program::Rpm => &["/usr/bin/rpm", "/bin/rpm"],
         Program::Pacman => &["/usr/bin/pacman", "/bin/pacman"],
+        Program::Systemctl => &["/usr/bin/systemctl", "/bin/systemctl"],
     };
     candidates
         .iter()

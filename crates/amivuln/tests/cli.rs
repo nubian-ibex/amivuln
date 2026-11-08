@@ -26,10 +26,25 @@ const EPSS_JSON: &[u8] = include_bytes!("../../../tests/fixtures/http/epss/2026-
 const HASHED: &str =
     "625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c-updateinfo.xml.zst";
 
-fn repomd() -> String {
+fn sha256_hex(data: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+    Sha256::digest(data)
+        .iter()
+        .fold(String::new(), |mut acc, b| {
+            let _ = write!(acc, "{b:02x}");
+            acc
+        })
+}
+
+fn repomd_with(sum: &str) -> String {
     format!(
-        r#"<repomd><data type="updateinfo"><location href="repodata/{HASHED}"/></data></repomd>"#
+        r#"<repomd><data type="updateinfo"><checksum type="sha256">{sum}</checksum><location href="repodata/{HASHED}"/></data></repomd>"#
     )
+}
+
+fn repomd() -> String {
+    repomd_with(&sha256_hex(UPDATEINFO_ZST))
 }
 
 async fn mount_fedora(server: &MockServer) {
@@ -38,6 +53,23 @@ async fn mount_fedora(server: &MockServer) {
             r"^/updates/43/Everything/[^/]+/repodata/repomd\.xml$",
         ))
         .respond_with(ResponseTemplate::new(200).set_body_string(repomd()))
+        .mount(server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path_regex(format!(
+            r"^/updates/43/Everything/[^/]+/repodata/{HASHED}$"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(UPDATEINFO_ZST))
+        .mount(server)
+        .await;
+}
+
+async fn mount_fedora_with_wrong_checksum(server: &MockServer) {
+    Mock::given(method("GET"))
+        .and(path_regex(
+            r"^/updates/43/Everything/[^/]+/repodata/repomd\.xml$",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_string(repomd_with(&"0".repeat(64))))
         .mount(server)
         .await;
     Mock::given(method("GET"))
@@ -274,6 +306,35 @@ async fn a_failed_required_source_is_incomplete_exit_two_never_a_clean_scan() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_mirror_serving_bytes_that_do_not_match_repomd_is_rejected() {
+    let server = MockServer::start().await;
+    mount_fedora_with_wrong_checksum(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let out = run(
+        sb.cmd(),
+        vec![
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "json",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(2));
+    let v = json(&out);
+    assert_eq!(v["complete"], false);
+    assert!(
+        v["sources"][0]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("checksum")
+    );
+    assert!(v["targets"][0]["findings"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn offline_uses_the_cache_and_fails_closed_without_one() {
     let server = MockServer::start().await;
     mount_fedora(&server).await;
@@ -403,7 +464,7 @@ async fn bad_input_is_a_usage_or_resolution_error_with_a_clear_message() {
         (
             vec!["nginx.service", "--distro", "fedora:43", "--offline"],
             3,
-            "systemd unit",
+            "unresolved nginx.service",
         ),
         (
             vec!["pkg:deb/debian/x@1", "--distro", "fedora:43", "--offline"],

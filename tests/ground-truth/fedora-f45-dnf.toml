@@ -1,0 +1,318 @@
+# Ground truth from an independent oracle: `dnf updateinfo list --security` in a Fedora 45 container
+# with these packages installed from the release repo (updates repo disabled for the install).
+# The expected fixed version is the NEVRA dnf prints; amivuln must agree on which packages are
+# affected and on the version that fixes them, and must report nothing for the negatives.
+distro = "fedora:45"
+
+[[case]]
+name = "bind-libs has a pending security update"
+package = "bind-libs"
+expect_fixed_in = "32:9.18.51^git20261003.d0a87358-12.fc45"
+version = "32:9.18.50-35.fc45"
+expect_affected = true
+
+[[case]]
+name = "bind-utils has a pending security update"
+package = "bind-utils"
+expect_fixed_in = "32:9.18.51^git20261003.d0a87358-12.fc45"
+version = "32:9.18.50-35.fc45"
+expect_affected = true
+
+[[case]]
+name = "httpd has a pending security update"
+package = "httpd"
+expect_fixed_in = "2.4.69-1.fc45"
+version = "2.4.68-7.fc45"
+expect_affected = true
+
+[[case]]
+name = "httpd-core has a pending security update"
+package = "httpd-core"
+expect_fixed_in = "2.4.69-1.fc45"
+version = "2.4.68-7.fc45"
+expect_affected = true
+
+[[case]]
+name = "httpd-filesystem has a pending security update"
+package = "httpd-filesystem"
+expect_fixed_in = "2.4.69-1.fc45"
+version = "2.4.68-7.fc45"
+expect_affected = true
+
+[[case]]
+name = "httpd-tools has a pending security update"
+package = "httpd-tools"
+expect_fixed_in = "2.4.69-1.fc45"
+version = "2.4.68-7.fc45"
+expect_affected = true
+
+[[case]]
+name = "libgs has a pending security update"
+package = "libgs"
+expect_fixed_in = "10.07.1-3.fc45"
+version = "10.07.1-2.fc45"
+expect_affected = true
+
+[[case]]
+name = "libheif has a pending security update"
+package = "libheif"
+expect_fixed_in = "1.23.7-1.fc45"
+version = "1.23.5-3.fc45"
+expect_affected = true
+
+[[case]]
+name = "liblerc has a pending security update"
+package = "liblerc"
+expect_fixed_in = "4.3.0-1.fc45"
+version = "4.2.0-1.fc45"
+expect_affected = true
+
+[[case]]
+name = "libzip has a pending security update"
+package = "libzip"
+expect_fixed_in = "1.12.1-1.fc45"
+version = "1.11.4-5.fc45"
+expect_affected = true
+
+[[case]]
+name = "nginx has a pending security update"
+package = "nginx"
+expect_fixed_in = "2:1.30.6-2.fc45"
+version = "2:1.30.5-2.fc45"
+expect_affected = true
+
+[[case]]
+name = "nginx-core has a pending security update"
+package = "nginx-core"
+expect_fixed_in = "2:1.30.6-2.fc45"
+version = "2:1.30.5-2.fc45"
+expect_affected = true
+
+[[case]]
+name = "nginx-filesystem has a pending security update"
+package = "nginx-filesystem"
+expect_fixed_in = "2:1.30.6-2.fc45"
+version = "2:1.30.5-2.fc45"
+expect_affected = true
+
+[[case]]
+name = "openjpeg has a pending security update"
+package = "openjpeg"
+expect_fixed_in = "2.5.4-5.fc45"
+version = "2.5.4-4.fc45"
+expect_affected = true
+
+[[case]]
+name = "pcre2 has a pending security update"
+package = "pcre2"
+expect_fixed_in = "10.49-1.fc45"
+version = "10.47-1.fc45.2"
+expect_affected = true
+
+[[case]]
+name = "pcre2-syntax has a pending security update"
+package = "pcre2-syntax"
+expect_fixed_in = "10.49-1.fc45"
+version = "10.47-1.fc45.2"
+expect_affected = true
+
+[[case]]
+name = "perl-libnet has a pending security update"
+package = "perl-libnet"
+expect_fixed_in = "3.16-1.fc45"
+version = "3.15-528.fc45"
+expect_affected = true
+
+[[case]]
+name = "rsync has a pending security update"
+package = "rsync"
+expect_fixed_in = "3.5.2-2.fc45"
+version = "3.5.0-2.fc45"
+expect_affected = true
+
+[[case]]
+name = "unbound-libs has a pending security update"
+package = "unbound-libs"
+expect_fixed_in = "1.26.2-2.fc45"
+version = "1.26.1-1.fc45"
+expect_affected = true
+
+[[case]]
+name = "bash is up to date"
+package = "bash"
+version = "5.3.15-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "zlib-ng-compat is up to date"
+package = "zlib-ng-compat"
+version = "2.3.3-6.fc45"
+forbid_all = true
+
+[[case]]
+name = "curl is up to date"
+package = "curl"
+version = "8.21.0-9.fc45"
+forbid_all = true
+
+[[case]]
+name = "openssl is up to date"
+package = "openssl"
+version = "1:4.0.3-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "sqlite-libs is up to date"
+package = "sqlite-libs"
+version = "3.53.4-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "libxml2 is up to date"
+package = "libxml2"
+version = "2.15.4-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "libpng is up to date"
+package = "libpng"
+version = "2:1.6.58-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "freetype is up to date"
+package = "freetype"
+version = "2.14.3-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "expat is up to date"
+package = "expat"
+version = "2.9.0-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "git-core is up to date"
+package = "git-core"
+version = "2.55.0-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "vim-enhanced is up to date"
+package = "vim-enhanced"
+version = "2:9.2.1129-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "tar is up to date"
+package = "tar"
+version = "2:1.35-10.fc45"
+forbid_all = true
+
+[[case]]
+name = "gzip is up to date"
+package = "gzip"
+version = "1.14-4.fc45"
+forbid_all = true
+
+[[case]]
+name = "bzip2-libs is up to date"
+package = "bzip2-libs"
+version = "1.0.8-24.fc45"
+forbid_all = true
+
+[[case]]
+name = "xz-libs is up to date"
+package = "xz-libs"
+version = "1:5.8.3-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "openssh-server is up to date"
+package = "openssh-server"
+version = "10.5p1-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "gnutls is up to date"
+package = "gnutls"
+version = "3.8.13-3.fc45"
+forbid_all = true
+
+[[case]]
+name = "krb5-libs is up to date"
+package = "krb5-libs"
+version = "1.22.2-11.fc45"
+forbid_all = true
+
+[[case]]
+name = "sudo is up to date"
+package = "sudo"
+version = "1.9.17-18.p2.fc45"
+forbid_all = true
+
+[[case]]
+name = "less is up to date"
+package = "less"
+version = "704-4.fc45"
+forbid_all = true
+
+[[case]]
+name = "file-libs is up to date"
+package = "file-libs"
+version = "5.48-3.fc45"
+forbid_all = true
+
+[[case]]
+name = "systemd-libs is up to date"
+package = "systemd-libs"
+version = "262-3.fc45"
+forbid_all = true
+
+[[case]]
+name = "dbus-libs is up to date"
+package = "dbus-libs"
+version = "1:1.16.2-6.fc45"
+forbid_all = true
+
+[[case]]
+name = "libgcrypt is up to date"
+package = "libgcrypt"
+version = "1.12.2-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "libssh2 is up to date"
+package = "libssh2"
+version = "1.11.1-10.fc45"
+forbid_all = true
+
+[[case]]
+name = "unzip is up to date"
+package = "unzip"
+version = "6.0-71.fc45"
+forbid_all = true
+
+[[case]]
+name = "wget2 is up to date"
+package = "wget2"
+version = "2.2.1-3.fc45"
+forbid_all = true
+
+[[case]]
+name = "python3-requests is up to date"
+package = "python3-requests"
+version = "2.34.2-2.fc45"
+forbid_all = true
+
+[[case]]
+name = "python3-urllib3 is up to date"
+package = "python3-urllib3"
+version = "2.8.0-1.fc45"
+forbid_all = true
+
+[[case]]
+name = "postgresql is up to date"
+package = "postgresql"
+version = "18.3-12.fc45"
+forbid_all = true

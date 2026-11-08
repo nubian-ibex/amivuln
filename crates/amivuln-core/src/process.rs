@@ -9,6 +9,8 @@ pub enum Program {
     Rpm,
     /// The pacman package manager.
     Pacman,
+    /// systemd's control tool, for read-only `show` queries.
+    Systemctl,
 }
 
 /// Result of a finished program.

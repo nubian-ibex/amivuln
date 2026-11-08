@@ -60,7 +60,7 @@ When several apply, the precedence is 70, 64, 2, 3, 1, 0.
 }
 ```
 
-Findings and unverified findings are separate arrays. The host block never
+The JSON Schema is published at [schema/v1.json](schema/v1.json) and is checked against the real output in CI. Findings and unverified findings are separate arrays. The host block never
 contains a host name, address or user. Adding optional fields does not change
 `schema_version`; removing or retyping one does.
 

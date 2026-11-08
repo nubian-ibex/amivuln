@@ -1,0 +1,5 @@
+{
+  "url": "https://security.archlinux.org/issues/all.json",
+  "recorded": "2026-11-08",
+  "note": "31 unmodified groups selected from the full response (Fixed single-package groups, Vulnerable groups and Not affected groups) for tests/ground-truth/arch-boundaries.toml"
+}

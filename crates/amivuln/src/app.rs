@@ -15,7 +15,7 @@ use amivuln_core::{
 };
 use amivuln_report::{Format, RenderOptions, render};
 use amivuln_resolve::{
-    PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target,
+    PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target, exe_for_unit,
     from_name_version, from_purl, parse_os_release, parse_target,
 };
 use amivuln_sources::arch::ArchTracker;
@@ -394,6 +394,7 @@ fn resolve_one(
     input: &str,
     eco: Ecosystem,
     backend: &Backend<'_>,
+    runner: &SystemRunner,
 ) -> Result<PackageRef, ResolveError> {
     let exists = |p: &str| Path::new(p).exists();
     match parse_target(input, exists) {
@@ -407,9 +408,11 @@ fn resolve_one(
         Target::NameVersion(n, v) => from_name_version(eco, &n, &v),
         Target::Path(p) => backend.resolver().owner_of(&p),
         Target::Name(n) => backend.resolver().by_name(&n),
-        Target::Unit(u) => Err(ResolveError::NotFound(format!(
-            "{u} (systemd unit targets are not supported yet; check the package that provides it)"
-        ))),
+        Target::Unit(u) => {
+            let link = |p: &str| std::fs::read_link(p).ok().map(|l| l.display().to_string());
+            let exe = exe_for_unit(runner, &link, &u)?;
+            backend.resolver().owner_of(&exe.path)
+        }
     }
 }
 
@@ -529,10 +532,13 @@ async fn load_distro(
                 Ok(l) => l,
                 Err(e) => return fail(e.to_string()),
             };
-            let blob = match f.get(&format!("{repo}/{location}")).await {
+            let blob = match f.get(&format!("{repo}/{}", location.href)).await {
                 Ok(d) => d,
                 Err(e) => return fail(describe(&e)),
             };
+            if !location.verify(&blob.body) {
+                return fail("updateinfo does not match the checksum in repomd.xml".into());
+            }
             match Updateinfo::parse_zst(&blob.body) {
                 Ok(i) => (
                     Some(DistroData::Fedora(i)),
@@ -635,7 +641,7 @@ fn resolve_all(
         }
     }
     for t in targets {
-        match resolve_one(t, eco, &backend) {
+        match resolve_one(t, eco, &backend, &runner) {
             Ok(p) => resolved.push((t.clone(), p)),
             Err(e) => unresolved.push(Unresolved {
                 input: t.clone(),

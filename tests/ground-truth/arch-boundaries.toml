@@ -1,0 +1,624 @@
+# Regression corpus built from real Arch Security Tracker groups recorded on 2026-11-08.
+# Every Fixed group is probed at its boundaries: one build before the fixed version (affected),
+# the fixed version itself, and a later build (both clean). Installs older than the version the
+# group starts at are outside it. Vulnerable groups cover the stale-entry rule (same upstream
+# version affected, newer upstream only unverified). Versions come from the tracker itself.
+distro = "arch"
+
+[[case]]
+name = "dovecot: build the group lists as affected (AVG-2777)"
+package = "dovecot"
+version = "2.3.19.1-1"
+expect = ["CVE-2022-30550"]
+
+[[case]]
+name = "dovecot: exactly the fixed build (AVG-2777)"
+package = "dovecot"
+version = "2.3.20-1"
+forbid = ["CVE-2022-30550"]
+
+[[case]]
+name = "dovecot: a later build than the fix (AVG-2777)"
+package = "dovecot"
+version = "2.3.20-2"
+forbid = ["CVE-2022-30550"]
+
+[[case]]
+name = "dovecot: older than the range the group covers (AVG-2777)"
+package = "dovecot"
+version = "0.0.1-1"
+forbid = ["CVE-2022-30550"]
+
+[[case]]
+name = "php: build the group lists as affected (AVG-2768)"
+package = "php"
+version = "8.1.6-2"
+expect = ["CVE-2022-31626", "CVE-2022-31625"]
+
+[[case]]
+name = "php: exactly the fixed build (AVG-2768)"
+package = "php"
+version = "8.1.7-1"
+forbid = ["CVE-2022-31626", "CVE-2022-31625"]
+
+[[case]]
+name = "php: a later build than the fix (AVG-2768)"
+package = "php"
+version = "8.1.7-2"
+forbid = ["CVE-2022-31626", "CVE-2022-31625"]
+
+[[case]]
+name = "php: older than the range the group covers (AVG-2768)"
+package = "php"
+version = "0.0.1-1"
+forbid = ["CVE-2022-31626", "CVE-2022-31625"]
+
+[[case]]
+name = "containerd: build the group lists as affected (AVG-2755)"
+package = "containerd"
+version = "1.6.5-1"
+expect = ["CVE-2022-31030"]
+
+[[case]]
+name = "containerd: exactly the fixed build (AVG-2755)"
+package = "containerd"
+version = "1.6.6-1"
+forbid = ["CVE-2022-31030"]
+
+[[case]]
+name = "containerd: a later build than the fix (AVG-2755)"
+package = "containerd"
+version = "1.6.6-2"
+forbid = ["CVE-2022-31030"]
+
+[[case]]
+name = "containerd: older than the range the group covers (AVG-2755)"
+package = "containerd"
+version = "0.0.1-1"
+forbid = ["CVE-2022-31030"]
+
+[[case]]
+name = "ntfs-3g: build the group lists as affected (AVG-2749)"
+package = "ntfs-3g"
+version = "2021.8.22-1"
+expect = ["CVE-2022-30789", "CVE-2022-30788", "CVE-2022-30786", "CVE-2022-30784"]
+
+[[case]]
+name = "ntfs-3g: exactly the fixed build (AVG-2749)"
+package = "ntfs-3g"
+version = "2022.5.17-1"
+forbid = ["CVE-2022-30789", "CVE-2022-30788", "CVE-2022-30786", "CVE-2022-30784"]
+
+[[case]]
+name = "ntfs-3g: a later build than the fix (AVG-2749)"
+package = "ntfs-3g"
+version = "2022.5.17-2"
+forbid = ["CVE-2022-30789", "CVE-2022-30788", "CVE-2022-30786", "CVE-2022-30784"]
+
+[[case]]
+name = "ntfs-3g: older than the range the group covers (AVG-2749)"
+package = "ntfs-3g"
+version = "0.0.1-1"
+forbid = ["CVE-2022-30789", "CVE-2022-30788", "CVE-2022-30786", "CVE-2022-30784"]
+
+[[case]]
+name = "linux-lts: build the group lists as affected (AVG-2743)"
+package = "linux-lts"
+version = "5.15.41-1"
+expect = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-lts: exactly the fixed build (AVG-2743)"
+package = "linux-lts"
+version = "5.15.42-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-lts: a later build than the fix (AVG-2743)"
+package = "linux-lts"
+version = "5.15.42-2"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-lts: older than the range the group covers (AVG-2743)"
+package = "linux-lts"
+version = "0.0.1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-hardened: build the group lists as affected (AVG-2742)"
+package = "linux-hardened"
+version = "5.17.9.hardened1-1"
+expect = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-hardened: exactly the fixed build (AVG-2742)"
+package = "linux-hardened"
+version = "5.17.10.hardened1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-hardened: a later build than the fix (AVG-2742)"
+package = "linux-hardened"
+version = "5.17.10.hardened1-2"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-hardened: older than the range the group covers (AVG-2742)"
+package = "linux-hardened"
+version = "0.0.1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-zen: build the group lists as affected (AVG-2741)"
+package = "linux-zen"
+version = "5.17.9.zen1-1"
+expect = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-zen: exactly the fixed build (AVG-2741)"
+package = "linux-zen"
+version = "5.17.10.zen1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-zen: a later build than the fix (AVG-2741)"
+package = "linux-zen"
+version = "5.17.10.zen1-2"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux-zen: older than the range the group covers (AVG-2741)"
+package = "linux-zen"
+version = "0.0.1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux: build the group lists as affected (AVG-2740)"
+package = "linux"
+version = "5.17.9.arch1-1"
+expect = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux: exactly the fixed build (AVG-2740)"
+package = "linux"
+version = "5.17.10.arch1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux: a later build than the fix (AVG-2740)"
+package = "linux"
+version = "5.17.10.arch1-2"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "linux: older than the range the group covers (AVG-2740)"
+package = "linux"
+version = "0.0.1-1"
+forbid = ["CVE-2022-21499"]
+
+[[case]]
+name = "openssh: build the group lists as affected (AVG-2832)"
+package = "openssh"
+version = "9.1p1-3"
+expect = ["CVE-2023-25136"]
+
+[[case]]
+name = "openssh: exactly the fixed build (AVG-2832)"
+package = "openssh"
+version = "9.2p1-1"
+forbid = ["CVE-2023-25136"]
+
+[[case]]
+name = "openssh: a later build than the fix (AVG-2832)"
+package = "openssh"
+version = "9.2p1-2"
+forbid = ["CVE-2023-25136"]
+
+[[case]]
+name = "openssh: older than the range the group covers (AVG-2832)"
+package = "openssh"
+version = "0.0.1-1"
+forbid = ["CVE-2023-25136"]
+
+[[case]]
+name = "apache: build the group lists as affected (AVG-2824)"
+package = "apache"
+version = "2.4.54-3"
+expect = ["CVE-2022-37436", "CVE-2022-36760", "CVE-2006-20001"]
+
+[[case]]
+name = "apache: exactly the fixed build (AVG-2824)"
+package = "apache"
+version = "2.4.55-1"
+forbid = ["CVE-2022-37436", "CVE-2022-36760", "CVE-2006-20001"]
+
+[[case]]
+name = "apache: a later build than the fix (AVG-2824)"
+package = "apache"
+version = "2.4.55-2"
+forbid = ["CVE-2022-37436", "CVE-2022-36760", "CVE-2006-20001"]
+
+[[case]]
+name = "apache: older than the range the group covers (AVG-2824)"
+package = "apache"
+version = "0.0.1-1"
+forbid = ["CVE-2022-37436", "CVE-2022-36760", "CVE-2006-20001"]
+
+[[case]]
+name = "lighttpd: build the group lists as affected (AVG-2822)"
+package = "lighttpd"
+version = "1.4.66-1"
+expect = ["CVE-2022-41556", "CVE-2022-37797"]
+
+[[case]]
+name = "lighttpd: exactly the fixed build (AVG-2822)"
+package = "lighttpd"
+version = "1.4.67-1"
+forbid = ["CVE-2022-41556", "CVE-2022-37797"]
+
+[[case]]
+name = "lighttpd: a later build than the fix (AVG-2822)"
+package = "lighttpd"
+version = "1.4.67-2"
+forbid = ["CVE-2022-41556", "CVE-2022-37797"]
+
+[[case]]
+name = "lighttpd: older than the range the group covers (AVG-2822)"
+package = "lighttpd"
+version = "0.0.1-1"
+forbid = ["CVE-2022-41556", "CVE-2022-37797"]
+
+[[case]]
+name = "expat: build the group lists as affected (AVG-2815)"
+package = "expat"
+version = "2.4.8-1"
+expect = ["CVE-2022-40674"]
+
+[[case]]
+name = "expat: exactly the fixed build (AVG-2815)"
+package = "expat"
+version = "2.4.9-1"
+forbid = ["CVE-2022-40674"]
+
+[[case]]
+name = "expat: a later build than the fix (AVG-2815)"
+package = "expat"
+version = "2.4.9-2"
+forbid = ["CVE-2022-40674"]
+
+[[case]]
+name = "expat: older than the range the group covers (AVG-2815)"
+package = "expat"
+version = "0.0.1-1"
+forbid = ["CVE-2022-40674"]
+
+[[case]]
+name = "strongswan: build the group lists as affected (AVG-2814)"
+package = "strongswan"
+version = "5.9.7-1"
+expect = ["CVE-2022-40617"]
+
+[[case]]
+name = "strongswan: exactly the fixed build (AVG-2814)"
+package = "strongswan"
+version = "5.9.8-1"
+forbid = ["CVE-2022-40617"]
+
+[[case]]
+name = "strongswan: a later build than the fix (AVG-2814)"
+package = "strongswan"
+version = "5.9.8-2"
+forbid = ["CVE-2022-40617"]
+
+[[case]]
+name = "strongswan: older than the range the group covers (AVG-2814)"
+package = "strongswan"
+version = "0.0.1-1"
+forbid = ["CVE-2022-40617"]
+
+[[case]]
+name = "xpdf: build the group lists as affected (AVG-2813)"
+package = "xpdf"
+version = "4.03-1"
+expect = ["CVE-2022-38171"]
+
+[[case]]
+name = "xpdf: exactly the fixed build (AVG-2813)"
+package = "xpdf"
+version = "4.04-1"
+forbid = ["CVE-2022-38171"]
+
+[[case]]
+name = "xpdf: a later build than the fix (AVG-2813)"
+package = "xpdf"
+version = "4.04-2"
+forbid = ["CVE-2022-38171"]
+
+[[case]]
+name = "xpdf: older than the range the group covers (AVG-2813)"
+package = "xpdf"
+version = "0.0.1-1"
+forbid = ["CVE-2022-38171"]
+
+[[case]]
+name = "bind: build the group lists as affected (AVG-2811)"
+package = "bind"
+version = "9.18.6-1"
+expect = ["CVE-2022-38178", "CVE-2022-3080", "CVE-2022-2795"]
+
+[[case]]
+name = "bind: exactly the fixed build (AVG-2811)"
+package = "bind"
+version = "9.18.7-1"
+forbid = ["CVE-2022-38178", "CVE-2022-3080", "CVE-2022-2795"]
+
+[[case]]
+name = "bind: a later build than the fix (AVG-2811)"
+package = "bind"
+version = "9.18.7-2"
+forbid = ["CVE-2022-38178", "CVE-2022-3080", "CVE-2022-2795"]
+
+[[case]]
+name = "bind: older than the range the group covers (AVG-2811)"
+package = "bind"
+version = "0.0.1-1"
+forbid = ["CVE-2022-38178", "CVE-2022-3080", "CVE-2022-2795"]
+
+[[case]]
+name = "python-django: build the group lists as affected (AVG-2810)"
+package = "python-django"
+version = "4.0.6-1"
+expect = ["CVE-2022-36359"]
+
+[[case]]
+name = "python-django: exactly the fixed build (AVG-2810)"
+package = "python-django"
+version = "4.0.7-1"
+forbid = ["CVE-2022-36359"]
+
+[[case]]
+name = "python-django: a later build than the fix (AVG-2810)"
+package = "python-django"
+version = "4.0.7-2"
+forbid = ["CVE-2022-36359"]
+
+[[case]]
+name = "python-django: older than the range the group covers (AVG-2810)"
+package = "python-django"
+version = "0.0.1-1"
+forbid = ["CVE-2022-36359"]
+
+[[case]]
+name = "libreoffice-still: build the group lists as affected (AVG-2807)"
+package = "libreoffice-still"
+version = "7.3.5-3"
+expect = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-still: exactly the fixed build (AVG-2807)"
+package = "libreoffice-still"
+version = "7.3.6-1"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-still: a later build than the fix (AVG-2807)"
+package = "libreoffice-still"
+version = "7.3.6-2"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-still: older than the range the group covers (AVG-2807)"
+package = "libreoffice-still"
+version = "0.0.1-1"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-fresh: build the group lists as affected (AVG-2806)"
+package = "libreoffice-fresh"
+version = "7.4.0-4"
+expect = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-fresh: exactly the fixed build (AVG-2806)"
+package = "libreoffice-fresh"
+version = "7.4.1-1"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-fresh: a later build than the fix (AVG-2806)"
+package = "libreoffice-fresh"
+version = "7.4.1-2"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "libreoffice-fresh: older than the range the group covers (AVG-2806)"
+package = "libreoffice-fresh"
+version = "0.0.1-1"
+forbid = ["CVE-2022-3140"]
+
+[[case]]
+name = "dbus: build the group lists as affected (AVG-2805)"
+package = "dbus"
+version = "1.14.3-1"
+expect = ["CVE-2022-42012", "CVE-2022-42011", "CVE-2022-42010"]
+
+[[case]]
+name = "dbus: exactly the fixed build (AVG-2805)"
+package = "dbus"
+version = "1.14.4-1"
+forbid = ["CVE-2022-42012", "CVE-2022-42011", "CVE-2022-42010"]
+
+[[case]]
+name = "dbus: a later build than the fix (AVG-2805)"
+package = "dbus"
+version = "1.14.4-2"
+forbid = ["CVE-2022-42012", "CVE-2022-42011", "CVE-2022-42010"]
+
+[[case]]
+name = "dbus: older than the range the group covers (AVG-2805)"
+package = "dbus"
+version = "0.0.1-1"
+forbid = ["CVE-2022-42012", "CVE-2022-42011", "CVE-2022-42010"]
+
+[[case]]
+name = "libksba: build the group lists as affected (AVG-2804)"
+package = "libksba"
+version = "1.6.2-1"
+expect = ["CVE-2022-47629", "CVE-2022-3515"]
+
+[[case]]
+name = "libksba: exactly the fixed build (AVG-2804)"
+package = "libksba"
+version = "1.6.3-1"
+forbid = ["CVE-2022-47629", "CVE-2022-3515"]
+
+[[case]]
+name = "libksba: a later build than the fix (AVG-2804)"
+package = "libksba"
+version = "1.6.3-2"
+forbid = ["CVE-2022-47629", "CVE-2022-3515"]
+
+[[case]]
+name = "libksba: older than the range the group covers (AVG-2804)"
+package = "libksba"
+version = "0.0.1-1"
+forbid = ["CVE-2022-47629", "CVE-2022-3515"]
+
+[[case]]
+name = "mat2: build the group lists as affected (AVG-2798)"
+package = "mat2"
+version = "0.12.4-1"
+expect = ["CVE-2022-35410"]
+
+[[case]]
+name = "mat2: exactly the fixed build (AVG-2798)"
+package = "mat2"
+version = "0.13.0-1"
+forbid = ["CVE-2022-35410"]
+
+[[case]]
+name = "mat2: a later build than the fix (AVG-2798)"
+package = "mat2"
+version = "0.13.0-2"
+forbid = ["CVE-2022-35410"]
+
+[[case]]
+name = "mat2: older than the range the group covers (AVG-2798)"
+package = "mat2"
+version = "0.0.1-1"
+forbid = ["CVE-2022-35410"]
+
+[[case]]
+name = "gdk-pixbuf2: build the group lists as affected (AVG-2786)"
+package = "gdk-pixbuf2"
+version = "2.42.6-2"
+expect = ["CVE-2021-46829"]
+
+[[case]]
+name = "gdk-pixbuf2: exactly the fixed build (AVG-2786)"
+package = "gdk-pixbuf2"
+version = "2.42.8-1"
+forbid = ["CVE-2021-46829"]
+
+[[case]]
+name = "gdk-pixbuf2: a later build than the fix (AVG-2786)"
+package = "gdk-pixbuf2"
+version = "2.42.8-2"
+forbid = ["CVE-2021-46829"]
+
+[[case]]
+name = "gdk-pixbuf2: older than the range the group covers (AVG-2786)"
+package = "gdk-pixbuf2"
+version = "0.0.1-1"
+forbid = ["CVE-2021-46829"]
+
+[[case]]
+name = "pam: Vulnerable group, same upstream version (AVG-2901)"
+package = "pam"
+version = "1.7.0-99"
+expect = ["CVE-2025-6020"]
+
+[[case]]
+name = "pam: Vulnerable group, much newer upstream is not reported as affected (AVG-2901)"
+package = "pam"
+version = "999.0-1"
+forbid_affected = ["CVE-2025-6020"]
+
+[[case]]
+name = "libxml2: Vulnerable group, same upstream version (AVG-2898)"
+package = "libxml2"
+version = "2.14.4-99"
+expect = ["CVE-2025-6170", "CVE-2025-49796", "CVE-2025-49795", "CVE-2025-49794"]
+
+[[case]]
+name = "libxml2: Vulnerable group, much newer upstream is not reported as affected (AVG-2898)"
+package = "libxml2"
+version = "999.0-1"
+forbid_affected = ["CVE-2025-6170", "CVE-2025-49796", "CVE-2025-49795", "CVE-2025-49794"]
+
+[[case]]
+name = "tomcat9: Vulnerable group, same upstream version (AVG-2889)"
+package = "tomcat9"
+version = "9.0.100-99"
+expect = ["CVE-2025-49125", "CVE-2025-48988", "CVE-2025-48976", "CVE-2025-46701", "CVE-2025-31650"]
+
+[[case]]
+name = "tomcat9: Vulnerable group, much newer upstream is not reported as affected (AVG-2889)"
+package = "tomcat9"
+version = "999.0-1"
+forbid_affected = ["CVE-2025-49125", "CVE-2025-48988", "CVE-2025-48976", "CVE-2025-46701", "CVE-2025-31650"]
+
+[[case]]
+name = "tomcat10: Vulnerable group, same upstream version (AVG-2888)"
+package = "tomcat10"
+version = "10.1.40-99"
+expect = ["CVE-2025-49125", "CVE-2025-48988", "CVE-2025-48976", "CVE-2025-46701", "CVE-2025-31650"]
+
+[[case]]
+name = "tomcat10: Vulnerable group, much newer upstream is not reported as affected (AVG-2888)"
+package = "tomcat10"
+version = "999.0-1"
+forbid_affected = ["CVE-2025-49125", "CVE-2025-48988", "CVE-2025-48976", "CVE-2025-46701", "CVE-2025-31650"]
+
+[[case]]
+name = "kea: Vulnerable group, same upstream version (AVG-2886)"
+package = "kea"
+version = "2.6.2-99"
+expect = ["CVE-2025-32803", "CVE-2025-32802", "CVE-2025-32801"]
+
+[[case]]
+name = "kea: Vulnerable group, much newer upstream is not reported as affected (AVG-2886)"
+package = "kea"
+version = "999.0-1"
+forbid_affected = ["CVE-2025-32803", "CVE-2025-32802", "CVE-2025-32801"]
+
+[[case]]
+name = "grub: Vulnerable group, same upstream version (AVG-2762)"
+package = "grub"
+version = "2:2.06-99"
+expect = ["CVE-2022-28737", "CVE-2022-28736", "CVE-2022-28735", "CVE-2022-28734", "CVE-2022-28733", "CVE-2021-3697", "CVE-2021-3696", "CVE-2021-3695"]
+
+[[case]]
+name = "grub: Vulnerable group, much newer upstream is not reported as affected (AVG-2762)"
+package = "grub"
+version = "999.0-1"
+forbid_affected = ["CVE-2022-28737", "CVE-2022-28736", "CVE-2022-28735", "CVE-2022-28734", "CVE-2022-28733", "CVE-2021-3697", "CVE-2021-3696", "CVE-2021-3695"]
+
+[[case]]
+name = "gnome-remote-desktop: tracker says not affected (AVG-2737)"
+package = "gnome-remote-desktop"
+version = "42.1-1"
+forbid = ["CVE-2022-1736"]
+
+[[case]]
+name = "couchdb: tracker says not affected (AVG-2708)"
+package = "couchdb"
+version = "3.2.1-1"
+forbid = ["CVE-2022-24706"]
+
+[[case]]
+name = "php: tracker says not affected (AVG-2695)"
+package = "php"
+version = "8.1.3-1"
+forbid = ["CVE-2021-21708"]
