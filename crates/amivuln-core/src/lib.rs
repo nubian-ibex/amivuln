@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+mod baseline;
 mod exit;
 mod ignore;
 mod matching;
@@ -19,6 +20,7 @@ mod score;
 mod source;
 mod vex;
 
+pub use baseline::{Baseline, BaselineError, parse_baseline};
 pub use exit::{Condition, ExitCode, exit_code};
 pub use ignore::{IgnoreEntry, IgnoreError, parse_ignore, suppress};
 pub use matching::{

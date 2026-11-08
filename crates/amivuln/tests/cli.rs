@@ -23,9 +23,6 @@ const KEV_JSON: &[u8] = include_bytes!(
 );
 const EPSS_JSON: &[u8] = include_bytes!("../../../tests/fixtures/http/epss/2026-11-08/epss.json");
 
-const HASHED: &str =
-    "625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c-updateinfo.xml.zst";
-
 fn sha256_hex(data: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     use std::fmt::Write as _;
@@ -37,17 +34,26 @@ fn sha256_hex(data: &[u8]) -> String {
         })
 }
 
-fn repomd_with(sum: &str) -> String {
+fn repomd_with(sum: &str, name: &str) -> String {
     format!(
-        r#"<repomd><data type="updateinfo"><checksum type="sha256">{sum}</checksum><location href="repodata/{HASHED}"/></data></repomd>"#
+        r#"<repomd><data type="updateinfo"><checksum type="sha256">{sum}</checksum><location href="repodata/{name}"/></data></repomd>"#
     )
 }
 
+fn fixture_sum() -> String {
+    sha256_hex(UPDATEINFO_ZST)
+}
+
+fn fixture_name() -> String {
+    format!("{}-updateinfo.xml.zst", sha256_hex(UPDATEINFO_ZST))
+}
+
 fn repomd() -> String {
-    repomd_with(&sha256_hex(UPDATEINFO_ZST))
+    repomd_with(&fixture_sum(), &fixture_name())
 }
 
 async fn mount_fedora(server: &MockServer) {
+    let name = fixture_name();
     Mock::given(method("GET"))
         .and(path_regex(
             r"^/updates/43/Everything/[^/]+/repodata/repomd\.xml$",
@@ -57,7 +63,7 @@ async fn mount_fedora(server: &MockServer) {
         .await;
     Mock::given(method("GET"))
         .and(path_regex(format!(
-            r"^/updates/43/Everything/[^/]+/repodata/{HASHED}$"
+            r"^/updates/43/Everything/[^/]+/repodata/{name}$"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_bytes(UPDATEINFO_ZST))
         .mount(server)
@@ -69,13 +75,16 @@ async fn mount_fedora_with_wrong_checksum(server: &MockServer) {
         .and(path_regex(
             r"^/updates/43/Everything/[^/]+/repodata/repomd\.xml$",
         ))
-        .respond_with(ResponseTemplate::new(200).set_body_string(repomd_with(&"0".repeat(64))))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(repomd_with(&"0".repeat(64), "x-updateinfo.xml.zst")),
+        )
         .mount(server)
         .await;
     Mock::given(method("GET"))
-        .and(path_regex(format!(
-            r"^/updates/43/Everything/[^/]+/repodata/{HASHED}$"
-        )))
+        .and(path_regex(
+            r"^/updates/43/Everything/[^/]+/repodata/[^/]+-updateinfo\.xml\.zst$",
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_bytes(UPDATEINFO_ZST))
         .mount(server)
         .await;
@@ -705,6 +714,77 @@ async fn vex_not_affected_statement_overrides_the_verdict() {
     let bad_leak: &'static str = Box::leak(bad.display().to_string().into_boxed_str());
     let out = run(sb.cmd(), vec!["--vex", bad_leak, "nginx@1.0-1"]).await;
     assert_eq!(out.status.code(), Some(64));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn baseline_only_new_findings_violate_the_policy() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let inv = sb.path().join("inv.txt");
+    std::fs::write(&inv, "python3-multipart@0:1.3.0-1.fc43\n").unwrap();
+    let inv_leak: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
+
+    // Produce the first report: exit 1 at HIGH.
+    let first = run(
+        sb.cmd(),
+        vec![
+            "-f",
+            "json",
+            "--fail-on",
+            "high",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv_leak,
+        ],
+    )
+    .await;
+    assert_eq!(
+        first.status.code(),
+        Some(1),
+        "first: {} | stderr: {}",
+        String::from_utf8_lossy(&first.stdout),
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let _ = serde_json::from_slice::<serde_json::Value>(&first.stdout)
+        .unwrap()["targets"][0]["findings"].as_array().unwrap().len();
+    let baseline = sb.path().join("baseline.json");
+    std::fs::write(&baseline, &first.stdout).unwrap();
+    let bl_leak: &'static str = Box::leak(baseline.display().to_string().into_boxed_str());
+
+    // The same scan against the baseline: no new findings, exit 0.
+    let same = run(
+        sb.cmd(),
+        vec![
+            "--baseline",
+            bl_leak,
+            "--fail-on",
+            "high",
+            "--color",
+            "never",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv_leak,
+        ],
+    )
+    .await;
+    assert_eq!(
+        same.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&same.stderr)
+    );
+
+    // A broken or foreign baseline is a usage error.
+    let junk = sb.path().join("junk.json");
+    std::fs::write(&junk, "not json").unwrap();
+    let junk_leak: &'static str = Box::leak(junk.display().to_string().into_boxed_str());
+    let out = run(sb.cmd(), vec!["--baseline", junk_leak, "nginx@1.0-1"]).await;
+    assert_eq!(out.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("baseline is not valid"));
 }
 
 #[test]
