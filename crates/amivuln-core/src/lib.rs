@@ -11,9 +11,11 @@
 mod exit;
 mod matching;
 mod package;
+mod process;
 mod source;
 
 pub use exit::{Condition, ExitCode, exit_code};
 pub use matching::{DistroStatus, Finding, Severity, Verdict, classify, sort_findings};
 pub use package::{Ecosystem, PackageRef, Provenance, Version};
+pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};

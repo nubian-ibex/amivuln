@@ -15,6 +15,7 @@ name = "amivuln-core"
 version = "0.0.2"
 dependencies = [
  "amivuln-version",
+ "thiserror",
 ]
 
 [[package]]
@@ -24,6 +25,11 @@ version = "0.0.2"
 [[package]]
 name = "amivuln-resolve"
 version = "0.0.2"
+dependencies = [
+ "amivuln-core",
+ "amivuln-version",
+ "thiserror",
+]
 
 [[package]]
 name = "amivuln-sources"
