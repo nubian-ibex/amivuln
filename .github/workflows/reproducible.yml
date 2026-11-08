@@ -26,6 +26,9 @@ jobs:
       - name: Build
         working-directory: ${{ matrix.dir }}
         run: |
+          # ring and the bundled SQLite compile C code, which needs musl-gcc.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq musl-tools
           rustup show
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
