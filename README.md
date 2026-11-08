@@ -39,14 +39,19 @@ The `.rpm` and `.deb` packages are not signed with a package-manager key yet. In
 
 ## Usage
 
-Planned, not implemented:
-
-```text
-amivuln nginx.service
-amivuln /usr/sbin/nginx
-amivuln cve CVE-2024-6387
-amivuln pending
+```bash
+amivuln nginx                          # an installed package
+amivuln /usr/sbin/nginx                # the package that owns a file
+amivuln openssl@3.5.1-1 --distro arch  # a version, without reading the host
+amivuln --all --fail-on high           # every installed package; exit 1 on HIGH or worse
+amivuln --all -f json > report.json    # machine-readable, schema version 1
 ```
+
+Formats: `summary` (default), `detail` and `json`. Exit codes: 0 clean, 1 findings at or above `--fail-on`, 2 incomplete (a required source was unavailable), 3 target not resolved, 64 usage error, 70 internal error. See `man amivuln` and `amivuln --help`.
+
+In a CI pipeline, `amivuln --all --fail-on high` fails the job when an installed package has a pending high-severity security fix, and exit code 2 keeps an outage of the advisory data from passing as a clean scan. To check a package version for a distribution other than the runner's, use `name@version --distro fedora:44` or `--distro arch`.
+
+Configuration is optional: `amivuln config init` writes a commented file to `~/.config/amivuln/config.toml`. Search order, first file found wins: `./.amivuln.toml`, `$XDG_CONFIG_HOME/amivuln/config.toml`, `/etc/amivuln/config.toml`. Flags and `AMIVULN_*` variables override the file.
 
 ## How it works
 
@@ -54,7 +59,11 @@ Target, then resolver, then package identity, then advisory query, then distro-a
 
 ## Limitations
 
-Linux only (Fedora and Arch first). Kernel CVEs, container image scanning and lockfile analysis are out of scope until after 1.0.
+- Fedora and Arch Linux only for now. Debian, Ubuntu, Alpine and RHEL come later.
+- On Fedora the data is the repository `updateinfo`: amivuln reports security fixes that Fedora has published and that are newer than what is installed. A vulnerability with no published Fedora fix is not visible there.
+- Security updates that name no CVE are reported under their update id (for example `FEDORA-2026-...`).
+- Targets are packages, files owned by a package, versions and purls. systemd units, PIDs, SBOMs and binaries that no package owns (vendored libraries, language dependencies) are not supported yet; use a lockfile scanner such as osv-scanner for those.
+- Kernel CVEs and container image scanning are out of scope until after 1.0.
 
 ## Comparison
 
