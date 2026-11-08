@@ -1,6 +1,7 @@
 [package]
 name = "amivuln-cache"
 description = "SQLite-backed HTTP cache for amivuln. Internal crate: no API stability."
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

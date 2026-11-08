@@ -23,3 +23,8 @@ pub use package::{Ecosystem, PackageRef, Provenance, Version};
 pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
 pub use report::{FailOn, HostMeta, Policy, RunReport, Summary, TargetReport, Unresolved};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};
+
+/// Makes `cargo test` run the code examples in the README.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;

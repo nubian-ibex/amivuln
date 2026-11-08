@@ -77,3 +77,8 @@ mod tests {
         );
     }
 }
+
+/// Makes `cargo test` run the code examples in the README.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
