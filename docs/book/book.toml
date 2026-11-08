@@ -1,8 +1,14 @@
 [book]
 title = "amivuln"
+description = "Am I vulnerable? Backport-aware CVE checks for the packages on a Linux host."
 authors = ["amivuln contributors"]
 language = "en"
 src = "src"
 
 [output.html]
 git-repository-url = "https://github.com/nubian-ibex/amivuln"
+edit-url-template = "https://github.com/nubian-ibex/amivuln/edit/main/docs/book/{path}"
+site-url = "/amivuln/"
+default-theme = "navy"
+preferred-dark-theme = "navy"
+additional-css = ["theme/amivuln.css"]

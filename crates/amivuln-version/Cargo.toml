@@ -1,6 +1,7 @@
 [package]
 name = "amivuln-version"
 description = "Version comparison for RPM and pacman packages (rpmvercmp, alpm_pkg_vercmp), verified against the reference tools. Internal crate of amivuln."
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
