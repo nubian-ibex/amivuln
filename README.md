@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.jpg" alt="amivuln: Am I vulnerable? Backport-aware CVE checks for Linux" width="800">
+</p>
+
 # amivuln
 
 > Am I vulnerable? Backport-aware CVE checks for the binaries, services and packages on *this* host.
