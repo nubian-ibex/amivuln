@@ -9,5 +9,10 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[dependencies]
+amivuln-core = { path = "../amivuln-core", version = "0.0.2" }
+amivuln-version = { path = "../amivuln-version", version = "0.0.2" }
+thiserror = "2.0.21"
+
 [lints]
 workspace = true
