@@ -40,6 +40,17 @@ impl<'a, R: ProcessRunner> RpmResolver<'a, R> {
         if pkgs.is_empty() {
             return Err(ResolveError::NotFound(subject.to_owned()));
         }
+        // Multilib: the same build installed for several architectures is one
+        // package for vulnerability purposes.
+        let mut seen: Vec<(String, String)> = Vec::new();
+        pkgs.retain(|p| {
+            let key = (p.name.clone(), p.version.to_string());
+            let new = !seen.contains(&key);
+            if new {
+                seen.push(key);
+            }
+            new
+        });
         Ok(pkgs)
     }
 
@@ -60,14 +71,35 @@ impl<'a, R: ProcessRunner> RpmResolver<'a, R> {
 
 impl<R: ProcessRunner> PackageResolver for RpmResolver<'_, R> {
     fn owner_of(&self, path: &str) -> Result<PackageRef, ResolveError> {
-        let mut pkgs = self.query("-qf", path)?;
-        // A file shared by several arches of one package is one owner.
-        pkgs.dedup_by(|a, b| a.name == b.name && a.version == b.version);
-        Self::single(path, pkgs)
+        Self::single(path, self.query("-qf", path)?)
     }
 
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError> {
         Self::single(name, self.query("-q", name)?)
+    }
+
+    fn list_all(&self) -> Result<Vec<PackageRef>, ResolveError> {
+        let out = self
+            .runner
+            .run(Program::Rpm, &["-qa", "--qf", QUERY_FORMAT])?;
+        if !out.success {
+            return Err(ResolveError::Parse("rpm -qa failed".into()));
+        }
+        let text = String::from_utf8_lossy(&out.stdout);
+        let mut pkgs = Vec::new();
+        for line in text.lines().filter(|l| !l.is_empty()) {
+            let p = parse_line(line, self.ecosystem)?;
+            // gpg-pubkey pseudo packages carry no software.
+            if p.name != "gpg-pubkey" {
+                pkgs.push(p);
+            }
+        }
+        pkgs.sort_by(|a, b| {
+            a.name
+                .cmp(&b.name)
+                .then_with(|| a.version.to_string().cmp(&b.version.to_string()))
+        });
+        Ok(pkgs)
     }
 }
 
@@ -159,6 +191,18 @@ mod tests {
     }
 
     #[test]
+    fn multilib_by_name_is_one_package() {
+        let r = FakeRunner::ok(
+            "(none)\topenssl-libs\t3.5.9\t1.fc44\tx86_64\topenssl-3.5.9-1.fc44.src.rpm\n\
+             (none)\topenssl-libs\t3.5.9\t1.fc44\ti686\topenssl-3.5.9-1.fc44.src.rpm\n",
+        );
+        let p = RpmResolver::new(&r, Ecosystem::Fedora(44))
+            .by_name("openssl-libs")
+            .unwrap();
+        assert_eq!(p.name, "openssl-libs");
+    }
+
+    #[test]
     fn same_package_on_two_arches_owns_a_shared_file() {
         let r = FakeRunner::ok(
             "(none)\tfoo\t1\t1.fc44\tx86_64\tfoo-1-1.fc44.src.rpm\n(none)\tfoo\t1\t1.fc44\ti686\tfoo-1-1.fc44.src.rpm\n",
@@ -193,6 +237,21 @@ mod tests {
                 .is_err()
         );
         assert!(r.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn list_all_skips_pubkeys_and_sorts() {
+        let r = FakeRunner::ok(
+            "(none)\tzlib\t1\t1.fc44\tx86_64\tzlib-1-1.fc44.src.rpm\n\
+             (none)\tgpg-pubkey\t1\t2\t(none)\t(none)\n\
+             (none)\tbash\t5\t1.fc44\tx86_64\tbash-5-1.fc44.src.rpm\n",
+        );
+        let all = RpmResolver::new(&r, Ecosystem::Fedora(44))
+            .list_all()
+            .unwrap();
+        let names: Vec<&str> = all.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, ["bash", "zlib"]);
+        assert_eq!(r.calls.borrow()[0][0], "-qa");
     }
 
     #[test]
