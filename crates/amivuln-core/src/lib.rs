@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 
 mod exit;
+mod ignore;
 mod matching;
 mod package;
 mod pending;
@@ -18,6 +19,7 @@ mod score;
 mod source;
 
 pub use exit::{Condition, ExitCode, exit_code};
+pub use ignore::{IgnoreEntry, IgnoreError, parse_ignore, suppress};
 pub use matching::{
     DistroStatus, EpssInfo, Finding, KevInfo, Severity, Verdict, classify, sort_findings,
 };

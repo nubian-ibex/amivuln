@@ -26,6 +26,7 @@ struct JsonReport<'a> {
     host: Host<'a>,
     complete: bool,
     score: JsonScore,
+    suppressed: Vec<JsonSuppressedItem<'a>>,
     sources: Vec<JsonSource<'a>>,
     targets: Vec<JsonTarget<'a>>,
     unresolved: Vec<JsonUnresolved<'a>>,
@@ -35,6 +36,21 @@ struct JsonReport<'a> {
 struct JsonScore {
     points: u32,
     grade: char,
+}
+
+/// id -> reason for accepted findings.
+type Suppressed = std::collections::BTreeMap<String, String>;
+
+#[derive(Serialize)]
+struct JsonSuppressedItem<'a> {
+    id: &'a str,
+    reason: &'a str,
+}
+
+fn suppressed_list(m: &'_ Suppressed) -> Vec<JsonSuppressedItem<'_>> {
+    m.iter()
+        .map(|(id, reason)| JsonSuppressedItem { id, reason })
+        .collect()
 }
 
 #[derive(Serialize)]
@@ -264,6 +280,7 @@ pub fn render_json(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
             arch: &r.host.arch,
         },
         complete: r.complete,
+        suppressed: suppressed_list(&r.suppressed),
         score: {
             let all: Vec<Finding> = r.targets.iter().flat_map(|t| t.findings.clone()).collect();
             let sc = amivuln_core::score(&all);
@@ -295,6 +312,7 @@ struct JsonPendingReport<'a> {
     generated_at: &'a str,
     host: Host<'a>,
     complete: bool,
+    suppressed: Vec<JsonSuppressedItem<'a>>,
     sources: Vec<JsonSource<'a>>,
     summary: JsonPendingSummary,
     updates: Vec<JsonUpdate>,
@@ -367,6 +385,7 @@ pub fn render_pending_json(r: &amivuln_core::PendingReport, out: &mut dyn Write)
             arch: &r.host.arch,
         },
         complete: r.complete,
+        suppressed: suppressed_list(&r.suppressed),
         sources: r.sources.iter().map(source).collect(),
         summary: JsonPendingSummary {
             updates: r.updates.len(),
@@ -400,6 +419,7 @@ struct JsonCveReport<'a> {
     generated_at: &'a str,
     host: Host<'a>,
     complete: bool,
+    suppressed: Vec<JsonSuppressedItem<'a>>,
     sources: Vec<JsonSource<'a>>,
     answers: Vec<JsonCveAnswer>,
 }
@@ -441,6 +461,7 @@ pub fn render_cve_json(r: &amivuln_core::CveReport, out: &mut dyn Write) -> io::
             arch: &r.host.arch,
         },
         complete: r.complete,
+        suppressed: suppressed_list(&r.suppressed),
         sources: r.sources.iter().map(source).collect(),
         answers: r
             .answers
@@ -669,8 +690,12 @@ mod tests {
             generated_at: r.generated_at.clone(),
             host: r.host.clone(),
             complete: true,
+            suppressed: std::collections::BTreeMap::new(),
             sources: r.sources.clone(),
-            updates: amivuln_core::pending_updates(std::slice::from_ref(t)),
+            updates: amivuln_core::pending_updates(
+                std::slice::from_ref(t),
+                &std::collections::BTreeMap::new(),
+            ),
             without_fix: 2,
         }
     }
@@ -700,6 +725,7 @@ mod tests {
             generated_at: r.generated_at.clone(),
             host: r.host.clone(),
             complete: r.complete,
+            suppressed: std::collections::BTreeMap::new(),
             sources: r.sources.clone(),
             answers,
         };

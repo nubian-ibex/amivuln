@@ -38,6 +38,8 @@ fn err<T>(msg: impl Into<String>) -> Result<T, ConfigError> {
 pub struct Config {
     /// Format version of this file.
     pub schema_version: u32,
+    /// Accepted findings (ignore file), path relative to the config file.
+    pub ignore_file: Option<String>,
     /// General behavior.
     pub general: General,
     /// Output defaults.
@@ -167,6 +169,7 @@ impl Default for Config {
                 fail_on_incomplete: true,
                 strict: false,
             },
+            ignore_file: None,
             network: Network {
                 allow_insecure_http: false,
             },
@@ -418,6 +421,51 @@ pub fn load(
     Ok((Config::default(), None))
 }
 
+/// Loads and validates the ignore file.
+///
+/// `base` is the directory of the configuration file (or the working directory
+/// when no file was read), so a relative `ignore_file` sits next to it.
+///
+/// # Errors
+///
+/// An error when the file exists but is invalid or has an expired entry.
+/// A missing file is not an error (empty list).
+pub fn load_ignore(
+    cfg: &Config,
+    config_dir: Option<&Path>,
+    today: &str,
+) -> Result<Vec<amivuln_core::IgnoreEntry>, String> {
+    let Some(rel) = &cfg.ignore_file else {
+        return Ok(Vec::new());
+    };
+    let path: PathBuf = if Path::new(rel).is_absolute() {
+        PathBuf::from(rel)
+    } else {
+        config_dir.unwrap_or(Path::new(".")).join(rel)
+    };
+    let meta = std::fs::metadata(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if meta.len() > MAX_CONFIG_BYTES {
+        return Err(format!(
+            "{} is larger than {MAX_CONFIG_BYTES} bytes",
+            path.display()
+        ));
+    }
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let entries =
+        amivuln_core::parse_ignore(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    for e in &entries {
+        if !e.active_on(today) {
+            return Err(format!(
+                "{}: entry {} expired on {}; remove it or extend the expiry",
+                path.display(),
+                e.id,
+                e.expires
+            ));
+        }
+    }
+    Ok(entries)
+}
+
 /// The commented template written by `config init`.
 pub const TEMPLATE: &str = "\
 # amivuln configuration. Every key is optional; these are the defaults.
@@ -439,6 +487,7 @@ fail_on = \"none\"        # none, low, medium, high, critical or kev
 # fail_on_epss = 0.5
 fail_on_incomplete = true
 strict = false          # count findings without a distro statement
+# ignore_file = \".amivuln-ignore.toml\"
 
 [network]
 allow_insecure_http = false

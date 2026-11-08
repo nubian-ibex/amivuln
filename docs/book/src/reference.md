@@ -24,6 +24,7 @@
 - `--color auto|always|never`: `NO_COLOR` is honored
 - `--distro fedora:NN|arch`: treat the host as this distribution
 - `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones
+- `ignore_file` (configuration): accepted findings; expired entries are errors
 - `-q, --quiet`: only errors
 
 `AMIVULN_FORMAT`, `AMIVULN_FAIL_ON`, `AMIVULN_OFFLINE`, `AMIVULN_CONFIG` and

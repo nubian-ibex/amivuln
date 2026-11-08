@@ -12,7 +12,8 @@
     "complete",
     "sources",
     "targets",
-    "unresolved"
+    "unresolved",
+    "suppressed"
   ],
   "properties": {
     "schema_version": {
@@ -115,6 +116,26 @@
             "E",
             "F"
           ]
+        }
+      }
+    },
+    "suppressed": {
+      "type": "array",
+      "description": "Accepted findings, with the reason from the ignore file. Suppressed findings are still listed; they are excluded from --fail-on and from the score.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
         }
       }
     }

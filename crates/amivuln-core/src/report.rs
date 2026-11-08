@@ -109,6 +109,8 @@ pub struct RunReport {
     pub sources: Vec<SourceReport>,
     /// Resolved targets.
     pub targets: Vec<TargetReport>,
+    /// Accepted findings: id -> reason. Suppressed findings stay listed.
+    pub suppressed: std::collections::BTreeMap<String, String>,
     /// Targets that failed to resolve.
     pub unresolved: Vec<Unresolved>,
 }
@@ -126,6 +128,8 @@ pub struct PendingReport {
     pub complete: bool,
     /// One entry per consulted source.
     pub sources: Vec<SourceReport>,
+    /// Accepted findings: id -> reason.
+    pub suppressed: std::collections::BTreeMap<String, String>,
     /// Updates that close affected findings, riskiest first.
     pub updates: Vec<crate::pending::PendingUpdate>,
     /// Affected findings no published update closes yet.
@@ -145,6 +149,8 @@ pub struct CveReport {
     pub complete: bool,
     /// One entry per consulted source.
     pub sources: Vec<SourceReport>,
+    /// Accepted findings: id -> reason.
+    pub suppressed: std::collections::BTreeMap<String, String>,
     /// One answer per queried CVE.
     pub answers: Vec<crate::pending::CveAnswer>,
 }

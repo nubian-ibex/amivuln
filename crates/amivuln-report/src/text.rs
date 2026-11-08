@@ -178,13 +178,20 @@ fn write_totals(out: &mut dyn Write, r: &RunReport) -> io::Result<()> {
         let with = r.targets.iter().filter(|t| !is_clean(t)).count();
         let all: Vec<Finding> = r.targets.iter().flat_map(|t| t.findings.clone()).collect();
         let sc = amivuln_core::score(&all);
+        let accepted = r.suppressed.len();
+        let accepted_note = if accepted > 0 {
+            format!("   {accepted} accepted")
+        } else {
+            String::new()
+        };
         writeln!(
             out,
-            "checked {} packages, {} with findings   host score {} ({} points)",
+            "checked {} packages, {} with findings   host score {} ({} points){}",
             r.targets.len(),
             with,
             sc.grade.letter(),
-            sc.points
+            sc.points,
+            accepted_note
         )?;
     }
     Ok(())
@@ -210,7 +217,12 @@ pub fn render_summary(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -
     write_footer(out, opts, r)
 }
 
-fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::Result<()> {
+fn write_finding(
+    out: &mut dyn Write,
+    opts: RenderOptions,
+    f: &Finding,
+    suppressed: Option<&String>,
+) -> io::Result<()> {
     let fixed = match &f.verdict {
         Verdict::Affected { fixed_in: Some(v) } => sanitize_terminal(&v.to_string()),
         Verdict::Affected { fixed_in: None } => "no fix published".to_owned(),
@@ -227,14 +239,21 @@ fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::R
         .epss
         .as_ref()
         .map_or(String::new(), |e| format!("  EPSS {:.2}", e.score));
+    let note = suppressed.as_ref().map_or(String::new(), |r| {
+        format!(
+            "  {}",
+            paint(opts, "32", &format!("ACCEPTED ({})", sanitize_terminal(r)))
+        )
+    });
     writeln!(
         out,
-        "    {:<16} {:<18} fix: {}{}{}",
+        "    {:<16} {:<18} fix: {}{}{}{}",
         sanitize_terminal(&f.id),
         severity_label(opts, f.severity),
         fixed,
         kev,
-        epss
+        epss,
+        note
     )
 }
 
@@ -260,7 +279,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
         if !affected.is_empty() {
             writeln!(out, "  Affected:")?;
             for f in affected {
-                write_finding(out, opts, f)?;
+                write_finding(out, opts, f, r.suppressed.get(&f.id))?;
             }
         }
         let unverified: Vec<&Finding> = t
@@ -271,7 +290,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
         if !unverified.is_empty() {
             writeln!(out, "  Unverified (no distro statement):")?;
             for f in unverified {
-                write_finding(out, opts, f)?;
+                write_finding(out, opts, f, r.suppressed.get(&f.id))?;
             }
         }
         writeln!(out)?;
@@ -535,6 +554,7 @@ pub(crate) mod fixtures {
                 arch: "x86_64".into(),
             },
             complete,
+            suppressed: std::collections::BTreeMap::new(),
             sources: vec![
                 SourceReport {
                     source: SourceId::FedoraUpdateinfo,
