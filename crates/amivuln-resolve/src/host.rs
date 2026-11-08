@@ -5,7 +5,7 @@
 use amivuln_core::Ecosystem;
 
 /// What the host is, as far as amivuln supports it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HostInfo {
     /// Package ecosystem of the host.
     pub ecosystem: Ecosystem,
@@ -32,6 +32,21 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
     let ecosystem = match id.as_deref()? {
         "fedora" => Ecosystem::Fedora(version_id?.parse().ok()?),
         "arch" => Ecosystem::Arch,
+        // os-release says `debian` with VERSION_CODENAME in newer releases and
+        // VERSION_ID as a number in others; a floating version is not possible.
+        "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
+        // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
+        // long-lived OSV ecosystem, so amivuln does not claim them.
+        "ubuntu" => {
+            let vid: Option<&String> = version_id.as_ref();
+            let (maj, min) = vid?.split_once('.')?;
+            let maj: u16 = maj.parse().ok()?;
+            let min: u8 = min.parse().ok()?;
+            if min != 4 && min != 10 {
+                return None;
+            }
+            Ecosystem::Ubuntu(maj * 100 + u16::from(min))
+        }
         _ => return None,
     };
     Some(HostInfo { ecosystem })
@@ -57,7 +72,19 @@ mod tests {
 
     #[test]
     fn unsupported_or_malformed() {
-        assert_eq!(parse_os_release("ID=debian\nVERSION_ID=12\n"), None);
+        // Debian and Ubuntu are supported now.
+        assert_eq!(
+            parse_os_release("ID=debian\nVERSION_ID=12\n").map(|h| h.ecosystem),
+            Some(Ecosystem::Debian(12))
+        );
+        assert_eq!(
+            parse_os_release("ID=ubuntu\nVERSION_ID=24.04\n").map(|h| h.ecosystem),
+            Some(Ecosystem::Ubuntu(2404))
+        );
+        assert_eq!(
+            parse_os_release("ID=ubuntu\nVERSION_ID=25.10\n").map(|h| h.ecosystem),
+            Some(Ecosystem::Ubuntu(2510))
+        );
         assert_eq!(parse_os_release("ID=fedora\n"), None);
         assert_eq!(parse_os_release("ID=fedora\nVERSION_ID=rawhide\n"), None);
         assert_eq!(parse_os_release(""), None);

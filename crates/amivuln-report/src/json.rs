@@ -166,6 +166,7 @@ fn purl(p: &amivuln_core::PackageRef) -> String {
             }
         }
         Version::Pacman(v) => v.to_string(),
+        Version::Deb(v) => v.to_string(),
     };
     let mut out = format!("{ns}/{name}@{}", purl_encode(&version));
     if !qualifiers.is_empty() {
@@ -223,10 +224,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
             name: &t.package.name,
             version: t.package.version.to_string(),
             arch: t.package.arch.as_deref(),
-            ecosystem: match t.package.ecosystem {
-                Ecosystem::Fedora(_) => "fedora",
-                Ecosystem::Arch => "arch",
-            },
+            ecosystem: ecosystem_name(t.package.ecosystem),
             purl: purl(&t.package),
             provenance: match t.package.provenance {
                 amivuln_core::Provenance::PackageDb => "package_db",
@@ -334,6 +332,8 @@ fn ecosystem_name(e: Ecosystem) -> &'static str {
     match e {
         Ecosystem::Fedora(_) => "fedora",
         Ecosystem::Arch => "arch",
+        Ecosystem::Debian(_) => "debian",
+        Ecosystem::Ubuntu(_) => "ubuntu",
     }
 }
 

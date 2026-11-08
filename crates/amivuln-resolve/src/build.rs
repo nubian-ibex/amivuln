@@ -3,6 +3,7 @@
 //! Package references built from user input, without looking at the host.
 
 use amivuln_core::{Ecosystem, PackageRef, Provenance, Version};
+use amivuln_version::DebVersion;
 
 use crate::ResolveError;
 
@@ -25,12 +26,24 @@ fn valid_version(s: &str) -> bool {
         })
 }
 
+/// Debian and Ubuntu versions allow a few more characters and may not start
+/// with a colon: dpkg rejects that and a version starting with `:` cannot be
+/// compared.
+fn valid_deb_version(s: &str) -> bool {
+    valid_version(s) && !s.starts_with(':')
+}
+
 fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -> PackageRef {
     let parsed = match ecosystem {
         Ecosystem::Fedora(_) => {
             Version::Rpm(version.parse().unwrap_or_else(|never| match never {}))
         }
         Ecosystem::Arch => Version::Pacman(version.parse().unwrap_or_else(|never| match never {})),
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Version::Deb(
+            version
+                .parse::<DebVersion>()
+                .unwrap_or_else(|never| match never {}),
+        ),
     };
     PackageRef {
         ecosystem,
@@ -56,7 +69,11 @@ pub fn from_name_version(
     if !valid_name(name) || name.contains('@') {
         return Err(bad(format!("invalid package name {name:?}")));
     }
-    if !valid_version(version) {
+    let ok = match ecosystem {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => valid_deb_version(version),
+        _ => valid_version(version),
+    };
+    if !ok {
         return Err(bad(format!("invalid version {version:?}")));
     }
     Ok(make(ecosystem, name, version, None))
@@ -83,13 +100,14 @@ fn percent_decode(s: &str) -> Option<String> {
 /// `pkg:rpm/fedora/nginx@1.26.2-1.fc41?arch=x86_64&epoch=1` or
 /// `pkg:alpm/arch/openssl@3.5.1-1`.
 ///
-/// `fedora_release` supplies the Fedora release, which a purl does not carry.
+/// `expect` is the ecosystem the caller resolved on `--distro`; its release
+/// fills in the purl, and a namespace that disagrees with it is an error.
 ///
 /// # Errors
 ///
 /// Fails on unsupported types or namespaces, a missing version, or a Fedora
 /// purl when no release is known.
-pub fn from_purl(purl: &str, fedora_release: Option<u16>) -> Result<PackageRef, ResolveError> {
+pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, ResolveError> {
     let rest = purl
         .strip_prefix("pkg:")
         .ok_or_else(|| bad("a purl must start with pkg:"))?;
@@ -101,15 +119,36 @@ pub fn from_purl(purl: &str, fedora_release: Option<u16>) -> Result<PackageRef, 
         parts.next().unwrap_or(""),
         parts.next().unwrap_or(""),
     );
-    let ecosystem = match (kind, namespace) {
-        ("rpm", "fedora") => Ecosystem::Fedora(fedora_release.ok_or_else(|| {
-            bad("a Fedora purl does not carry the release; pass --distro fedora:NN")
-        })?),
-        ("alpm", "arch") => Ecosystem::Arch,
-        _ => {
+    // The caller's ecosystem decides: its release fills in the purl, and a
+    // namespace that disagrees is an error, never a silent reinterpretation.
+    let ecosystem = match expect {
+        Some(Ecosystem::Fedora(v)) if (kind, namespace) == ("rpm", "fedora") => {
+            Ecosystem::Fedora(v)
+        }
+        Some(e @ Ecosystem::Arch) if (kind, namespace) == ("alpm", "arch") => e,
+        Some(Ecosystem::Debian(v)) if (kind, namespace) == ("deb", "debian") => {
+            Ecosystem::Debian(v)
+        }
+        Some(Ecosystem::Ubuntu(v)) if (kind, namespace) == ("deb", "ubuntu") => {
+            Ecosystem::Ubuntu(v)
+        }
+        Some(e) => {
             return Err(bad(format!(
-                "unsupported purl {kind}/{namespace}; supported: pkg:rpm/fedora, pkg:alpm/arch"
+                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu",
+                match e {
+                    Ecosystem::Fedora(v) => format!("fedora:{v}"),
+                    Ecosystem::Arch => "arch".to_owned(),
+                    Ecosystem::Debian(v) => format!("debian:{v}"),
+                    Ecosystem::Ubuntu(v) => {
+                        format!("ubuntu:{}.{:02}", v / 100, v % 100)
+                    }
+                }
             )));
+        }
+        None => {
+            return Err(bad(
+                "a purl needs a --distro to fill in the release; for example --distro fedora:44",
+            ));
         }
     };
     let (name, version) = name_version
@@ -134,7 +173,11 @@ pub fn from_purl(purl: &str, fedora_release: Option<u16>) -> Result<PackageRef, 
     if !valid_name(&name) || name.contains('@') {
         return Err(bad(format!("invalid package name {name:?}")));
     }
-    if !valid_version(&version) {
+    let ok = match ecosystem {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => valid_deb_version(&version),
+        _ => valid_version(&version),
+    };
+    if !ok {
         return Err(bad(format!("invalid version {version:?}")));
     }
     Ok(make(ecosystem, &name, &version, arch))
@@ -170,7 +213,7 @@ mod tests {
     fn purl_fedora_with_epoch_and_arch() {
         let p = from_purl(
             "pkg:rpm/fedora/nginx@1.26.2-1.fc41?arch=x86_64&epoch=1",
-            Some(41),
+            Some(Ecosystem::Fedora(41)),
         )
         .unwrap();
         assert_eq!(p.ecosystem, Ecosystem::Fedora(41));
@@ -180,7 +223,11 @@ mod tests {
 
     #[test]
     fn purl_arch_and_percent_encoding() {
-        let p = from_purl("pkg:alpm/arch/libstdc%2B%2B@14.2.1-1", None).unwrap();
+        let p = from_purl(
+            "pkg:alpm/arch/libstdc%2B%2B@14.2.1-1",
+            Some(Ecosystem::Arch),
+        )
+        .unwrap();
         assert_eq!(p.name, "libstdc++");
         assert_eq!(p.ecosystem, Ecosystem::Arch);
     }
@@ -190,10 +237,14 @@ mod tests {
         let e = from_purl("pkg:rpm/fedora/nginx@1.0-1", None)
             .unwrap_err()
             .to_string();
-        assert!(e.contains("--distro fedora:NN"), "{e}");
-        assert!(from_purl("pkg:deb/debian/nginx@1.0", None).is_err());
-        assert!(from_purl("pkg:alpm/arch/openssl", None).is_err());
-        assert!(from_purl("nginx", None).is_err());
-        assert!(from_purl("pkg:alpm/arch/a%zz@1", None).is_err());
+        assert!(e.contains("--distro"), "{e}");
+        assert!(from_purl("pkg:deb/debian/nginx@1.0", Some(Ecosystem::Fedora(44))).is_err());
+        assert!(from_purl("pkg:alpm/arch/openssl", Some(Ecosystem::Fedora(44))).is_err());
+        assert!(from_purl("nginx", Some(Ecosystem::Arch)).is_err());
+        assert!(from_purl("pkg:alpm/arch/a%zz@1", Some(Ecosystem::Arch)).is_err());
+        // A Debian purl with a Debian distro resolves, and the release is taken
+        // from the --distro value.
+        let p = from_purl("pkg:deb/debian/nginx@1.0-1", Some(Ecosystem::Debian(12))).unwrap();
+        assert_eq!(p.ecosystem, Ecosystem::Debian(12));
     }
 }

@@ -1,0 +1,170 @@
+{
+  "results": [
+    {
+      "vulns": [
+        {
+          "id": "DEBIAN-CVE-2023-5363"
+        },
+        {
+          "id": "DEBIAN-CVE-2023-5678"
+        },
+        {
+          "id": "DEBIAN-CVE-2023-6129"
+        },
+        {
+          "id": "DEBIAN-CVE-2023-6237"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-0727"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-13176"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-2511"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-4603"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-4741"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-5535"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-6119"
+        },
+        {
+          "id": "DEBIAN-CVE-2024-9143"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-15467"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-27587"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-68160"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-69418"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-69419"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-69420"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-69421"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-9230"
+        },
+        {
+          "id": "DEBIAN-CVE-2025-9232"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-22795"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-22796"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-28387"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-28388"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-28389"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-28390"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-31789"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-31790"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-34180"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-34182"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-35189"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-42766"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-42767"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-42770"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-45445"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-45446"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-45447"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-54872"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-54874"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-63072"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-63074"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-63076"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-7383"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-75803"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-75805"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-75806"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-77696"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-84782"
+        },
+        {
+          "id": "DEBIAN-CVE-2026-9076"
+        },
+        {
+          "id": "DSA-5532-1"
+        },
+        {
+          "id": "DSA-5764-1"
+        },
+        {
+          "id": "DSA-6015-1"
+        },
+        {
+          "id": "DSA-6113-1"
+        }
+      ]
+    }
+  ]
+}

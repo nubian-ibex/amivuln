@@ -1,0 +1,6 @@
+{
+  "url": "https://api.osv.dev/v1/querybatch",
+  "request": "{\"queries\": [{\"package\": {\"name\": \"openssl\", \"ecosystem\": \"Debian:12\"}, \"version\": \"3.0.10-1\"}]}",
+  "recorded": "2026-11-08",
+  "note": "Unmodified response for the recorded request (54 advisories)."
+}

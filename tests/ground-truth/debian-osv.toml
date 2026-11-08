@@ -1,0 +1,28 @@
+# Ground truth for the Debian:12 ecosystem via OSV, checked against the real
+# API on 2026-11-08 (see tests/fixtures/http/osv/2026-11-08). The `fixed`
+# versions come from OSV's ECOSYSTEM ranges.
+distro = "debian:12"
+
+[[case]]
+name = "openssl 3.0.10-1: four CVEs already fixed by 3.0.11-1~deb12u2"
+package = "openssl"
+version = "3.0.10-1"
+expect = ["CVE-2023-5363", "CVE-2023-5678", "CVE-2023-6129", "CVE-2023-6237"]
+
+[[case]]
+name = "openssl 3.0.11-1~deb12u1: the fix that closes them is newer"
+package = "openssl"
+version = "3.0.11-1~deb12u1"
+expect = ["CVE-2023-5363", "CVE-2023-5678", "CVE-2023-6129", "CVE-2023-6237"]
+
+[[case]]
+name = "openssl at the fixing build"
+package = "openssl"
+version = "3.0.11-1~deb12u2"
+forbid = ["CVE-2023-5363", "CVE-2023-5678", "CVE-2023-6129", "CVE-2023-6237"]
+
+[[case]]
+name = "openssl much newer than that build"
+package = "openssl"
+version = "3.0.18-1~deb12u2"
+forbid = ["CVE-2023-5363", "CVE-2023-5678", "CVE-2023-6129", "CVE-2023-6237"]

@@ -19,23 +19,27 @@ use amivuln_resolve::{
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
 use amivuln_sources::fedora::{Updateinfo, updateinfo_location};
-use amivuln_sources::fetch::{FetchError, Fetched, fetch_cached};
+use amivuln_sources::fetch::{FetchCtx, FetchError, Fetched, fetch_cached, fetch_cached_body};
 use amivuln_sources::http::{HttpClient, HttpConfig};
 use amivuln_sources::kev::Kev;
+use amivuln_sources::osv::OsvData;
 
 use crate::app::{Env, Settings, cache_path, cpu_arch};
 use crate::cli::{Cli, Global};
 use crate::config::Config;
-use crate::pipeline::{arch_findings, enrich, fedora_findings};
+use crate::pipeline::{arch_findings, enrich, fedora_findings, osv_findings};
 
 /// Default endpoints.
 const ARCH_URL: &str = "https://security.archlinux.org/issues/all.json";
 const FEDORA_UPDATES: &str = "https://dl.fedoraproject.org/pub/fedora/linux/updates";
+const OSV_URL: &str = "https://api.osv.dev";
 const KEV_URL: &str =
     "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 const EPSS_URL: &str = "https://api.first.org/data/v1/epss";
 /// CVE ids per EPSS request, to keep URLs short.
 const EPSS_BATCH: usize = 50;
+/// Most advisory documents fetched per run.
+const MAX_OSV_ADVISORIES: usize = 5000;
 
 /// The package manager lookups for a host.
 enum Backend<'a> {
@@ -74,13 +78,9 @@ fn resolve_one(
 ) -> Result<PackageRef, ResolveError> {
     let exists = |p: &str| Path::new(p).exists();
     match parse_target(input, exists) {
-        Target::Purl(p) => from_purl(
-            &p,
-            match eco {
-                Ecosystem::Fedora(v) => Some(v),
-                Ecosystem::Arch => None,
-            },
-        ),
+        // The purl itself carries no release, so the host's --distro fills it
+        // in and must agree with the purl's namespace.
+        Target::Purl(p) => from_purl(&p, Some(eco)),
         Target::NameVersion(n, v) => from_name_version(eco, &n, &v),
         Target::Path(p) => backend.resolver().owner_of(&p),
         Target::Name(n) => backend.resolver().by_name(&n),
@@ -88,21 +88,6 @@ fn resolve_one(
             let link = |p: &str| std::fs::read_link(p).ok().map(|l| l.display().to_string());
             let exe = exe_for_unit(runner, &link, &u)?;
             backend.resolver().owner_of(&exe.path)
-        }
-    }
-}
-
-/// Distro data, loaded once per run.
-enum DistroData {
-    Arch(ArchTracker),
-    Fedora(Updateinfo),
-}
-
-impl DistroData {
-    fn knows(&self, cve: &str) -> bool {
-        match self {
-            Self::Arch(t) => t.knows(cve),
-            Self::Fedora(i) => i.knows(cve),
         }
     }
 }
@@ -115,6 +100,174 @@ pub(crate) struct Evaluated {
     pub(crate) sources: Vec<SourceReport>,
     /// The ids from the probe list that the distribution data has a record of.
     pub(crate) known: Vec<String>,
+}
+
+/// Distro data, loaded once per run.
+enum DistroData {
+    Arch(ArchTracker),
+    Fedora(Updateinfo),
+    Osv(OsvData),
+}
+
+impl DistroData {
+    fn knows(&self, cve: &str) -> bool {
+        match self {
+            Self::Arch(t) => t.knows(cve),
+            Self::Fedora(i) => i.knows(cve),
+            Self::Osv(o) => o.knows(cve),
+        }
+    }
+}
+
+/// Fetches one advisory document per id and parses it for the ecosystem.
+async fn fetch_advisories(
+    f: &Fetcher<'_>,
+    base: &str,
+    osv_eco: &str,
+    ids: &[String],
+) -> (Vec<amivuln_sources::osv::OsvEntry>, SourceStatus, Duration) {
+    let mut entries = Vec::new();
+    let mut status = SourceStatus::Ok;
+    let mut age = Duration::ZERO;
+    for id in ids.iter().take(MAX_OSV_ADVISORIES) {
+        let url = format!("{base}/v1/vulns/{id}");
+        let key = format!("osv-advisory:{id}");
+        let doc = match fetch_cached(f.http, f.cache, &key, &url, f.now, f.policy, f.offline).await
+        {
+            Ok(d) => d,
+            Err(e) => {
+                status = worse(status, SourceStatus::Failed(describe(&e)));
+                continue;
+            }
+        };
+        match amivuln_sources::osv::OsvData::parse_advisory(&doc.body, osv_eco) {
+            Ok(parsed) => {
+                for e in parsed.entries() {
+                    entries.push(amivuln_sources::osv::OsvEntry {
+                        advisory: id.clone(),
+                        ..e
+                    });
+                }
+                status = worse(status, doc.status);
+                age = age.max(doc.age);
+            }
+            Err(e) => status = worse(status, SourceStatus::Failed(e.to_string())),
+        }
+    }
+    (entries, status, age)
+}
+
+/// Loads the OSV data for the host's ecosystem.
+///
+/// Debian and Ubuntu advisories are fetched per package (one batched request
+/// per package, then one advisory document per id). The cache key is the
+/// request body, so the same package-version pair is not asked twice.
+async fn load_osv(
+    f: &Fetcher<'_>,
+    eco: Ecosystem,
+    cfg: &Config,
+    packages: &[(String, PackageRef)],
+) -> (Option<DistroData>, SourceReport) {
+    let required = cfg.sources.distro.required;
+    let fail = |why: String| {
+        (
+            None,
+            report_of(
+                SourceId::Osv,
+                required,
+                SourceStatus::Failed(why),
+                Duration::ZERO,
+            ),
+        )
+    };
+    let Some(osv_eco) = eco.osv_ecosystem() else {
+        return fail("this ecosystem has no OSV data".into());
+    };
+    // The endpoint override is the API base (an internal mirror).
+    let base = cfg
+        .sources
+        .distro
+        .url
+        .clone()
+        .unwrap_or_else(|| OSV_URL.to_owned());
+    let base = base.trim_end_matches('/');
+    let mut ids: Vec<String> = Vec::new();
+    let mut status = SourceStatus::Ok;
+    let mut age = Duration::ZERO;
+    for (_, pkg) in packages {
+        let amivuln_core::Version::Deb(v) = &pkg.version else {
+            return fail(format!(
+                "package {} is not a Debian or Ubuntu version; check the --distro value",
+                pkg.name
+            ));
+        };
+        let body = match amivuln_sources::osv::batch_request(
+            pkg.name.as_str(),
+            osv_eco.as_str(),
+            v.to_string().as_str(),
+        ) {
+            Ok(b) => b,
+            Err(e) => return fail(e.to_string()),
+        };
+        let key = format!("osv:{body}");
+        let batch = match fetch_cached_body(
+            &FetchCtx {
+                http: f.http,
+                cache: f.cache,
+                now: f.now,
+                policy: f.policy,
+                offline: f.offline,
+            },
+            &key,
+            &format!("{base}/v1/querybatch"),
+            Some(body.as_str()),
+        )
+        .await
+        {
+            Ok(d) => d,
+            Err(e) => return fail(describe(&e)),
+        };
+        match amivuln_sources::osv::parse_batch(&batch.body) {
+            Ok(mut found) => {
+                status = worse(status, batch.status);
+                age = age.max(batch.age);
+                ids.append(&mut found);
+            }
+            Err(e) => status = worse(status, SourceStatus::Failed(e.to_string())),
+        }
+    }
+    ids.sort();
+    ids.dedup();
+    let (entries, adv_status, adv_age) = fetch_advisories(f, base, osv_eco.as_str(), &ids).await;
+    status = worse(status, adv_status);
+    age = age.max(adv_age);
+    if ids.len() > MAX_OSV_ADVISORIES {
+        status = worse(
+            status,
+            SourceStatus::Failed(format!(
+                "{} advisories exceeded the fetch limit of {MAX_OSV_ADVISORIES}",
+                ids.len()
+            )),
+        );
+    }
+    (
+        Some(DistroData::Osv(OsvData::from_entries(entries))),
+        report_of(SourceId::Osv, required, status, age),
+    )
+}
+
+fn report_of(
+    source: SourceId,
+    required: bool,
+    status: SourceStatus,
+    age: Duration,
+) -> SourceReport {
+    SourceReport {
+        source,
+        status,
+        age,
+        required,
+    }
 }
 
 fn worse(a: SourceStatus, b: SourceStatus) -> SourceStatus {
@@ -153,28 +306,16 @@ impl Fetcher<'_> {
     }
 }
 
-fn report_of(
-    source: SourceId,
-    required: bool,
-    status: SourceStatus,
-    age: Duration,
-) -> SourceReport {
-    SourceReport {
-        source,
-        status,
-        age,
-        required,
-    }
-}
-
 async fn load_distro(
     f: &Fetcher<'_>,
     eco: Ecosystem,
     cfg: &Config,
+    resolved: &[(String, PackageRef)],
 ) -> (Option<DistroData>, SourceReport) {
     let required = cfg.sources.distro.required;
     let override_url = cfg.sources.distro.url.clone();
     match eco {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => load_osv(f, eco, cfg, resolved).await,
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -379,6 +520,11 @@ pub(crate) fn owners(
     let backend = match eco {
         Ecosystem::Fedora(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
+        // Debian and Ubuntu resolvers come with OSV support; ownership is not
+        // needed for the restart command yet.
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
+            return paths.iter().map(|p| (p.clone(), None)).collect();
+        }
     };
     paths
         .iter()
@@ -401,24 +547,37 @@ pub(crate) fn resolve_all(
     all: bool,
     eco: Ecosystem,
 ) -> (Vec<(String, PackageRef)>, Vec<Unresolved>) {
+    // Debian and Ubuntu read no package database on the host: `--all` is only
+    // meaningful with `--packages-from` (an inventory exported from a
+    // Debian/Ubuntu host), which resolve_scope adds below.
     let runner = SystemRunner::default();
-    let backend = match eco {
-        Ecosystem::Fedora(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
-        Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
-    };
     let mut resolved: Vec<(String, PackageRef)> = Vec::new();
     let mut unresolved: Vec<Unresolved> = Vec::new();
+    let backend = match eco {
+        Ecosystem::Fedora(_) => Some(Backend::Rpm(RpmResolver::new(&runner, eco))),
+        Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
+        // Debian and Ubuntu read no package database on the host: `--all` is
+        // only meaningful with `--packages-from` (an inventory exported from a
+        // Debian/Ubuntu host), which resolve_scope adds below.
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => None,
+    };
     if all {
-        match backend.resolver().list_all() {
-            Ok(list) => resolved.extend(list.into_iter().map(|p| (p.name.clone(), p))),
-            Err(e) => unresolved.push(Unresolved {
+        match backend.as_ref().map(|b| b.resolver().list_all()) {
+            Some(Ok(list)) => resolved.extend(list.into_iter().map(|p| (p.name.clone(), p))),
+            Some(Err(e)) => unresolved.push(Unresolved {
                 input: "--all".into(),
                 reason: e.to_string(),
             }),
+            // Debian and Ubuntu: the inventory carries the packages.
+            None => {}
         }
     }
     for t in targets {
-        match resolve_one(t, eco, &backend, &runner) {
+        match backend
+            .as_ref()
+            .ok_or_else(|| ResolveError::NotFound(t.clone()))
+            .and_then(|b| resolve_one(t, eco, b, &runner))
+        {
             Ok(p) => resolved.push((t.clone(), p)),
             Err(e) => unresolved.push(Unresolved {
                 input: t.clone(),
@@ -446,11 +605,12 @@ async fn gather(
         };
     }
     let (data, rep) = if cfg.sources.distro.enabled {
-        load_distro(fetcher, eco, cfg).await
+        load_distro(fetcher, eco, cfg, resolved).await
     } else {
         let id = match eco {
             Ecosystem::Arch => SourceId::ArchTracker,
             Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
+            Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => SourceId::Osv,
         };
         (
             None,
@@ -474,6 +634,7 @@ async fn gather(
             let findings = match &data {
                 Some(DistroData::Arch(t)) => arch_findings(pkg, t),
                 Some(DistroData::Fedora(i)) => fedora_findings(pkg, i),
+                Some(DistroData::Osv(o)) => osv_findings(pkg, o),
                 None => Vec::new(),
             };
             TargetReport {
