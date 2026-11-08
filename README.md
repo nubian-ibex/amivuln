@@ -4,9 +4,13 @@
 
 # amivuln
 
+<img src="assets/logo.png" alt="amivuln logo" width="96" align="left">
+
 > Am I vulnerable? Backport-aware CVE checks for the binaries, services and packages on *this* host.
 
 **Status:** pre-alpha (Phase 0, project foundation). Nothing is usable yet.
+
+<br clear="left">
 
 ## Why
 
