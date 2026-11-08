@@ -39,7 +39,8 @@ are not counted with the affected ones.
 ```bash
 amivuln --all --fail-on high           # exit 1 on HIGH or worse
 amivuln --all --fail-on kev            # exit 1 only on exploited CVEs
-amivuln --all -f json > amivuln.json   # keep a machine-readable record
+amivuln --all -f sarif > amivuln.sarif # SARIF 2.1.0 for code scanning
+amivuln --all -f csv > amivuln.csv     # spreadsheet-safe (formula injection guarded)
 ```
 
 Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete,

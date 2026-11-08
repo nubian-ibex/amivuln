@@ -479,7 +479,7 @@ stale_max_age = \"72h\"   # when the network fails, a response up to this old is
 timeout = \"10s\"
 
 [output]
-format = \"summary\"      # summary, detail or json
+format = \"summary\"      # summary, detail, json, sarif, markdown or csv
 color = \"auto\"          # auto, always or never (NO_COLOR is honored)
 
 [policy]

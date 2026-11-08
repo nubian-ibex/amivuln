@@ -140,7 +140,7 @@ struct JsonEpss<'a> {
     date: &'a str,
 }
 
-fn severity(s: Severity) -> &'static str {
+pub(crate) fn json_severity(s: Severity) -> &'static str {
     match s {
         Severity::Critical => "critical",
         Severity::High => "high",
@@ -201,7 +201,7 @@ fn finding(f: &Finding) -> JsonFinding<'_> {
     };
     JsonFinding {
         id: &f.id,
-        severity: severity(f.severity),
+        severity: json_severity(f.severity),
         distro_status: JsonStatus { state, fixed_in },
         kev: f.kev.as_ref().map(|k| JsonKev {
             added: &k.added,
@@ -346,7 +346,7 @@ struct JsonPackageOnly {
     purl: String,
 }
 
-fn ecosystem_name(e: Ecosystem) -> &'static str {
+pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
     match e {
         Ecosystem::Fedora(_) => "fedora",
         Ecosystem::Arch => "arch",
@@ -401,7 +401,7 @@ pub fn render_pending_json(r: &amivuln_core::PendingReport, out: &mut dyn Write)
                 also_upgrades: u.also.clone(),
                 target_version: u.target.to_string(),
                 closes: u.closes.clone(),
-                severity: severity(u.severity),
+                severity: json_severity(u.severity),
                 kev: u.kev,
                 epss_max: u.epss_max,
             })
@@ -478,7 +478,7 @@ pub fn render_cve_json(r: &amivuln_core::CveReport, out: &mut dyn Write) -> io::
                     .iter()
                     .map(|h| JsonCveHit {
                         package: package_only(&h.package),
-                        severity: severity(h.finding.severity),
+                        severity: json_severity(h.finding.severity),
                         fixed_in: h.fixed_in.as_ref().map(ToString::to_string),
                         kev: h.finding.kev.is_some(),
                         epss: h.finding.epss.as_ref().map(|e| e.score),

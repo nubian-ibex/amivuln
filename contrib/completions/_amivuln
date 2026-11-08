@@ -15,8 +15,8 @@ _amivuln() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -48,8 +48,8 @@ _amivuln() {
         case $line[2] in
             (check)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -72,8 +72,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (cve)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -95,8 +95,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (pending)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -117,8 +117,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (services)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -139,8 +139,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (restart)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -161,8 +161,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (config)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -191,8 +191,8 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (show)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -214,8 +214,8 @@ _arguments "${_arguments_options[@]}" : \
 (init)
 _arguments "${_arguments_options[@]}" : \
 '--path=[Where to write; defaults to the user configuration path]:FILE:_files' \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -236,8 +236,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (validate)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -294,8 +294,8 @@ esac
 ;;
 (cache)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -324,8 +324,8 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (info)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -346,8 +346,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (clear)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -400,8 +400,8 @@ esac
 ;;
 (completions)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -427,8 +427,8 @@ powershell\:"PowerShell"))' \
 ;;
 (version)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
-'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown or csv]:FORMAT:_default' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
