@@ -39,7 +39,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "amivuln"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln-cache",
  "amivuln-core",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-cache"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "rusqlite",
  "tempfile",
@@ -72,7 +72,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-core"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln-version",
  "serde",
@@ -83,7 +83,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-report"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-resolve"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
@@ -104,7 +104,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-sources"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln-cache",
  "amivuln-core",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-version"
-version = "0.0.5"
+version = "0.0.6"
 
 [[package]]
 name = "anstream"
@@ -2660,7 +2660,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
 name = "xtask"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "amivuln",
  "clap",
