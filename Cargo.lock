@@ -75,7 +75,9 @@ name = "amivuln-core"
 version = "0.0.5"
 dependencies = [
  "amivuln-version",
+ "serde",
  "thiserror",
+ "toml",
 ]
 
 [[package]]

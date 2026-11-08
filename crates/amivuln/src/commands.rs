@@ -5,15 +5,15 @@
 use std::io::Write;
 
 use amivuln_core::{
-    Condition, CveReport, CveState, ExitCode, PendingReport, RestartItem, RestartReport, Verdict,
-    cve_answers, exit_code, is_complete, pending_updates,
+    Condition, CveReport, CveState, ExitCode, Finding, PendingReport, RestartItem, RestartReport,
+    Verdict, cve_answers, exit_code, is_complete, pending_updates,
 };
 use amivuln_report::{
     RenderOptions, render_cve_report, render_pending_report, render_restart_report,
 };
 use amivuln_resolve::scan_stale;
 
-use crate::app::{CheckMode, Env, check_with, host_ecosystem, host_meta, settings, usage};
+use crate::app::{CheckMode, Env, check_with, host_ecosystem, host_meta, settings, today, usage};
 use crate::cli::Cli;
 use crate::scan::{evaluate, owners, resolve_scope, running_services};
 
@@ -69,12 +69,14 @@ pub(crate) fn cve(
     };
     let known = ev.known.clone();
     let answers = cve_answers(&ids, &ev.targets, |id| known.iter().any(|k| k == id));
-    let affected = answers.iter().any(|a| a.state == CveState::Affected);
+    let all_findings: Vec<Finding> = ev.targets.iter().flat_map(|t| t.findings.clone()).collect();
+    let suppressed = amivuln_core::suppress(&all_findings, &s.ignores, &today(env));
     let report = CveReport {
         tool_version: env!("CARGO_PKG_VERSION").to_owned(),
         generated_at: now_string(env),
         host: host_meta(eco),
         complete: is_complete(&ev.sources),
+        suppressed,
         sources: ev.sources,
         answers,
     };
@@ -96,7 +98,11 @@ pub(crate) fn cve(
     if !report.complete && s.config.policy.fail_on_incomplete {
         conditions.push(Condition::Incomplete);
     }
-    if affected {
+    if report
+        .answers
+        .iter()
+        .any(|a| a.state == CveState::Affected && !report.suppressed.contains_key(&a.id))
+    {
         conditions.push(Condition::Violation);
     }
     exit_code(&conditions)
@@ -121,6 +127,7 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         Err(code) => return code,
     };
     let findings: Vec<_> = ev.targets.iter().flat_map(|t| t.findings.clone()).collect();
+    let suppressed = amivuln_core::suppress(&findings, &s.ignores, &today(env));
     let without_fix = findings
         .iter()
         .filter(|f| matches!(f.verdict, Verdict::Affected { fixed_in: None }))
@@ -130,7 +137,8 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         generated_at: now_string(env),
         host: host_meta(eco),
         complete: is_complete(&ev.sources),
-        updates: pending_updates(&ev.targets),
+        suppressed: suppressed.clone(),
+        updates: pending_updates(&ev.targets, &suppressed),
         without_fix,
         sources: ev.sources,
     };
@@ -152,7 +160,12 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
     if !report.complete && s.config.policy.fail_on_incomplete {
         conditions.push(Condition::Incomplete);
     }
-    if s.policy.violated_by(&findings) {
+    let unsuppressed: Vec<Finding> = findings
+        .iter()
+        .filter(|f| !suppressed.contains_key(&f.id))
+        .cloned()
+        .collect();
+    if s.policy.violated_by(&unsuppressed) {
         conditions.push(Condition::Violation);
     }
     exit_code(&conditions)

@@ -112,13 +112,20 @@ impl Sandbox {
     }
 
     fn cmd(&self) -> Command {
+        self.cmd_opts(true)
+    }
+
+    /// `with_config = false` drops the built-in config so a test can pass its own.
+    fn cmd_opts(&self, with_config: bool) -> Command {
         let mut c = Command::cargo_bin("amivuln").unwrap();
         c.env_clear()
             .env("HOME", self.dir.path())
             .env("XDG_CACHE_HOME", self.dir.path().join("cache"))
-            .env("PATH", "/nonexistent")
-            .args(["--config"])
-            .arg(self.dir.path().join("config.toml"));
+            .env("PATH", "/nonexistent");
+        if with_config {
+            c.args(["--config"])
+                .arg(self.dir.path().join("config.toml"));
+        }
         c
     }
 
@@ -486,6 +493,86 @@ async fn bad_input_is_a_usage_or_resolution_error_with_a_clear_message() {
             "{args:?} should mention {needle:?}: {all}"
         );
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn ignore_file_suppresses_and_an_expired_one_fails_the_run() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let inv = sb.path().join("inv.txt");
+    std::fs::write(&inv, "python3-multipart@0:1.3.0-1.fc43\n").unwrap();
+
+    // A valid entry suppresses the finding: exit 0 with the reason shown.
+    let inv_leak: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
+    let good = sb.path().join("good.toml");
+    std::fs::write(&good, "ignore_file = \"ignore.toml\"\n").unwrap();
+    std::fs::write(
+        sb.path().join("ignore.toml"),
+        "[[ignore]]\nid = \"CVE-2026-28356\"\nreason = \"accepted (INFRA-42)\"\nowner = \"sre@example.com\"\nexpires = \"2099-12-31\"\n",
+    )
+    .unwrap();
+    let cfg_leak: &'static str = Box::leak(good.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_leak,
+            "--fail-on",
+            "high",
+            "--color",
+            "never",
+            "--format",
+            "detail",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv_leak,
+        ],
+    )
+    .await;
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        stdout(&out).contains("accepted (INFRA-42)") || stdout(&out).contains("1 accepted"),
+        "suppression must be visible: {}",
+        stdout(&out)
+    );
+
+    // Without the ignore file the same run fails at HIGH severity.
+    let bare = run(
+        sb.cmd(),
+        vec![
+            "--fail-on",
+            "high",
+            "--color",
+            "never",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv_leak,
+        ],
+    )
+    .await;
+    assert_eq!(bare.status.code(), Some(1));
+
+    // An expired entry is a configuration error (usage), not a silent pass.
+    let bad = sb.path().join("bad.toml");
+    std::fs::write(&bad, "ignore_file = \"ignore.toml\"\n").unwrap();
+    std::fs::write(
+        sb.path().join("ignore.toml"),
+        "[[ignore]]\nid = \"CVE-2026-28356\"\nreason = \"x\"\nowner = \"a@b\"\nexpires = \"2020-01-01\"\n",
+    )
+    .unwrap();
+    let cfg_bad: &'static str = Box::leak(bad.display().to_string().into_boxed_str());
+    let out = run(sb.cmd_opts(false), vec!["--config", cfg_bad, "nginx@1.0-1"]).await;
+    assert_eq!(out.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("expired on"));
 }
 
 #[test]

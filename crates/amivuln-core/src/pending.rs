@@ -67,15 +67,20 @@ pub struct CveAnswer {
 
 /// Groups affected findings into updates, one per source package and installed
 /// version, ranked by risk: KEV count, then severity, then EPSS, then name.
+///
+/// Findings whose id is in `suppressed` are excluded: an accepted finding is
+/// not something an update needs to close.
 #[must_use]
-pub fn pending_updates(targets: &[TargetReport]) -> Vec<PendingUpdate> {
+pub fn pending_updates(
+    targets: &[TargetReport],
+    suppressed: &std::collections::BTreeMap<String, String>,
+) -> Vec<PendingUpdate> {
     let mut groups: BTreeMap<(String, String), Vec<&TargetReport>> = BTreeMap::new();
     for t in targets {
-        if !t
-            .findings
-            .iter()
-            .any(|f| matches!(f.verdict, Verdict::Affected { fixed_in: Some(_) }))
-        {
+        if !t.findings.iter().any(|f| {
+            matches!(f.verdict, Verdict::Affected { fixed_in: Some(_) })
+                && !suppressed.contains_key(&f.id)
+        }) {
             continue;
         }
         let source = t
@@ -266,7 +271,7 @@ mod tests {
                 fix("CVE-0000-0002", Severity::High, "1.2-1"),
             ],
         );
-        let u = pending_updates(&[t]);
+        let u = pending_updates(&[t], &std::collections::BTreeMap::new());
         assert_eq!(u.len(), 1);
         assert_eq!(u[0].target, rpm("1.2-1"));
         assert_eq!(u[0].closes, ["CVE-0000-0001", "CVE-0000-0002"]);
@@ -284,7 +289,10 @@ mod tests {
             t.package.source_name = Some("pcre2".into());
             t
         };
-        let u = pending_updates(&[mk("pcre2-utf16"), mk("pcre2"), mk("pcre2-syntax")]);
+        let u = pending_updates(
+            &[mk("pcre2-utf16"), mk("pcre2"), mk("pcre2-syntax")],
+            &BTreeMap::new(),
+        );
         assert_eq!(u.len(), 1);
         assert_eq!(u[0].package.name, "pcre2");
         assert_eq!(u[0].also, ["pcre2-syntax", "pcre2-utf16"]);
@@ -305,8 +313,8 @@ mod tests {
                 Finding::new("CVE-0000-0002", Severity::High, Verdict::Unverified),
             ],
         );
-        assert!(pending_updates(&[t]).is_empty());
-        assert!(pending_updates(&[target("bash", "1-1", vec![])]).is_empty());
+        assert!(pending_updates(&[t], &BTreeMap::new()).is_empty());
+        assert!(pending_updates(&[target("bash", "1-1", vec![])], &BTreeMap::new()).is_empty());
     }
 
     #[test]
@@ -322,20 +330,23 @@ mod tests {
             percentile: 0.9,
             date: "d".into(),
         });
-        let updates = pending_updates(&[
-            target(
-                "zzz",
-                "1-1",
-                vec![fix("CVE-0000-0003", Severity::High, "2-1")],
-            ),
-            target("aaa", "1-1", vec![hot]),
-            target("kev", "1-1", vec![kev]),
-            target(
-                "bbb",
-                "1-1",
-                vec![fix("CVE-0000-0004", Severity::High, "2-1")],
-            ),
-        ]);
+        let updates = pending_updates(
+            &[
+                target(
+                    "zzz",
+                    "1-1",
+                    vec![fix("CVE-0000-0003", Severity::High, "2-1")],
+                ),
+                target("aaa", "1-1", vec![hot]),
+                target("kev", "1-1", vec![kev]),
+                target(
+                    "bbb",
+                    "1-1",
+                    vec![fix("CVE-0000-0004", Severity::High, "2-1")],
+                ),
+            ],
+            &BTreeMap::new(),
+        );
         let names: Vec<&str> = updates.iter().map(|u| u.package.name.as_str()).collect();
         assert_eq!(names, ["kev", "aaa", "bbb", "zzz"]);
     }

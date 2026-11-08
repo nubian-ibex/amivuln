@@ -80,6 +80,8 @@ pub(crate) struct Settings {
     pub(crate) cache_ttl: i64,
     pub(crate) stale_max_age: i64,
     pub(crate) timeout: Duration,
+    /// Accepted findings from the ignore file (empty when none).
+    pub(crate) ignores: Vec<amivuln_core::IgnoreEntry>,
 }
 
 pub(crate) fn usage(stderr: &mut dyn Write, msg: &str) -> ExitCode {
@@ -122,6 +124,8 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
     {
         return Err("--fail-on-epss must be between 0.0 and 1.0".into());
     }
+    let ignores = config::load_ignore(&cfg, from.as_deref().and_then(|p| p.parent()), &today(env))
+        .map_err(|e| format!("ignore file: {e}"))?;
     let ttl = parse_duration(&cfg.general.cache_ttl).map_err(|e| e.0)?;
     let stale = parse_duration(&cfg.general.stale_max_age).map_err(|e| e.0)?;
     let timeout = parse_duration(&cfg.general.timeout).map_err(|e| e.0)?;
@@ -138,6 +142,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
             cache_ttl: secs(ttl),
             stale_max_age: secs(stale),
             timeout,
+            ignores,
             config: cfg,
         },
         from,
@@ -366,6 +371,14 @@ fn cache_cmd(
     }
 }
 
+/// The UTC date, `YYYY-MM-DD`, for ignore-file expiry checks.
+pub(crate) fn today(env: &Env) -> String {
+    jiff::Timestamp::from_second(env.now).map_or_else(
+        |_| "1970-01-01".to_owned(),
+        |t| t.strftime("%Y-%m-%d").to_string(),
+    )
+}
+
 /// How a scan is presented and judged.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CheckMode {
@@ -420,16 +433,23 @@ pub(crate) fn check_with(
         Ok(v) => v,
         Err(m) => return usage(err, &m),
     };
-    let (targets_out, sources) = match evaluate(cli, &s, env, eco, &resolved, &[], err) {
-        Ok(v) => (v.targets, v.sources),
+    let ev = match evaluate(cli, &s, env, eco, &resolved, &[], err) {
+        Ok(v) => v,
         Err(code) => return code,
     };
+    let (targets_out, sources) = (ev.targets, ev.sources);
+    let all_findings: Vec<Finding> = targets_out
+        .iter()
+        .flat_map(|t| t.findings.clone())
+        .collect();
+    let suppressed = amivuln_core::suppress(&all_findings, &s.ignores, &today(env));
     let report = RunReport {
         tool_version: env!("CARGO_PKG_VERSION").to_owned(),
         generated_at: jiff::Timestamp::from_second(env.now)
             .map_or_else(|_| "1970-01-01T00:00:00Z".to_owned(), |t| t.to_string()),
         host: host_meta(eco),
         complete: is_complete(&sources),
+        suppressed,
         sources,
         targets: targets_out,
         unresolved,
@@ -465,6 +485,7 @@ fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
         .targets
         .iter()
         .flat_map(|t| t.findings.clone())
+        .filter(|f| !report.suppressed.contains_key(&f.id))
         .collect();
     if s.policy.violated_by(&findings) {
         conditions.push(Condition::Violation);
