@@ -1,3 +1,5 @@
+`--format sarif` writes SARIF 2.1.0 (one result per affected finding, `error`/`warning`/`note` levels); `--format csv` writes one row per finding with every field quoted and a `'` guard before `= + - @` so spreadsheets do not execute formulas; `--format markdown` writes a table per target.
+
 # JSON schema
 
 `amivuln -f json` writes one document per run. The schema is published as

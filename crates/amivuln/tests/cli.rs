@@ -575,6 +575,75 @@ async fn ignore_file_suppresses_and_an_expired_one_fails_the_run() {
     assert!(String::from_utf8_lossy(&out.stderr).contains("expired on"));
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn sarif_markdown_and_csv_output() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+
+    let sarif = run(
+        sb.cmd(),
+        vec![
+            "-f",
+            "sarif",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(sarif.status.code(), Some(0));
+    let v = json(&sarif);
+    assert_eq!(v["version"], "2.1.0");
+    assert_eq!(v["runs"][0]["results"][0]["ruleId"], "CVE-2026-28356");
+    assert_eq!(v["runs"][0]["results"][0]["level"], "error");
+
+    let md = run(
+        sb.cmd(),
+        vec![
+            "-f",
+            "markdown",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(md.status.code(), Some(0));
+    let text = stdout(&md);
+    assert!(
+        text.contains("## python3-multipart 1.3.0-1.fc43 (fedora)"),
+        "{text}"
+    );
+    assert!(text.contains("| CVE-2026-28356 | high | affected | 1.3.1-1.fc43 |"));
+
+    let csv = run(
+        sb.cmd(),
+        vec![
+            "-f",
+            "csv",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(csv.status.code(), Some(0));
+    let text = stdout(&csv);
+    assert!(text.starts_with("package,version,ecosystem,id,severity,state,fixed_in,kev,epss"));
+    assert!(
+        text.contains(
+            "\"python3-multipart\",\"1.3.0-1.fc43\",\"fedora\",\"CVE-2026-28356\",high,affected,\"1.3.1-1.fc43\",",
+        ),
+        "{text}"
+    );
+
+    let bad = run(sb.cmd(), vec!["-f", "xml", "nginx@1.0-1"]).await;
+    assert_eq!(bad.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("sarif, markdown or csv"));
+}
+
 #[test]
 fn help_version_completions_and_config_commands() {
     let dir = tempfile::tempdir().unwrap();

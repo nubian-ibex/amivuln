@@ -9,12 +9,14 @@
 #![forbid(unsafe_code)]
 
 mod json;
+mod other;
 mod sanitize;
 mod text;
 
 pub use json::{
     SCHEMA_VERSION, render_cve_json, render_json, render_pending_json, render_restart_json,
 };
+pub use other::{render_csv, render_markdown, render_sarif};
 pub use sanitize::sanitize_terminal;
 pub use text::{
     RenderOptions, render_cve, render_detail, render_pending, render_restart, render_summary,
@@ -29,6 +31,12 @@ pub enum Format {
     Detail,
     /// Versioned JSON (`schema_version`).
     Json,
+    /// SARIF 2.1.0, for code scanning integrations.
+    Sarif,
+    /// Markdown, for reports in issues and pull requests.
+    Markdown,
+    /// CSV, with formula-injection protection.
+    Csv,
 }
 
 impl core::str::FromStr for Format {
@@ -39,8 +47,11 @@ impl core::str::FromStr for Format {
             "summary" => Ok(Self::Summary),
             "detail" => Ok(Self::Detail),
             "json" => Ok(Self::Json),
+            "sarif" => Ok(Self::Sarif),
+            "markdown" => Ok(Self::Markdown),
+            "csv" => Ok(Self::Csv),
             other => Err(format!(
-                "invalid --format value {other:?}; use summary, detail or json"
+                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown or csv"
             )),
         }
     }
@@ -61,6 +72,9 @@ pub fn render(
         Format::Summary => render_summary(report, options, out),
         Format::Detail => render_detail(report, options, out),
         Format::Json => render_json(report, out),
+        Format::Sarif => render_sarif(report, out),
+        Format::Markdown => render_markdown(report, out),
+        Format::Csv => render_csv(report, out),
     }
 }
 
@@ -78,6 +92,9 @@ pub fn render_pending_report(
     match format {
         Format::Json => render_pending_json(report, out),
         Format::Summary | Format::Detail => render_pending(report, options, out),
+        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
+            "--format sarif|markdown|csv applies to check only",
+        )),
     }
 }
 
@@ -95,6 +112,9 @@ pub fn render_cve_report(
     match format {
         Format::Json => render_cve_json(report, out),
         Format::Summary | Format::Detail => render_cve(report, options, out),
+        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
+            "--format sarif|markdown|csv applies to check only",
+        )),
     }
 }
 
@@ -112,5 +132,8 @@ pub fn render_restart_report(
     match format {
         Format::Json => render_restart_json(report, out),
         Format::Summary | Format::Detail => render_restart(report, options, out),
+        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
+            "--format sarif|markdown|csv applies to check only",
+        )),
     }
 }
