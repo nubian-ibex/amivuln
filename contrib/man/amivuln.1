@@ -1,10 +1,10 @@
 .ie \n(.g .ds Aq \(aq
 .el .ds Aq '
-.TH AMIVULN 1  "amivuln 0.0.2" 
+.TH AMIVULN 1  amivuln 
 .SH NAME
 amivuln \- Am I vulnerable? Backport\-aware CVE check for packages on this host
 .SH SYNOPSIS
-\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] [\fITARGET\fR] [\fIsubcommands\fR]
+\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Reports which CVEs apply to an installed package, binary or version, taking the patches your distribution already shipped into account. Fedora and Arch Linux are supported.
 .SH OPTIONS
@@ -54,9 +54,6 @@ Check every installed package
 \fB\-h\fR, \fB\-\-help\fR
 Print help (see a summary with \*(Aq\-h\*(Aq)
 .TP
-\fB\-V\fR, \fB\-\-version\fR
-Print version
-.TP
 [\fITARGET\fR]
 Targets to check: package name, file path, `name@version` or purl
 .SH SUBCOMMANDS
@@ -78,26 +75,6 @@ Print version and build information
 .TP
 amivuln\-help(1)
 Print this message or the help of the given subcommand(s)
-.SH EXTRA
-EXAMPLES:
-  amivuln nginx                      installed package by name
-  amivuln /usr/sbin/nginx            package that owns a file
-  amivuln openssl@3.2.2\-1.fc44       a specific version, without reading the host
-  amivuln \-\-all \-\-fail\-on high       every installed package, fail the build on HIGH or worse
-  amivuln check openssl@3.5.1\-1 \-\-distro arch \-f json
-                                     query for another distro (useful in CI containers)
-
-EXIT CODES:
-  0   no finding at or above \-\-fail\-on
-  1   findings at or above \-\-fail\-on
-  2   result incomplete: a required source was unavailable
-  3   a target could not be resolved
-  64  usage or configuration error
-  70  internal error
-
-Only the ecosystem, package name and version ever leave the host.
-.SH VERSION
-v0.0.2
 .SH EXIT STATUS
 .TP
 0
