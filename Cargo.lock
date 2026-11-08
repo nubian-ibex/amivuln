@@ -41,6 +41,12 @@ dependencies = [
 [[package]]
 name = "amivuln-report"
 version = "0.0.2"
+dependencies = [
+ "amivuln-core",
+ "amivuln-version",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "amivuln-resolve"

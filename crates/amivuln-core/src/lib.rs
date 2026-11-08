@@ -12,10 +12,14 @@ mod exit;
 mod matching;
 mod package;
 mod process;
+mod report;
 mod source;
 
 pub use exit::{Condition, ExitCode, exit_code};
-pub use matching::{DistroStatus, Finding, Severity, Verdict, classify, sort_findings};
+pub use matching::{
+    DistroStatus, EpssInfo, Finding, KevInfo, Severity, Verdict, classify, sort_findings,
+};
 pub use package::{Ecosystem, PackageRef, Provenance, Version};
 pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
+pub use report::{FailOn, HostMeta, Policy, RunReport, Summary, TargetReport, Unresolved};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};

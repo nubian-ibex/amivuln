@@ -9,6 +9,8 @@ use core::time::Duration;
 pub enum SourceId {
     /// Arch Linux Security Tracker.
     ArchTracker,
+    /// Fedora repository `updateinfo` metadata.
+    FedoraUpdateinfo,
     /// Fedora Bodhi.
     Bodhi,
     /// OSV.dev.
@@ -17,6 +19,21 @@ pub enum SourceId {
     Kev,
     /// FIRST EPSS.
     Epss,
+}
+
+impl SourceId {
+    /// Stable identifier used in output.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ArchTracker => "arch-tracker",
+            Self::FedoraUpdateinfo => "fedora-updateinfo",
+            Self::Bodhi => "bodhi",
+            Self::Osv => "osv",
+            Self::Kev => "kev",
+            Self::Epss => "epss",
+        }
+    }
 }
 
 /// Outcome of querying a source.
@@ -30,6 +47,19 @@ pub enum SourceStatus {
     Failed(String),
     /// Deliberately not queried.
     Skipped(String),
+}
+
+impl SourceStatus {
+    /// Stable label used in output.
+    #[must_use]
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Ok => "ok",
+            Self::Stale => "stale",
+            Self::Failed(_) => "failed",
+            Self::Skipped(_) => "skipped",
+        }
+    }
 }
 
 /// One entry per consulted source, present in every output.
