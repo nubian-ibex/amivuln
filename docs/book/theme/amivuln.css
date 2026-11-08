@@ -1,0 +1,6 @@
+/* SPDX-FileCopyrightText: 2026 amivuln contributors */
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+:root { --amivuln-accent: #4de6b8; }
+.navy { --links: var(--amivuln-accent); --sidebar-active: var(--amivuln-accent); }
+.content img { max-width: 100%; height: auto; }
+.content table { margin: 1em 0; }
