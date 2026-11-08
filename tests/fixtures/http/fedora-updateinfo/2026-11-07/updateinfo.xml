@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<updates>
+  <update from="updates@fedoraproject.org" status="stable" type="security" version="2.0">
+    <id>FEDORA-2026-5c75eb75d1</id>
+    <title>python-multipart-1.3.1-1.fc43</title>
+    <issued date="2026-03-16 23:18:13"/>
+    <updated date="2026-03-25 01:38:51"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>Important</severity>
+    <summary>python-multipart-1.3.1-1.fc43 security update</summary>
+    <description>Update to version 1.3.1 to fix CVE-2026-28356.</description>
+    <references>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2447328" id="2447328" type="bugzilla" title="CVE-2026-28356 python-multipart: denial of service via maliciously crafted HTTP or multipart segment headers [fedora-43]"/>
+    </references>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="python-multipart" version="1.3.1" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/p/python-multipart-1.3.1-1.fc43.src.rpm">
+          <filename>python-multipart-1.3.1-1.fc43.src.rpm</filename>
+        </package>
+        <package name="python3-multipart" version="1.3.1" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/python3-multipart-1.3.1-1.fc43.noarch.rpm">
+          <filename>python3-multipart-1.3.1-1.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+  <update from="updates@fedoraproject.org" status="stable" type="security" version="2.0">
+    <id>FEDORA-2026-5eb6f779c0</id>
+    <title>mingw-exiv2-0.28.8-1.fc43</title>
+    <issued date="2026-04-02 09:20:59"/>
+    <updated date="2026-04-12 15:36:52"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>Low</severity>
+    <summary>mingw-exiv2-0.28.8-1.fc43 security update</summary>
+    <description>Update to exiv2-0.28.8.</description>
+    <references>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2453392" id="2453392" type="bugzilla" title="CVE-2026-25884 mingw-exiv2: Exiv2: Denial of service via out-of-bounds read in CRW image parser [fedora-all]"/>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2453394" id="2453394" type="bugzilla" title="CVE-2026-27596 mingw-exiv2: Exiv2: Denial of Service via out-of-bounds read in preview component [fedora-all]"/>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2453396" id="2453396" type="bugzilla" title="CVE-2026-27631 mingw-exiv2: Exiv2: Denial of Service via integer overflow in preview component [fedora-all]"/>
+    </references>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="mingw-exiv2" version="0.28.8" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/m/mingw-exiv2-0.28.8-1.fc43.src.rpm">
+          <filename>mingw-exiv2-0.28.8-1.fc43.src.rpm</filename>
+        </package>
+        <package name="mingw32-exiv2-debuginfo" version="0.28.8" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/m/mingw32-exiv2-debuginfo-0.28.8-1.fc43.noarch.rpm">
+          <filename>mingw32-exiv2-debuginfo-0.28.8-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="mingw64-exiv2-debuginfo" version="0.28.8" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/m/mingw64-exiv2-debuginfo-0.28.8-1.fc43.noarch.rpm">
+          <filename>mingw64-exiv2-debuginfo-0.28.8-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="mingw32-exiv2" version="0.28.8" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/m/mingw32-exiv2-0.28.8-1.fc43.noarch.rpm">
+          <filename>mingw32-exiv2-0.28.8-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="mingw64-exiv2" version="0.28.8" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/m/mingw64-exiv2-0.28.8-1.fc43.noarch.rpm">
+          <filename>mingw64-exiv2-0.28.8-1.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+  <update from="updates@fedoraproject.org" status="stable" type="security" version="2.0">
+    <id>FEDORA-2026-ce64e86fd8</id>
+    <title>python-wheel-0.45.1-20.fc43</title>
+    <issued date="2026-01-23 13:45:59"/>
+    <updated date="2026-02-01 00:49:17"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>Important</severity>
+    <summary>python-wheel-0.45.1-20.fc43 security update</summary>
+    <description>- Security fix for CVE-2026-24049</description>
+    <references>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2432109" id="2432109" type="bugzilla" title="CVE-2026-24049 python-wheel: wheel: Privilege Escalation or Arbitrary Code Execution via malicious wheel file unpacking [fedora-43]"/>
+    </references>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="python-wheel" version="0.45.1" release="20.fc43" epoch="1" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/p/python-wheel-0.45.1-20.fc43.src.rpm">
+          <filename>python-wheel-0.45.1-20.fc43.src.rpm</filename>
+        </package>
+        <package name="python3-wheel" version="0.45.1" release="20.fc43" epoch="1" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/python3-wheel-0.45.1-20.fc43.noarch.rpm">
+          <filename>python3-wheel-0.45.1-20.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+  <update from="updates@fedoraproject.org" status="stable" type="bugfix" version="2.0">
+    <id>FEDORA-2026-da2f15b92d</id>
+    <title>perl-Authen-OATH-3.0.1-1.fc43</title>
+    <issued date="2026-05-27 07:17:11"/>
+    <updated date="2026-06-05 04:07:33"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>None</severity>
+    <summary>perl-Authen-OATH-3.0.1-1.fc43 bugfix update</summary>
+    <description>This release fixes arbitrary code execution vulnerability via the digest attribute (CVE-2026-9569). It also improves the tests, which are now packaged in a dedicated perl-Authen-OATH-tests package.</description>
+    <references>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2481710" id="2481710" type="bugzilla" title="perl-Authen-OATH-3.000001 is available"/>
+    </references>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="perl-Authen-OATH" version="3.0.1" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/p/perl-Authen-OATH-3.0.1-1.fc43.src.rpm">
+          <filename>perl-Authen-OATH-3.0.1-1.fc43.src.rpm</filename>
+        </package>
+        <package name="perl-Authen-OATH" version="3.0.1" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Authen-OATH-3.0.1-1.fc43.noarch.rpm">
+          <filename>perl-Authen-OATH-3.0.1-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Authen-OATH-tests" version="3.0.1" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Authen-OATH-tests-3.0.1-1.fc43.noarch.rpm">
+          <filename>perl-Authen-OATH-tests-3.0.1-1.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+  <update from="updates@fedoraproject.org" status="stable" type="enhancement" version="2.0">
+    <id>FEDORA-2026-6d8b163608</id>
+    <title>erlang-gun-2.5.0-1.fc43</title>
+    <issued date="2026-08-20 13:35:38"/>
+    <updated date="2026-08-31 16:58:22"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>None</severity>
+    <summary>erlang-gun-2.5.0-1.fc43 enhancement update</summary>
+    <description>Gun ver. 2.5.0</description>
+    <references>
+      <reference href="https://bugzilla.redhat.com/show_bug.cgi?id=2520223" id="2520223" type="bugzilla" title="erlang-gun-2.5.0 is available"/>
+    </references>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="erlang-gun" version="2.5.0" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/e/erlang-gun-2.5.0-1.fc43.src.rpm">
+          <filename>erlang-gun-2.5.0-1.fc43.src.rpm</filename>
+        </package>
+        <package name="erlang-gun" version="2.5.0" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/e/erlang-gun-2.5.0-1.fc43.noarch.rpm">
+          <filename>erlang-gun-2.5.0-1.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+</updates>

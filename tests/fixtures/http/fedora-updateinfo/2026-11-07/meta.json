@@ -1,0 +1,6 @@
+{
+  "url": "https://mirror.cedia.org.ec/fedora/linux/updates/43/Everything/x86_64/repodata/b04850089def281f7a7848a504e320f683118e3bceeced63b5759dd31ef79aa0-updateinfo.xml.zst",
+  "found_via": "https://mirrors.fedoraproject.org/metalink?repo=updates-released-f43&arch=x86_64 (repomd.xml)",
+  "recorded": "2026-11-07",
+  "note": "Selected unmodified <update> elements from the decompressed file (4513 updates, 62 MB). Decompressed, wrapped in <updates>."
+}

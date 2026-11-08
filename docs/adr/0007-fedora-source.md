@@ -28,3 +28,15 @@ Pending. Recommendation: Bodhi (with updateinfo evaluated as a cross-check) as t
 - Both Fedora sources carry CVE IDs only in free text, so extraction must be a strict regex over bugzilla titles and descriptions, covered by fixtures.
 - Offline and cache design favors `updateinfo` (bulk, verifiable); Bodhi is better for freshness. A combination remains open.
 - TODO(verify): Bodhi rate limits; whether the `updates-testing` repo must be excluded (it is by using `updates-released`).
+
+## Implementation notes (2026-11-07)
+
+The parser in `amivuln_sources::fedora` implements the `updateinfo` option:
+
+- Only bugzilla reference titles that **start** with CVE ids count as "this update fixes this CVE". CVE ids found in free-text descriptions are ignored: a description such as "regression introduced by the fix for CVE-X" would otherwise mark CVE-X as fixed and hide a vulnerability.
+- When several updates fix the same CVE for the same package, the **lowest** fixed EVR wins, so an installed version at or above any published fix is patched.
+- An empty answer means "no statement", not "not affected": callers report the CVE as unverified.
+- Measured on the real F43 `updates` file (62 MB decompressed, 2.9 MB zstd): 63415 fix records parsed in 0.31 s (release build). Decompressed size is capped at 256 MiB.
+- Dependencies: quick-xml and ruzstd (pure Rust, so static musl builds stay simple).
+
+Still open before acceptance: the false-positive measurement on 50 real packages (spike S1) and the Bodhi cross-check.

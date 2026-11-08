@@ -9,5 +9,6 @@
 #![forbid(unsafe_code)]
 
 pub mod arch;
+pub mod fedora;
 pub mod fetch;
 pub mod http;
