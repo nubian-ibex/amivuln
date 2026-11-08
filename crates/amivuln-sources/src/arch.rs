@@ -6,6 +6,7 @@
 //! AVG groups. Each group lists affected pacman packages, the CVEs it covers,
 //! the first affected version and, when published, the fixed version.
 
+use crate::is_cve_id;
 use amivuln_core::{DistroStatus, Severity, Version};
 use serde::Deserialize;
 
@@ -51,22 +52,6 @@ pub struct ArchEntry {
 #[derive(Debug, Default)]
 pub struct ArchTracker {
     groups: Vec<RawGroup>,
-}
-
-/// True for identifiers shaped like `CVE-YYYY-NNNN...`; anything else from
-/// the network is dropped rather than shown to the user.
-fn is_cve_id(s: &str) -> bool {
-    let Some(rest) = s.strip_prefix("CVE-") else {
-        return false;
-    };
-    let Some((year, seq)) = rest.split_once('-') else {
-        return false;
-    };
-    year.len() == 4
-        && year.bytes().all(|b| b.is_ascii_digit())
-        && seq.len() >= 4
-        && seq.len() <= 12
-        && seq.bytes().all(|b| b.is_ascii_digit())
 }
 
 fn severity(s: &str) -> Severity {
@@ -152,6 +137,7 @@ impl ArchTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::is_cve_id;
     use amivuln_core::{Verdict, classify};
 
     const FIXTURE: &[u8] =

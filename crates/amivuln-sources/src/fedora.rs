@@ -15,6 +15,7 @@
 use std::collections::BTreeMap;
 use std::io::Read;
 
+use crate::is_cve_id;
 use amivuln_core::{DistroStatus, Severity, Version};
 use amivuln_version::RpmEvr;
 use quick_xml::Reader;
@@ -60,19 +61,6 @@ pub struct FedoraFix {
 #[derive(Debug, Default)]
 pub struct Updateinfo {
     by_package: BTreeMap<String, Vec<FedoraFix>>,
-}
-
-fn is_cve_id(s: &str) -> bool {
-    let Some(rest) = s.strip_prefix("CVE-") else {
-        return false;
-    };
-    let Some((year, seq)) = rest.split_once('-') else {
-        return false;
-    };
-    year.len() == 4
-        && year.bytes().all(|b| b.is_ascii_digit())
-        && (4..=12).contains(&seq.len())
-        && seq.bytes().all(|b| b.is_ascii_digit())
 }
 
 /// CVE ids at the start of a bugzilla title, e.g. `CVE-A CVE-B pkg: text`.

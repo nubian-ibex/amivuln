@@ -1,0 +1,5 @@
+{
+  "url": "https://api.first.org/data/v1/epss?cve=CVE-2024-6387,CVE-2021-44228,CVE-0000-0001",
+  "recorded": "2026-11-08",
+  "note": "Full response; the third id is intentionally unknown to EPSS."
+}
