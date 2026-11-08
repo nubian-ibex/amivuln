@@ -113,6 +113,26 @@ impl HttpClient {
         Ok(Self { inner, config })
     }
 
+    /// POST `body` as `application/json` to `url`.
+    ///
+    /// # Errors
+    ///
+    /// See [`HttpError`].
+    pub async fn post(&self, url: &str, body: &str) -> Result<Response, HttpError> {
+        if !self.config.allow_insecure && !url.starts_with("https://") {
+            return Err(HttpError::Refused(format!("{url} is not an https URL")));
+        }
+        let resp = self
+            .inner
+            .post(url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(body.to_owned())
+            .send()
+            .await
+            .map_err(map_error)?;
+        Self::finish(resp, self.config.max_body).await
+    }
+
     /// GET `url`, optionally conditional on `validators`.
     ///
     /// # Errors
@@ -130,7 +150,12 @@ impl HttpClient {
         if let Some(lm) = &validators.last_modified {
             req = req.header(IF_MODIFIED_SINCE, lm);
         }
-        let mut resp = req.send().await.map_err(map_error)?;
+        let resp = req.send().await.map_err(map_error)?;
+        Self::finish(resp, self.config.max_body).await
+    }
+
+    /// Shared response handling: status mapping and the body cap.
+    async fn finish(mut resp: reqwest::Response, max_body: usize) -> Result<Response, HttpError> {
         let status = resp.status();
         match status {
             StatusCode::NOT_MODIFIED => return Ok(Response::NotModified),
@@ -160,14 +185,14 @@ impl HttpClient {
         // enforce the limit while streaming for servers that do not.
         if resp
             .content_length()
-            .is_some_and(|n| usize::try_from(n).map_or(true, |n| n > self.config.max_body))
+            .is_some_and(|n| usize::try_from(n).map_or(true, |n| n > max_body))
         {
-            return Err(HttpError::TooLarge(self.config.max_body));
+            return Err(HttpError::TooLarge(max_body));
         }
         let mut body = Vec::new();
         while let Some(chunk) = resp.chunk().await.map_err(map_error)? {
-            if body.len() + chunk.len() > self.config.max_body {
-                return Err(HttpError::TooLarge(self.config.max_body));
+            if body.len() + chunk.len() > max_body {
+                return Err(HttpError::TooLarge(max_body));
             }
             body.extend_from_slice(&chunk);
         }
@@ -178,7 +203,6 @@ impl HttpClient {
         })
     }
 }
-
 fn map_error(e: reqwest::Error) -> HttpError {
     if e.is_timeout() {
         HttpError::Timeout

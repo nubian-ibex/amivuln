@@ -14,6 +14,7 @@ pub mod fedora;
 pub mod fetch;
 pub mod http;
 pub mod kev;
+pub mod osv;
 
 /// True for identifiers shaped like `CVE-YYYY-NNNN...`. Identifiers from the
 /// network that do not match are dropped rather than shown to the user.

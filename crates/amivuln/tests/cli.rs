@@ -467,9 +467,9 @@ async fn bad_input_is_a_usage_or_resolution_error_with_a_clear_message() {
             "unresolved nginx.service",
         ),
         (
-            vec!["pkg:deb/debian/x@1", "--distro", "fedora:43", "--offline"],
+            vec!["pkg:deb/debian/x@1", "--offline", "--distro", "fedora:43"],
             3,
-            "unsupported purl",
+            "does not match --distro fedora:43",
         ),
         (
             vec!["a b@1", "--distro", "fedora:43", "--offline"],

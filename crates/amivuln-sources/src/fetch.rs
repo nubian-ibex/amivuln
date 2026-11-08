@@ -43,7 +43,7 @@ fn age(now: i64, fetched_at: i64) -> Duration {
     Duration::from_secs(u64::try_from(now.saturating_sub(fetched_at)).unwrap_or(0))
 }
 
-/// Fetches `url`, using `cache` under `key`.
+/// Fetches `url` with `GET`, using `cache` under `key`.
 ///
 /// `now` is Unix seconds from the caller's clock. With `offline` the network
 /// is never touched.
@@ -53,6 +53,29 @@ fn age(now: i64, fetched_at: i64) -> Duration {
 /// [`FetchError::Offline`] when offline without a usable copy,
 /// [`FetchError::Unavailable`] when the request fails and no cached copy is
 /// within `stale_max_age`.
+/// Everything [`fetch_cached`] needs.
+#[derive(Debug, Clone, Copy)]
+pub struct FetchCtx<'a> {
+    /// HTTP client.
+    pub http: &'a HttpClient,
+    /// Cache.
+    pub cache: &'a Cache,
+    /// Current Unix time.
+    pub now: i64,
+    /// Freshness limits.
+    pub policy: Policy,
+    /// Never touch the network.
+    pub offline: bool,
+}
+
+/// Fetches `url` with `GET`, using `cache` under `key`.
+///
+/// # Errors
+///
+/// [`FetchError::Offline`] when offline without a usable copy,
+/// [`FetchError::Unavailable`] when the request fails and no cached copy is
+/// within `stale_max_age`.
+#[allow(clippy::too_many_arguments)]
 pub async fn fetch_cached(
     http: &HttpClient,
     cache: &Cache,
@@ -62,6 +85,38 @@ pub async fn fetch_cached(
     policy: Policy,
     offline: bool,
 ) -> Result<Fetched, FetchError> {
+    let ctx = FetchCtx {
+        http,
+        cache,
+        now,
+        policy,
+        offline,
+    };
+    fetch_cached_body(&ctx, key, url, None).await
+}
+
+/// Fetches `url`, `POST`ing `body` when given (an API that takes a request
+/// document). The cache key must already encode the body; responses to POST
+/// are cached only because the key is deterministic.
+///
+/// # Errors
+///
+/// [`FetchError::Offline`] when offline without a usable copy,
+/// [`FetchError::Unavailable`] when the request fails and no cached copy is
+/// within `stale_max_age`.
+pub async fn fetch_cached_body(
+    ctx: &FetchCtx<'_>,
+    key: &str,
+    url: &str,
+    body: Option<&str>,
+) -> Result<Fetched, FetchError> {
+    let FetchCtx {
+        http,
+        cache,
+        now,
+        policy,
+        offline,
+    } = *ctx;
     let lookup = cache.get(key, now, policy)?;
     if let Lookup::Fresh(e) = &lookup {
         return Ok(Fetched {
@@ -89,7 +144,11 @@ pub async fn fetch_cached(
         _ => Validators::default(),
     };
 
-    match http.get(url, &validators).await {
+    let response = match body {
+        Some(body) => http.post(url, body).await,
+        None => http.get(url, &validators).await,
+    };
+    match response {
         Ok(Response::Fresh {
             body,
             etag,

@@ -145,14 +145,34 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
 }
 
 /// Parses `fedora:44` or `arch`.
-fn parse_distro(s: &str) -> Result<Ecosystem, String> {
+pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
     match s.split_once(':') {
         Some(("fedora", v)) => v
             .parse()
             .map(Ecosystem::Fedora)
             .map_err(|_| format!("invalid Fedora release {v:?} in --distro")),
+        Some(("debian", v)) => v
+            .parse()
+            .map(Ecosystem::Debian)
+            .map_err(|_| format!("invalid Debian release {v:?} in --distro")),
+        // Ubuntu releases are "24.04" or "24.10"; the OSV ecosystem keeps the
+        // decimal form. Only LTS releases have OSV data.
+        Some(("ubuntu", v)) => {
+            // Ubuntu releases are "NN.04" or "NN.10"; the OSV ecosystem keeps
+            // the decimal form and covers interim releases too.
+            match v.replace('.', "").parse::<u16>() {
+                Ok(n) if (404..=9904).contains(&n) && (n % 100 == 4 || n % 100 == 10) => {
+                    Ok(Ecosystem::Ubuntu(n))
+                }
+                _ => Err(format!(
+                    "invalid Ubuntu release {v:?}; use a form like ubuntu:24.04"
+                )),
+            }
+        }
         None if s == "arch" => Ok(Ecosystem::Arch),
-        _ => Err(format!("unsupported --distro {s:?}; use fedora:NN or arch")),
+        _ => Err(format!(
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN or ubuntu:NN"
+        )),
     }
 }
 
@@ -456,6 +476,8 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
     let (os_id, os_version) = match eco {
         Ecosystem::Fedora(v) => ("fedora".to_owned(), v.to_string()),
         Ecosystem::Arch => ("arch".to_owned(), "rolling".to_owned()),
+        Ecosystem::Debian(v) => ("debian".to_owned(), v.to_string()),
+        Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{}", v / 100, v % 100)),
     };
     HostMeta {
         os_id,

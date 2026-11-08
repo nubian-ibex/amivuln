@@ -12,6 +12,7 @@ use amivuln_sources::arch::{ArchEntry, ArchTracker};
 use amivuln_sources::epss::EpssScores;
 use amivuln_sources::fedora::Updateinfo;
 use amivuln_sources::kev::Kev;
+use amivuln_sources::osv::OsvData;
 
 /// How serious a verdict is, so statements about one CVE can be merged.
 fn rank(v: &Verdict) -> u8 {
@@ -135,6 +136,34 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo) -> Vec<Finding> {
         by_cve.insert(cve.to_owned(), (classify(&pkg.version, &status), severity));
     }
     finish(by_cve)
+}
+
+/// Findings for a Debian or Ubuntu package from OSV.
+///
+/// OSV states the version that fixed each issue. A fix newer than the
+/// installed build means the build is affected. Advisory ids never covered by
+/// a fix keep the CVE unverified.
+#[must_use]
+pub fn osv_findings(pkg: &PackageRef, osv: &OsvData) -> Vec<Finding> {
+    let mut by_cve = BTreeMap::new();
+    let mut cves: Vec<String> = osv.ids();
+    cves.sort_unstable();
+    cves.dedup();
+    for cve in cves {
+        let Some(fix) = osv.fix_for(&cve) else {
+            continue;
+        };
+        let parsed = fix.parse().unwrap_or_else(|never| match never {});
+        let verdict = classify(&pkg.version, &DistroStatus::Fixed(Version::Deb(parsed)));
+        by_cve.insert(cve.clone(), verdict);
+    }
+    let mut out: Vec<Finding> = by_cve
+        .into_iter()
+        .filter(|(_, v)| matches!(v, Verdict::Affected { .. } | Verdict::Unverified))
+        .map(|(id, verdict)| Finding::new(id, Severity::Unknown, verdict))
+        .collect();
+    sort_findings(&mut out);
+    out
 }
 
 fn finish(by_cve: BTreeMap<String, (Verdict, Severity)>) -> Vec<Finding> {

@@ -11,10 +11,10 @@ pub enum SourceId {
     ArchTracker,
     /// Fedora repository `updateinfo` metadata.
     FedoraUpdateinfo,
+    /// OSV.dev (Debian, Ubuntu and later the RHEL family).
+    Osv,
     /// Fedora Bodhi.
     Bodhi,
-    /// OSV.dev.
-    Osv,
     /// CISA Known Exploited Vulnerabilities.
     Kev,
     /// FIRST EPSS.
@@ -28,8 +28,8 @@ impl SourceId {
         match self {
             Self::ArchTracker => "arch-tracker",
             Self::FedoraUpdateinfo => "fedora-updateinfo",
-            Self::Bodhi => "bodhi",
             Self::Osv => "osv",
+            Self::Bodhi => "bodhi",
             Self::Kev => "kev",
             Self::Epss => "epss",
         }

@@ -1,0 +1,5 @@
+{
+  "url": "https://api.osv.dev/v1/vulns/DEBIAN-CVE-2023-5363",
+  "recorded": "2026-11-08",
+  "note": "Unmodified advisory body. Recorded while checking the Debian:12 ecosystem against a container (see tests/integration/debian-vs-osv.sh)."
+}

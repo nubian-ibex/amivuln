@@ -8,9 +8,11 @@
 
 #![forbid(unsafe_code)]
 
+mod deb;
 mod pacman;
 mod rpm;
 
+pub use deb::{DebVersion, debvercmp};
 pub use pacman::{PacmanVersion, alpm_vercmp, pacman_vercmp};
 pub use rpm::{RpmEvr, rpmvercmp};
 
