@@ -1,13 +1,15 @@
 [package]
 name = "amivuln-version"
-description = "Version comparison for RPM, pacman, Debian, apk and semver."
+description = "Version comparison for RPM and pacman packages (rpmvercmp, alpm_pkg_vercmp), verified against the reference tools. Internal crate of amivuln."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+homepage.workspace = true
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
 
 [lints]
 workspace = true

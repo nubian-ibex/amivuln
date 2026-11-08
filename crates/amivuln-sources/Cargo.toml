@@ -1,13 +1,15 @@
 [package]
 name = "amivuln-sources"
-description = "Clients for vulnerability, distro and enrichment data sources."
+description = "Parsers and HTTP client for the vulnerability data sources used by amivuln. Internal crate: no API stability."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+homepage.workspace = true
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 amivuln-core = { path = "../amivuln-core", version = "0.0.2" }

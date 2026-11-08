@@ -17,7 +17,7 @@ amivuln answers: which CVEs apply to this binary, service or package on this hos
 - `amivuln-cache`: SQLite cache and offline DB.
 - `amivuln-report`: output formatters.
 - Domain logic performs no direct I/O; edge crates implement the traits.
-- Only `amivuln` is published to crates.io before 1.0.
+- The internal crates are published to crates.io because `amivuln` depends on them; they carry no API stability promise before 1.0.
 
 ## Code rules
 

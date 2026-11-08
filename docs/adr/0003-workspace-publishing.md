@@ -1,24 +1,25 @@
-# ADR-0003: Multi-crate workspace, only amivuln published
+# ADR-0003: Multi-crate workspace, all crates published
 
-- Status: Proposed
+- Status: Accepted (amended 2026-11-08)
 - Date: 2026-11-07
 
 ## Context
 
-Library API stability is a contract the project does not want to maintain before 1.0.
+Library API stability is a contract the project does not want to maintain before 1.0. The first plan was to publish only the `amivuln` binary and mark the internal crates `publish = false`.
 
 ## Options
 
 - Single crate.
-- Multi-crate workspace, all published.
 - Multi-crate workspace, only the binary published.
+- Multi-crate workspace, all crates published.
 
 ## Decision
 
-Recommended: multi-crate workspace; internal crates use `publish = false`.
+Multi-crate workspace with **all crates published**. The first plan does not work: `cargo publish` for a crate requires every dependency to exist on crates.io, so the binary cannot be published while its internal crates are `publish = false` (confirmed on 2026-11-08, the six names returned 404 and `cargo publish -p amivuln --dry-run` failed). Accepted by the maintainer.
 
 ## Consequences
 
-- No semver obligations for internal crates before 1.0.
-- Compile-time boundaries between domain and I/O are enforced by crate edges.
-- Crates may be published later if a real library use case appears.
+- The internal crates (`amivuln-core`, `-resolve`, `-version`, `-sources`, `-cache`, `-report`) are on crates.io. Their descriptions state that they are internal and carry no API stability promise before 1.0.
+- All crates share one version and release together. `cargo publish --workspace` publishes them in dependency order.
+- Trusted Publishing must be configured for each crate on crates.io.
+- `xtask` stays `publish = false`.

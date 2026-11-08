@@ -1,13 +1,15 @@
 [package]
 name = "amivuln-core"
-description = "Domain types, pipeline, policy and JSON schema for amivuln."
+description = "Domain types, matching rules and policy for amivuln. Internal crate: no API stability."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-publish = false
+homepage.workspace = true
+keywords = ["security", "cve", "vulnerability", "linux"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 amivuln-version = { path = "../amivuln-version", version = "0.0.2" }
