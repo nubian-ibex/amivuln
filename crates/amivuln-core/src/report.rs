@@ -113,6 +113,42 @@ pub struct RunReport {
     pub unresolved: Vec<Unresolved>,
 }
 
+/// Result of `amivuln pending`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PendingReport {
+    /// Tool version.
+    pub tool_version: String,
+    /// Generation time, RFC 3339 in UTC.
+    pub generated_at: String,
+    /// Host facts.
+    pub host: HostMeta,
+    /// False when a required source failed.
+    pub complete: bool,
+    /// One entry per consulted source.
+    pub sources: Vec<SourceReport>,
+    /// Updates that close affected findings, riskiest first.
+    pub updates: Vec<crate::pending::PendingUpdate>,
+    /// Affected findings no published update closes yet.
+    pub without_fix: usize,
+}
+
+/// Result of `amivuln cve`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CveReport {
+    /// Tool version.
+    pub tool_version: String,
+    /// Generation time, RFC 3339 in UTC.
+    pub generated_at: String,
+    /// Host facts.
+    pub host: HostMeta,
+    /// False when a required source failed.
+    pub complete: bool,
+    /// One entry per consulted source.
+    pub sources: Vec<SourceReport>,
+    /// One answer per queried CVE.
+    pub answers: Vec<crate::pending::CveAnswer>,
+}
+
 /// Threshold for `--fail-on`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FailOn {

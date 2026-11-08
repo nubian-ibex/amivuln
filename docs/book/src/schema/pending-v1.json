@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "pending"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "amivuln"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_id",
+        "os_version",
+        "arch"
+      ],
+      "properties": {
+        "os_id": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        }
+      }
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "updates",
+        "findings_closed",
+        "kev",
+        "without_fix"
+      ],
+      "properties": {
+        "updates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings_closed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kev": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "without_fix": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "package",
+          "also_upgrades",
+          "target_version",
+          "closes",
+          "severity",
+          "kev",
+          "epss_max"
+        ],
+        "properties": {
+          "package": {
+            "$ref": "#/$defs/package"
+          },
+          "target_version": {
+            "type": "string"
+          },
+          "closes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity": {
+            "$ref": "#/$defs/severity"
+          },
+          "kev": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "epss_max": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "also_upgrades": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Other binary packages built from the same source that the same update also upgrades."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "age_s",
+        "required"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "arch-tracker",
+            "fedora-updateinfo",
+            "bodhi",
+            "osv",
+            "kev",
+            "epss"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "stale",
+            "failed",
+            "skipped"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "age_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "arch",
+        "ecosystem",
+        "purl"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "arch": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ecosystem": {
+          "enum": [
+            "fedora",
+            "arch"
+          ]
+        },
+        "purl": {
+          "type": "string",
+          "pattern": "^pkg:"
+        }
+      }
+    },
+    "severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
+    }
+  },
+  "$id": "https://amivuln.dev/schema/pending-v1.json",
+  "title": "amivuln pending report, schema version 1",
+  "required": [
+    "schema_version",
+    "kind",
+    "tool",
+    "generated_at",
+    "host",
+    "complete",
+    "sources",
+    "summary",
+    "updates"
+  ]
+}

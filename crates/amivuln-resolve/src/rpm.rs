@@ -99,6 +99,8 @@ impl<R: ProcessRunner> PackageResolver for RpmResolver<'_, R> {
                 .cmp(&b.name)
                 .then_with(|| a.version.to_string().cmp(&b.version.to_string()))
         });
+        // Multilib: one build installed for several architectures is one package.
+        pkgs.dedup_by(|a, b| a.name == b.name && a.version == b.version);
         Ok(pkgs)
     }
 }
@@ -252,6 +254,21 @@ mod tests {
         let names: Vec<&str> = all.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(names, ["bash", "zlib"]);
         assert_eq!(r.calls.borrow()[0][0], "-qa");
+    }
+
+    #[test]
+    fn list_all_collapses_multilib() {
+        let r = FakeRunner::ok(
+            "(none)\tglibc\t2.42\t1.fc44\tx86_64\tglibc-2.42-1.fc44.src.rpm\n\
+             (none)\tglibc\t2.42\t1.fc44\ti686\tglibc-2.42-1.fc44.src.rpm\n",
+        );
+        assert_eq!(
+            RpmResolver::new(&r, Ecosystem::Fedora(44))
+                .list_all()
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]

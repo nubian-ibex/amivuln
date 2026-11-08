@@ -25,9 +25,16 @@ struct JsonReport<'a> {
     generated_at: &'a str,
     host: Host<'a>,
     complete: bool,
+    score: JsonScore,
     sources: Vec<JsonSource<'a>>,
     targets: Vec<JsonTarget<'a>>,
     unresolved: Vec<JsonUnresolved<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonScore {
+    points: u32,
+    grade: char,
 }
 
 #[derive(Serialize)]
@@ -141,8 +148,7 @@ fn purl_encode(s: &str) -> String {
     out
 }
 
-fn purl(t: &TargetReport) -> String {
-    let p = &t.package;
+fn purl(p: &amivuln_core::PackageRef) -> String {
     let ns = p.ecosystem.purl_namespace();
     let name = purl_encode(&p.name);
     let mut qualifiers = Vec::new();
@@ -221,7 +227,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
                 Ecosystem::Fedora(_) => "fedora",
                 Ecosystem::Arch => "arch",
             },
-            purl: purl(t),
+            purl: purl(&t.package),
             provenance: match t.package.provenance {
                 amivuln_core::Provenance::PackageDb => "package_db",
                 amivuln_core::Provenance::UserInput => "user_input",
@@ -260,6 +266,14 @@ pub fn render_json(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
             arch: &r.host.arch,
         },
         complete: r.complete,
+        score: {
+            let all: Vec<Finding> = r.targets.iter().flat_map(|t| t.findings.clone()).collect();
+            let sc = amivuln_core::score(&all);
+            JsonScore {
+                points: sc.points,
+                grade: sc.grade.letter(),
+            }
+        },
         sources: r.sources.iter().map(source).collect(),
         targets: r.targets.iter().map(target).collect(),
         unresolved: r
@@ -268,6 +282,187 @@ pub fn render_json(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
             .map(|u| JsonUnresolved {
                 input: &u.input,
                 reason: &u.reason,
+            })
+            .collect(),
+    };
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    writeln!(out)
+}
+
+#[derive(Serialize)]
+struct JsonPendingReport<'a> {
+    schema_version: u32,
+    kind: &'static str,
+    tool: Tool<'a>,
+    generated_at: &'a str,
+    host: Host<'a>,
+    complete: bool,
+    sources: Vec<JsonSource<'a>>,
+    summary: JsonPendingSummary,
+    updates: Vec<JsonUpdate>,
+}
+
+#[derive(Serialize)]
+struct JsonPendingSummary {
+    updates: usize,
+    findings_closed: usize,
+    kev: usize,
+    without_fix: usize,
+}
+
+#[derive(Serialize)]
+struct JsonUpdate {
+    package: JsonPackageOnly,
+    also_upgrades: Vec<String>,
+    target_version: String,
+    closes: Vec<String>,
+    severity: &'static str,
+    kev: usize,
+    epss_max: Option<f64>,
+}
+
+#[derive(Serialize)]
+struct JsonPackageOnly {
+    name: String,
+    version: String,
+    arch: Option<String>,
+    ecosystem: &'static str,
+    purl: String,
+}
+
+fn ecosystem_name(e: Ecosystem) -> &'static str {
+    match e {
+        Ecosystem::Fedora(_) => "fedora",
+        Ecosystem::Arch => "arch",
+    }
+}
+
+fn package_only(p: &amivuln_core::PackageRef) -> JsonPackageOnly {
+    JsonPackageOnly {
+        name: p.name.clone(),
+        version: p.version.to_string(),
+        arch: p.arch.clone(),
+        ecosystem: ecosystem_name(p.ecosystem),
+        purl: purl(p),
+    }
+}
+
+/// Writes an `amivuln pending` report as JSON (`"kind": "pending"`).
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_pending_json(r: &amivuln_core::PendingReport, out: &mut dyn Write) -> io::Result<()> {
+    let doc = JsonPendingReport {
+        schema_version: SCHEMA_VERSION,
+        kind: "pending",
+        tool: Tool {
+            name: "amivuln",
+            version: &r.tool_version,
+        },
+        generated_at: &r.generated_at,
+        host: Host {
+            os_id: &r.host.os_id,
+            os_version: &r.host.os_version,
+            arch: &r.host.arch,
+        },
+        complete: r.complete,
+        sources: r.sources.iter().map(source).collect(),
+        summary: JsonPendingSummary {
+            updates: r.updates.len(),
+            findings_closed: r.updates.iter().map(|u| u.closes.len()).sum(),
+            kev: r.updates.iter().map(|u| u.kev).sum(),
+            without_fix: r.without_fix,
+        },
+        updates: r
+            .updates
+            .iter()
+            .map(|u| JsonUpdate {
+                package: package_only(&u.package),
+                also_upgrades: u.also.clone(),
+                target_version: u.target.to_string(),
+                closes: u.closes.clone(),
+                severity: severity(u.severity),
+                kev: u.kev,
+                epss_max: u.epss_max,
+            })
+            .collect(),
+    };
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    writeln!(out)
+}
+
+#[derive(Serialize)]
+struct JsonCveReport<'a> {
+    schema_version: u32,
+    kind: &'static str,
+    tool: Tool<'a>,
+    generated_at: &'a str,
+    host: Host<'a>,
+    complete: bool,
+    sources: Vec<JsonSource<'a>>,
+    answers: Vec<JsonCveAnswer>,
+}
+
+#[derive(Serialize)]
+struct JsonCveAnswer {
+    id: String,
+    state: &'static str,
+    packages: Vec<JsonCveHit>,
+}
+
+#[derive(Serialize)]
+struct JsonCveHit {
+    package: JsonPackageOnly,
+    severity: &'static str,
+    fixed_in: Option<String>,
+    kev: bool,
+    epss: Option<f64>,
+}
+
+/// Writes an `amivuln cve` report as JSON (`"kind": "cve"`).
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_cve_json(r: &amivuln_core::CveReport, out: &mut dyn Write) -> io::Result<()> {
+    use amivuln_core::CveState;
+    let doc = JsonCveReport {
+        schema_version: SCHEMA_VERSION,
+        kind: "cve",
+        tool: Tool {
+            name: "amivuln",
+            version: &r.tool_version,
+        },
+        generated_at: &r.generated_at,
+        host: Host {
+            os_id: &r.host.os_id,
+            os_version: &r.host.os_version,
+            arch: &r.host.arch,
+        },
+        complete: r.complete,
+        sources: r.sources.iter().map(source).collect(),
+        answers: r
+            .answers
+            .iter()
+            .map(|a| JsonCveAnswer {
+                id: a.id.clone(),
+                state: match a.state {
+                    CveState::Affected => "affected",
+                    CveState::NotAffected => "not_affected",
+                    CveState::Unknown => "unknown",
+                },
+                packages: a
+                    .hits
+                    .iter()
+                    .map(|h| JsonCveHit {
+                        package: package_only(&h.package),
+                        severity: severity(h.finding.severity),
+                        fixed_in: h.fixed_in.as_ref().map(ToString::to_string),
+                        kev: h.finding.kev.is_some(),
+                        epss: h.finding.epss.as_ref().map(|e| e.score),
+                    })
+                    .collect(),
             })
             .collect(),
     };
@@ -383,6 +578,74 @@ mod tests {
         let mut extra = json(true);
         extra["host"]["hostname"] = serde_json::json!("leak");
         assert!(!validator.is_valid(&extra));
+    }
+
+    fn validate(schema: &str, doc: &serde_json::Value) {
+        let schema: serde_json::Value = serde_json::from_str(schema).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        let errors: Vec<String> = validator.iter_errors(doc).map(|e| e.to_string()).collect();
+        assert!(errors.is_empty(), "schema violations: {errors:?}");
+    }
+
+    fn pending_report() -> amivuln_core::PendingReport {
+        let r = report(true);
+        let t = &r.targets[0];
+        amivuln_core::PendingReport {
+            tool_version: r.tool_version.clone(),
+            generated_at: r.generated_at.clone(),
+            host: r.host.clone(),
+            complete: true,
+            sources: r.sources.clone(),
+            updates: amivuln_core::pending_updates(std::slice::from_ref(t)),
+            without_fix: 2,
+        }
+    }
+
+    #[test]
+    fn pending_and_cve_output_validate_against_their_schemas() {
+        let mut buf = Vec::new();
+        render_pending_json(&pending_report(), &mut buf).unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        validate(
+            include_str!("../../../docs/book/src/schema/pending-v1.json"),
+            &v,
+        );
+        assert_eq!(v["kind"], "pending");
+        assert_eq!(v["updates"][0]["target_version"], "1:1.26.3-1.fc41");
+        assert_eq!(v["summary"]["without_fix"], 2);
+
+        let r = report(true);
+        let ids = vec![
+            "CVE-0000-0001".to_owned(),
+            "CVE-0000-0003".to_owned(),
+            "CVE-9999-0001".to_owned(),
+        ];
+        let answers = amivuln_core::cve_answers(&ids, &r.targets, |id| id == "CVE-0000-0003");
+        let cve = amivuln_core::CveReport {
+            tool_version: r.tool_version.clone(),
+            generated_at: r.generated_at.clone(),
+            host: r.host.clone(),
+            complete: r.complete,
+            sources: r.sources.clone(),
+            answers,
+        };
+        let mut buf = Vec::new();
+        render_cve_json(&cve, &mut buf).unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        validate(
+            include_str!("../../../docs/book/src/schema/cve-v1.json"),
+            &v,
+        );
+        assert_eq!(v["answers"][0]["state"], "affected");
+        assert_eq!(v["answers"][1]["state"], "not_affected");
+        assert_eq!(v["answers"][2]["state"], "unknown");
+    }
+
+    #[test]
+    fn run_report_carries_the_score() {
+        let v = json(true);
+        assert_eq!(v["score"]["grade"], "D");
+        assert_eq!(v["score"]["points"], 24);
     }
 
     #[test]

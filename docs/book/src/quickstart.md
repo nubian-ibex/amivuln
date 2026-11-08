@@ -8,6 +8,20 @@ amivuln openssl@3.5.1-1 --distro arch  # a version, without reading the host
 amivuln --all                          # every installed package
 ```
 
+## Questions about the whole host
+
+```bash
+amivuln cve CVE-2024-6387      # is any installed package affected?
+amivuln pending                # which updates close the most risk, riskiest first
+amivuln --packages-from list.txt   # check a package list exported from another host
+```
+
+`cve` exits 1 when a package is affected. When the distribution data has no
+record of the CVE it says so explicitly: that is not a statement that the host
+is safe. `pending` groups subpackages built from one source into one update and
+ranks by exploited (KEV) findings, severity and EPSS. A whole-system scan also
+prints a host score from A to F (see ADR-0011 in the repository).
+
 ## Read the result
 
 For every package you get the number of affected findings by severity, how
