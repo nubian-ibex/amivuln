@@ -14,8 +14,8 @@ keywords = ["security", "cve", "vulnerability", "linux"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-amivuln-core = { path = "../amivuln-core", version = "0.0.4" }
-amivuln-version = { path = "../amivuln-version", version = "0.0.4" }
+amivuln-core = { path = "../amivuln-core", version = "0.0.5" }
+amivuln-version = { path = "../amivuln-version", version = "0.0.5" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 quick-xml = "0.42.0"
@@ -25,7 +25,7 @@ thiserror = "2.0.21"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "http2", "gzip", "system-proxy"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 tokio = { version = "1.54.1", default-features = false, features = ["rt", "time"] }
-amivuln-cache = { path = "../amivuln-cache", version = "0.0.4" }
+amivuln-cache = { path = "../amivuln-cache", version = "0.0.5" }
 
 [dev-dependencies]
 wiremock = "0.6.5"
