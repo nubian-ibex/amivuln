@@ -4,7 +4,7 @@ version = 1
 path = [
   "**/*.md", "**/*.toml", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.lock",
   ".editorconfig", ".gitignore", "justfile", "CITATION.cff",
-  "assets/**", "tests/fixtures/**", "supply-chain/**", "docs/book/**",
+  "assets/**", "tests/fixtures/**", "tests/ground-truth/**", "supply-chain/**", "docs/book/**", "contrib/**",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 amivuln contributors"

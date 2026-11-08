@@ -34,7 +34,13 @@ actions:
 cov:
     cargo llvm-cov nextest --workspace --all-features --lcov --output-path lcov.info
 
-ci: fmt-check lint test doc deny audit vet typos reuse actions
+assets:
+    cargo xtask assets
+
+assets-check:
+    cargo xtask assets --check
+
+ci: fmt-check lint test doc assets-check deny audit vet typos reuse actions
 
 fmt-check:
     cargo fmt --all --check

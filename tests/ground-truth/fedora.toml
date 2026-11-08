@@ -1,0 +1,66 @@
+# Ground truth for the Fedora updateinfo fixture recorded on 2026-11-07
+# (tests/fixtures/http/fedora-updateinfo/2026-11-07). Versions are full EVRs.
+# Update ids (FEDORA-...) stand for security updates that name no CVE bug.
+distro = "fedora:43"
+
+[[case]]
+name = "python-multipart before the fix"
+package = "python3-multipart"
+source = "python-multipart"
+version = "0:1.3.0-1.fc43"
+expect = ["CVE-2026-28356"]
+
+[[case]]
+name = "python-multipart at the fix"
+package = "python3-multipart"
+source = "python-multipart"
+version = "0:1.3.1-1.fc43"
+forbid = ["CVE-2026-28356"]
+
+[[case]]
+name = "python-wheel without the epoch bump is older"
+package = "python3-wheel"
+version = "0:0.45.1-20.fc43"
+expect = ["CVE-2026-24049"]
+
+[[case]]
+name = "python-wheel with the epoch bump is fixed"
+package = "python3-wheel"
+version = "1:0.45.1-20.fc43"
+forbid = ["CVE-2026-24049"]
+
+[[case]]
+name = "mingw-exiv2 older than the fix reports all three CVEs"
+package = "mingw-exiv2"
+version = "0:0.28.0-1.fc43"
+expect = ["CVE-2026-25884", "CVE-2026-27596", "CVE-2026-27631"]
+
+[[case]]
+name = "mingw-exiv2 at the fix"
+package = "mingw-exiv2"
+version = "0:0.28.8-1.fc43"
+forbid = ["CVE-2026-25884", "CVE-2026-27596", "CVE-2026-27631"]
+
+[[case]]
+name = "description-only CVE mentions are never reported as fixed CVEs"
+package = "perl-Authen-OATH"
+version = "0:0.1-1.fc43"
+forbid_all = true
+
+[[case]]
+name = "enhancement update with no CVE leaves nothing"
+package = "erlang-gun"
+version = "0:0.1-1.fc43"
+forbid_all = true
+
+[[case]]
+name = "security update without a CVE bug is reported by update id"
+package = "rubygem-yard"
+version = "0:0.9.30-1.fc43"
+expect_update_id = true
+
+[[case]]
+name = "package updateinfo knows nothing about"
+package = "bash"
+version = "0:5.3.9-3.fc43"
+forbid_all = true

@@ -42,26 +42,41 @@ impl<R: ProcessRunner> PackageResolver for PacmanResolver<'_, R> {
         }
     }
 
+    fn list_all(&self) -> Result<Vec<PackageRef>, ResolveError> {
+        let text = self.run(&["-Q"], "installed packages")?;
+        let mut pkgs = Vec::new();
+        for line in text.lines().filter(|l| !l.is_empty()) {
+            pkgs.push(parse_pair(line)?);
+        }
+        pkgs.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(pkgs)
+    }
+
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError> {
         let text = self.run(&["-Q", "--", name], name)?;
         let line = text
             .lines()
             .find(|l| !l.is_empty())
             .ok_or_else(|| ResolveError::NotFound(name.to_owned()))?;
-        let (pkg, version) = line
-            .split_once(' ')
-            .filter(|(p, v)| !p.is_empty() && !v.is_empty() && !v.contains(' '))
-            .ok_or_else(|| ResolveError::Parse(line.chars().take(120).collect()))?;
-        let parsed = version.parse().unwrap_or_else(|never| match never {});
-        Ok(PackageRef {
-            ecosystem: Ecosystem::Arch,
-            name: pkg.to_owned(),
-            source_name: None,
-            version: Version::Pacman(parsed),
-            arch: None,
-            provenance: Provenance::PackageDb,
-        })
+        parse_pair(line)
     }
+}
+
+/// Parses one `name version` line from `pacman -Q`.
+fn parse_pair(line: &str) -> Result<PackageRef, ResolveError> {
+    let (pkg, version) = line
+        .split_once(' ')
+        .filter(|(p, v)| !p.is_empty() && !v.is_empty() && !v.contains(' '))
+        .ok_or_else(|| ResolveError::Parse(line.chars().take(120).collect()))?;
+    let parsed = version.parse().unwrap_or_else(|never| match never {});
+    Ok(PackageRef {
+        ecosystem: Ecosystem::Arch,
+        name: pkg.to_owned(),
+        source_name: None,
+        version: Version::Pacman(parsed),
+        arch: None,
+        provenance: Provenance::PackageDb,
+    })
 }
 
 #[cfg(test)]
@@ -106,6 +121,17 @@ mod tests {
             PacmanResolver::new(&r).by_name("x"),
             Err(ResolveError::Parse(_))
         ));
+    }
+
+    #[test]
+    fn list_all_parses_every_line() {
+        let r = FakeRunner::ok("zlib 1.3-1\nbash 5.3-1\n");
+        let all = PacmanResolver::new(&r).list_all().unwrap();
+        assert_eq!(
+            all.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+            ["bash", "zlib"]
+        );
+        assert_eq!(r.calls.borrow()[0], ["-Q"]);
     }
 
     #[test]

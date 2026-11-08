@@ -28,6 +28,65 @@ pub const MAX_XML_BYTES: usize = 256 * 1024 * 1024;
 /// Deepest element nesting accepted.
 const MAX_DEPTH: usize = 16;
 
+/// Finds the `updateinfo` file in `repomd.xml`.
+///
+/// Returns the path relative to the repository root, for example
+/// `repodata/<sha256>-updateinfo.xml.zst`. Only zstd-compressed files are
+/// accepted and the path is checked so it cannot escape `repodata/`.
+///
+/// # Errors
+///
+/// Fails when `repomd.xml` is malformed, lists no `updateinfo`, or lists one
+/// in an unsupported or suspicious form.
+pub fn updateinfo_location(repomd: &[u8]) -> Result<String, UpdateinfoError> {
+    if repomd.len() > 4 * 1024 * 1024 {
+        return Err(UpdateinfoError::TooLarge);
+    }
+    let mut reader = Reader::from_reader(repomd);
+    let mut in_updateinfo = false;
+    loop {
+        let event = reader
+            .read_event()
+            .map_err(|e| UpdateinfoError::Xml(e.to_string()))?;
+        match event {
+            Event::Start(e) if e.name().as_ref() == "data" => {
+                in_updateinfo = attr(&e, "type").as_deref() == Some("updateinfo");
+            }
+            Event::End(e) if e.name().as_ref() == "data" => in_updateinfo = false,
+            Event::Empty(e) | Event::Start(e)
+                if in_updateinfo && e.name().as_ref() == "location" =>
+            {
+                let href = attr(&e, "href")
+                    .ok_or_else(|| UpdateinfoError::Xml("location without href".into()))?;
+                return validate_location(&href);
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Err(UpdateinfoError::Xml(
+        "repomd.xml lists no updateinfo".into(),
+    ))
+}
+
+fn validate_location(href: &str) -> Result<String, UpdateinfoError> {
+    let ok = href.strip_prefix("repodata/").is_some_and(|f| {
+        f.ends_with("-updateinfo.xml.zst")
+            && f.len() <= 160
+            && f.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_'))
+            && !f.contains("..")
+    });
+    if ok {
+        Ok(href.to_owned())
+    } else {
+        Err(UpdateinfoError::Xml(format!(
+            "unsupported updateinfo location {:?} (only repodata/*-updateinfo.xml.zst is supported)",
+            href.chars().take(80).collect::<String>()
+        )))
+    }
+}
+
 /// Failures while reading `updateinfo`.
 #[derive(Debug, thiserror::Error)]
 pub enum UpdateinfoError {
@@ -97,6 +156,7 @@ fn attr(e: &BytesStart<'_>, name: &str) -> Option<String> {
 #[derive(Default)]
 struct UpdateState {
     id: String,
+    kind: String,
     severity: String,
     cves: Vec<String>,
     packages: Vec<(String, String)>, // (name, evr)
@@ -129,7 +189,12 @@ impl Updateinfo {
                         return Err(UpdateinfoError::Xml("nesting too deep".into()));
                     }
                     match e.name().as_ref() {
-                        "update" => state = Some(UpdateState::default()),
+                        "update" => {
+                            state = Some(UpdateState {
+                                kind: attr(&e, "type").unwrap_or_default(),
+                                ..UpdateState::default()
+                            });
+                        }
                         "id" if state.is_some() => text_target = Some("id"),
                         "severity" if state.is_some() => text_target = Some("severity"),
                         _ => Self::element(&e, state.as_mut()),
@@ -187,23 +252,35 @@ impl Updateinfo {
     }
 
     fn finish(&mut self, st: &UpdateState) {
-        if st.cves.is_empty() {
+        // A security update that names no CVE bug is still a pending security
+        // fix: record it under the update id so it cannot go unreported.
+        let ids: Vec<String> = if st.cves.is_empty() && st.kind == "security" && !st.id.is_empty() {
+            vec![st.id.clone()]
+        } else {
+            st.cves.clone()
+        };
+        if ids.is_empty() {
             return;
         }
         let sev = severity(&st.severity);
         for (name, evr) in &st.packages {
             let fixed_in: RpmEvr = evr.parse().unwrap_or_else(|never| match never {});
-            for cve in &st.cves {
-                self.by_package
-                    .entry(name.clone())
-                    .or_default()
-                    .push(FedoraFix {
-                        cve: cve.clone(),
-                        package: name.clone(),
-                        fixed_in: fixed_in.clone(),
-                        severity: sev,
-                        update: st.id.clone(),
-                    });
+            for cve in &ids {
+                let list = self.by_package.entry(name.clone()).or_default();
+                // The same build is often listed for several arches (src, noarch).
+                if list
+                    .iter()
+                    .any(|f| f.cve == *cve && f.update == st.id && f.fixed_in == fixed_in)
+                {
+                    continue;
+                }
+                list.push(FedoraFix {
+                    cve: cve.clone(),
+                    package: name.clone(),
+                    fixed_in: fixed_in.clone(),
+                    severity: sev,
+                    update: st.id.clone(),
+                });
             }
         }
     }
@@ -280,6 +357,40 @@ mod tests {
         Updateinfo::parse(FIXTURE).unwrap()
     }
 
+    const REPOMD: &[u8] = br#"<?xml version="1.0"?>
+<repomd xmlns="http://linux.duke.edu/metadata/repo">
+  <data type="primary"><location href="repodata/aaa-primary.xml.zst"/></data>
+  <data type="updateinfo">
+    <checksum type="sha256">625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c</checksum>
+    <location href="repodata/625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c-updateinfo.xml.zst"/>
+  </data>
+</repomd>"#;
+
+    #[test]
+    fn repomd_location_is_found() {
+        assert_eq!(
+            updateinfo_location(REPOMD).unwrap(),
+            "repodata/625784996700016f59df8d29ffcba5fe597a1345bdf12a9492d635b41b28f99c-updateinfo.xml.zst"
+        );
+    }
+
+    #[test]
+    fn repomd_rejects_missing_or_suspicious_locations() {
+        assert!(updateinfo_location(b"<repomd></repomd>").is_err());
+        for href in [
+            "../etc/passwd",
+            "repodata/../x-updateinfo.xml.zst",
+            "repodata/a-updateinfo.xml.gz",
+            "https://evil.example/x-updateinfo.xml.zst",
+            "repodata/a b-updateinfo.xml.zst",
+        ] {
+            let xml = format!(
+                r#"<repomd><data type="updateinfo"><location href="{href}"/></data></repomd>"#
+            );
+            assert!(updateinfo_location(xml.as_bytes()).is_err(), "{href}");
+        }
+    }
+
     #[test]
     fn single_cve_update_maps_binary_and_source_packages() {
         let i = info();
@@ -319,6 +430,20 @@ mod tests {
         let i = info();
         // perl-Authen-OATH mentions a CVE in its description but has no CVE bug.
         assert!(i.fixes_for("perl-Authen-OATH").is_empty());
+    }
+
+    #[test]
+    fn security_updates_without_cve_bugs_are_kept_under_the_update_id() {
+        let i = info();
+        let yard = i.fixes_for("rubygem-yard");
+        assert_eq!(yard.len(), 1);
+        assert!(yard[0].cve.starts_with("FEDORA-2026-"), "{}", yard[0].cve);
+        assert_eq!(yard[0].severity, Severity::Low);
+        // Plack mentions CVE ids only in its description: still reported by
+        // update id, never as claimed CVE fixes.
+        let plack = i.fixes_for("perl-Plack");
+        assert!(plack.iter().all(|f| f.cve.starts_with("FEDORA-2026-")));
+        assert!(!plack.is_empty());
     }
 
     #[test]

@@ -31,6 +31,8 @@ struct RawGroup {
     status: String,
     severity: String,
     #[serde(default)]
+    affected: Option<String>,
+    #[serde(default)]
     fixed: Option<String>,
     issues: Vec<String>,
 }
@@ -46,6 +48,9 @@ pub struct ArchEntry {
     pub severity: Severity,
     /// What the tracker says about this package.
     pub status: DistroStatus,
+    /// First affected version. Installed versions older than this are not
+    /// covered by the group and must not be reported for it.
+    pub affected_since: Option<Version>,
 }
 
 /// Parsed tracker data, queryable by package name.
@@ -118,6 +123,11 @@ impl ArchTracker {
             .flat_map(|g| {
                 let sev = severity(&g.severity);
                 let st = status(g);
+                let since = g
+                    .affected
+                    .as_deref()
+                    .and_then(|v| v.parse().ok())
+                    .map(Version::Pacman);
                 g.issues
                     .iter()
                     .filter(|cve| is_cve_id(cve))
@@ -126,6 +136,7 @@ impl ArchTracker {
                         cve: cve.clone(),
                         severity: sev,
                         status: st.clone(),
+                        affected_since: since.clone(),
                     })
             })
             .collect();
@@ -196,6 +207,13 @@ mod tests {
         let e = t.entries_for("vim");
         assert!(e.iter().all(|x| x.status == DistroStatus::Unknown));
         assert_eq!(classify(&pac("1-1"), &e[0].status), Verdict::Unverified);
+    }
+
+    #[test]
+    fn affected_since_is_kept() {
+        let t = ArchTracker::parse(FIXTURE).unwrap();
+        let e = t.entries_for("djvulibre");
+        assert_eq!(e[0].affected_since, Some(pac("3.5.28-6")));
     }
 
     #[test]

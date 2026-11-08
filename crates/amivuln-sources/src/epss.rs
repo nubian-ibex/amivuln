@@ -98,6 +98,13 @@ impl EpssScores {
         Ok(Self { scores })
     }
 
+    /// Combines two result sets (several batched requests).
+    #[must_use]
+    pub fn merged(mut self, other: Self) -> Self {
+        self.scores.extend(other.scores);
+        self
+    }
+
     /// The score for a CVE.
     #[must_use]
     pub fn get(&self, cve: &str) -> Option<&Epss> {

@@ -15,6 +15,8 @@ use crate::sanitize_terminal;
 pub struct RenderOptions {
     /// Use ANSI colors.
     pub color: bool,
+    /// Leave out targets without findings (whole-system scans).
+    pub hide_clean: bool,
 }
 
 fn paint(opts: RenderOptions, code: &str, text: &str) -> String {
@@ -164,18 +166,40 @@ fn write_footer(out: &mut dyn Write, opts: RenderOptions, r: &RunReport) -> io::
     }
 }
 
+fn is_clean(t: &TargetReport) -> bool {
+    t.findings.is_empty()
+}
+
+fn write_totals(out: &mut dyn Write, r: &RunReport) -> io::Result<()> {
+    if r.targets.len() > 1 {
+        let with = r.targets.iter().filter(|t| !is_clean(t)).count();
+        writeln!(
+            out,
+            "checked {} packages, {} with findings",
+            r.targets.len(),
+            with
+        )?;
+    }
+    Ok(())
+}
+
 /// One block per target: counts, the fix to apply, then the footer.
 ///
 /// # Errors
 ///
 /// Propagates write errors.
 pub fn render_summary(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -> io::Result<()> {
-    for t in &r.targets {
+    for t in r
+        .targets
+        .iter()
+        .filter(|t| !(opts.hide_clean && is_clean(t)))
+    {
         write_target_header(out, t)?;
         write_counts(out, opts, &Summary::of(&t.findings))?;
         write_fix(out, t)?;
         writeln!(out)?;
     }
+    write_totals(out, r)?;
     write_footer(out, opts, r)
 }
 
@@ -212,7 +236,11 @@ fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::R
 ///
 /// Propagates write errors.
 pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -> io::Result<()> {
-    for t in &r.targets {
+    for t in r
+        .targets
+        .iter()
+        .filter(|t| !(opts.hide_clean && is_clean(t)))
+    {
         write_target_header(out, t)?;
         write_counts(out, opts, &Summary::of(&t.findings))?;
         write_fix(out, t)?;
@@ -240,6 +268,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
         }
         writeln!(out)?;
     }
+    write_totals(out, r)?;
     write_footer(out, opts, r)
 }
 
@@ -335,7 +364,15 @@ mod tests {
         color: bool,
     ) -> String {
         let mut buf = Vec::new();
-        f(r, RenderOptions { color }, &mut buf).unwrap();
+        f(
+            r,
+            RenderOptions {
+                color,
+                hide_clean: false,
+            },
+            &mut buf,
+        )
+        .unwrap();
         String::from_utf8(buf).unwrap()
     }
 
@@ -391,6 +428,30 @@ mod tests {
     fn color_is_applied_only_on_request() {
         let out = render(render_summary, &report(true), true);
         assert!(out.contains("\u{1b}[31mHIGH\u{1b}[0m"));
+    }
+
+    #[test]
+    fn whole_system_scans_hide_clean_targets_and_count_them() {
+        let mut r = report(true);
+        let mut clean = r.targets[0].clone();
+        clean.input = "zlib".into();
+        clean.package.name = "zlib".into();
+        clean.findings.clear();
+        r.targets.push(clean);
+        let mut buf = Vec::new();
+        render_summary(
+            &r,
+            RenderOptions {
+                color: false,
+                hide_clean: true,
+            },
+            &mut buf,
+        )
+        .unwrap();
+        let out = String::from_utf8(buf).unwrap();
+        assert!(out.contains("nginx 1:1.26.2"), "{out}");
+        assert!(!out.contains("zlib"), "{out}");
+        assert!(out.contains("checked 2 packages, 1 with findings"), "{out}");
     }
 
     #[test]

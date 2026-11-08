@@ -1,0 +1,60 @@
+# Ground truth for the Arch Security Tracker fixture recorded on 2026-11-07
+# (tests/fixtures/http/arch-tracker/2026-11-07). `expect` lists CVEs that must
+# be reported as affected; `forbid` lists CVEs that must not be reported at
+# all (false positives). Status "unverified" lists CVEs that must appear only
+# in the unverified group.
+distro = "arch"
+
+[[case]]
+name = "djvulibre older than the fixed build"
+package = "djvulibre"
+version = "3.5.28-6"
+expect = ["CVE-2025-53367"]
+
+[[case]]
+name = "djvulibre exactly at the fixed build"
+package = "djvulibre"
+version = "3.5.30-1"
+forbid = ["CVE-2025-53367"]
+
+[[case]]
+name = "djvulibre newer than the fixed build"
+package = "djvulibre"
+version = "3.6.0-1"
+forbid = ["CVE-2025-53367"]
+
+[[case]]
+name = "djvulibre older than the range the group covers"
+package = "djvulibre"
+version = "3.5.20-1"
+forbid = ["CVE-2025-53367"]
+
+[[case]]
+name = "pam vulnerable with no fix published"
+package = "pam"
+version = "1.7.0-2"
+expect = ["CVE-2025-6020"]
+
+[[case]]
+name = "poppler split package, older build"
+package = "poppler-glib"
+version = "22.08.0-1"
+expect = ["CVE-2022-27337", "CVE-2022-38784"]
+
+[[case]]
+name = "poppler split package, fixed build"
+package = "poppler-glib"
+version = "22.08.0-2"
+forbid = ["CVE-2022-27337", "CVE-2022-38784"]
+
+[[case]]
+name = "tracker says not affected"
+package = "gnome-remote-desktop"
+version = "42.1-1"
+forbid = ["CVE-2022-1736"]
+
+[[case]]
+name = "tracker has no statement for this package"
+package = "bash"
+version = "5.3-1"
+forbid = ["CVE-2025-53367", "CVE-2025-6020"]

@@ -139,4 +139,79 @@
       </collection>
     </pkglist>
   </update>
+  <update from="updates@fedoraproject.org" status="stable" type="security" version="2.0">
+    <id>FEDORA-2026-2d0a32ddc0</id>
+    <title>rubygem-yard-0.9.37-5.fc43</title>
+    <issued date="2026-05-28 07:52:30"/>
+    <updated date="2026-06-05 04:07:33"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>Low</severity>
+    <summary>rubygem-yard-0.9.37-5.fc43 security update</summary>
+    <description>Backport 0.9.41 / 0.9.44 fixes for possible path traversal issues</description>
+    <references/>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="rubygem-yard" version="0.9.37" release="5.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/r/rubygem-yard-0.9.37-5.fc43.src.rpm">
+          <filename>rubygem-yard-0.9.37-5.fc43.src.rpm</filename>
+        </package>
+        <package name="rubygem-yard" version="0.9.37" release="5.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/r/rubygem-yard-0.9.37-5.fc43.noarch.rpm">
+          <filename>rubygem-yard-0.9.37-5.fc43.noarch.rpm</filename>
+        </package>
+        <package name="rubygem-yard-doc" version="0.9.37" release="5.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/r/rubygem-yard-doc-0.9.37-5.fc43.noarch.rpm">
+          <filename>rubygem-yard-doc-0.9.37-5.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
+  <update from="updates@fedoraproject.org" status="stable" type="security" version="2.0">
+    <id>FEDORA-2026-1f56c920d8</id>
+    <title>perl-Plack-1.0055-1.fc43 perl-Plack-Middleware-ReverseProxy-0.17-1.fc43</title>
+    <issued date="2026-10-18 08:34:24"/>
+    <updated date="2026-10-27 01:24:38"/>
+    <rights>Copyright (C) 2026 Red Hat, Inc. and others.</rights>
+    <release>Fedora 43</release>
+    <severity>Moderate</severity>
+    <summary>perl-Plack-1.0055-1.fc43 perl-Plack-Middleware-ReverseProxy-0.17-1.fc43 security update</summary>
+    <description>A number of security issues were found in the Plack stack:
+SECURITY
+    Fix memory leak of every request env in Plack::Middleware::Recursive (CVE-2026-110333)
+    Plack::Request::Upload-&gt;basename never returns '', '.' or '..' (CVE-2026-110332)
+    Plack::App::URLMap matches SERVER_PORT literally when stripping it from Host (CVE-2026-110335)
+BUG FIXES
+    Plack::Middleware::ErrorDocument restores the env after a subrequest, so outer middleware such as AccessLog sees the original request (CVE-2026-110334)
+DOCUMENTATION
+    Document that Plack::Handler::FCGI and Apache2 keep dot segments in PATH_INFO and warn against relying on front-server path-based access control (CVE-2026-110336)</description>
+    <references/>
+    <pkglist>
+      <collection short="F43">
+        <name>Fedora 43</name>
+        <package name="perl-Plack" version="1.0055" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/p/perl-Plack-1.0055-1.fc43.src.rpm">
+          <filename>perl-Plack-1.0055-1.fc43.src.rpm</filename>
+        </package>
+        <package name="perl-Plack-Test" version="1.0055" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-Test-1.0055-1.fc43.noarch.rpm">
+          <filename>perl-Plack-Test-1.0055-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Plack-Middleware-Log4perl" version="1.0055" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-Middleware-Log4perl-1.0055-1.fc43.noarch.rpm">
+          <filename>perl-Plack-Middleware-Log4perl-1.0055-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Plack-Handler-Apache2" version="1.0055" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-Handler-Apache2-1.0055-1.fc43.noarch.rpm">
+          <filename>perl-Plack-Handler-Apache2-1.0055-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Plack-Handler-FCGI" version="1.0055" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-Handler-FCGI-1.0055-1.fc43.noarch.rpm">
+          <filename>perl-Plack-Handler-FCGI-1.0055-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Plack" version="1.0055" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-1.0055-1.fc43.noarch.rpm">
+          <filename>perl-Plack-1.0055-1.fc43.noarch.rpm</filename>
+        </package>
+        <package name="perl-Plack-Middleware-ReverseProxy" version="0.17" release="1.fc43" epoch="0" arch="src" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/SRPMS/p/perl-Plack-Middleware-ReverseProxy-0.17-1.fc43.src.rpm">
+          <filename>perl-Plack-Middleware-ReverseProxy-0.17-1.fc43.src.rpm</filename>
+        </package>
+        <package name="perl-Plack-Middleware-ReverseProxy" version="0.17" release="1.fc43" epoch="0" arch="noarch" src="https://download.fedoraproject.org/pub/fedora/linux/updates/43/i386/p/perl-Plack-Middleware-ReverseProxy-0.17-1.fc43.noarch.rpm">
+          <filename>perl-Plack-Middleware-ReverseProxy-0.17-1.fc43.noarch.rpm</filename>
+        </package>
+      </collection>
+    </pkglist>
+  </update>
 </updates>

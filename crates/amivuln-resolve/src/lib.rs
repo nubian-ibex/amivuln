@@ -7,12 +7,14 @@
 
 #![forbid(unsafe_code)]
 
+mod build;
 mod host;
 mod pacman;
 mod rpm;
 mod system;
 mod target;
 
+pub use build::{from_name_version, from_purl};
 pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;
 pub use rpm::RpmResolver;
@@ -55,6 +57,13 @@ pub trait PackageResolver {
     /// [`ResolveError::NotFound`] when it is not installed,
     /// [`ResolveError::Ambiguous`] when several versions are installed.
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError>;
+
+    /// Every installed package, sorted by name then version.
+    ///
+    /// # Errors
+    ///
+    /// Fails when the package manager cannot be run or prints garbage.
+    fn list_all(&self) -> Result<Vec<PackageRef>, ResolveError>;
 }
 
 #[cfg(test)]
