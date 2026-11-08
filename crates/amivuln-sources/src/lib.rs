@@ -1,10 +1,13 @@
 // SPDX-FileCopyrightText: 2026 amivuln contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Parsers and models for vulnerability data sources.
+//! Data sources: parsers, an HTTP client and cache-aware fetching.
 //!
-//! Network access is not part of this crate yet; parsers take bytes so they
-//! can be tested with recorded fixtures and fuzzed.
+//! Parsers take bytes so they can be tested with recorded fixtures and
+//! fuzzed. [`http`] performs bounded, conditional requests and [`fetch`]
+//! combines it with the cache so every answer carries a source status.
 
 #![forbid(unsafe_code)]
 
 pub mod arch;
+pub mod fetch;
+pub mod http;
