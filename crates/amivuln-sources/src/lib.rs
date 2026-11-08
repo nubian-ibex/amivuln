@@ -9,6 +9,23 @@
 #![forbid(unsafe_code)]
 
 pub mod arch;
+pub mod epss;
 pub mod fedora;
 pub mod fetch;
 pub mod http;
+pub mod kev;
+
+/// True for identifiers shaped like `CVE-YYYY-NNNN...`. Identifiers from the
+/// network that do not match are dropped rather than shown to the user.
+pub(crate) fn is_cve_id(s: &str) -> bool {
+    let Some(rest) = s.strip_prefix("CVE-") else {
+        return false;
+    };
+    let Some((year, seq)) = rest.split_once('-') else {
+        return false;
+    };
+    year.len() == 4
+        && year.bytes().all(|b| b.is_ascii_digit())
+        && (4..=12).contains(&seq.len())
+        && seq.bytes().all(|b| b.is_ascii_digit())
+}
