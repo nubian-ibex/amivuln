@@ -58,3 +58,15 @@ name = "tracker has no statement for this package"
 package = "bash"
 version = "5.3-1"
 forbid = ["CVE-2025-53367", "CVE-2025-6020"]
+
+[[case]]
+name = "pam: a newer upstream version than the stale vulnerable entry is not affected"
+package = "pam"
+version = "1.8.0-1"
+forbid_affected = ["CVE-2025-6020"]
+
+[[case]]
+name = "pam: a rebuild of the vulnerable upstream version is affected"
+package = "pam"
+version = "1.7.0-3"
+expect = ["CVE-2025-6020"]

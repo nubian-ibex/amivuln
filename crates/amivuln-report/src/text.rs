@@ -206,7 +206,7 @@ pub fn render_summary(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -
 fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::Result<()> {
     let fixed = match &f.verdict {
         Verdict::Affected { fixed_in: Some(v) } => sanitize_terminal(&v.to_string()),
-        _ => "-".to_owned(),
+        _ => "no fix published".to_owned(),
     };
     let kev = f.kev.as_ref().map_or(String::new(), |k| {
         format!(
@@ -221,7 +221,7 @@ fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::R
         .map_or(String::new(), |e| format!("  EPSS {:.2}", e.score));
     writeln!(
         out,
-        "    {:<16} {:<18} fixed in {}{}{}",
+        "    {:<16} {:<18} fix: {}{}{}",
         sanitize_terminal(&f.id),
         severity_label(opts, f.severity),
         fixed,
