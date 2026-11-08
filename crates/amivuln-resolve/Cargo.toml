@@ -12,8 +12,8 @@ keywords = ["security", "cve", "vulnerability", "linux"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-amivuln-core = { path = "../amivuln-core", version = "0.0.2" }
-amivuln-version = { path = "../amivuln-version", version = "0.0.2" }
+amivuln-core = { path = "../amivuln-core", version = "0.0.3" }
+amivuln-version = { path = "../amivuln-version", version = "0.0.3" }
 thiserror = "2.0.21"
 
 [lints]
