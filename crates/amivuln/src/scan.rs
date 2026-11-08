@@ -8,6 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use amivuln_cache::{Cache, Policy as CachePolicy};
+use amivuln_core::VexStatement;
 use amivuln_core::{
     Ecosystem, ExitCode, PackageRef, SourceId, SourceReport, SourceStatus, TargetReport,
     Unresolved, sort_findings,
@@ -595,6 +596,7 @@ async fn gather(
     eco: Ecosystem,
     resolved: &[(String, PackageRef)],
     probe: &[String],
+    vex: &[VexStatement],
 ) -> Evaluated {
     let mut sources = Vec::new();
     if resolved.is_empty() {
@@ -632,9 +634,9 @@ async fn gather(
         .iter()
         .map(|(input, pkg)| {
             let findings = match &data {
-                Some(DistroData::Arch(t)) => arch_findings(pkg, t),
-                Some(DistroData::Fedora(i)) => fedora_findings(pkg, i),
-                Some(DistroData::Osv(o)) => osv_findings(pkg, o),
+                Some(DistroData::Arch(t)) => arch_findings(pkg, t, vex),
+                Some(DistroData::Fedora(i)) => fedora_findings(pkg, i, vex),
+                Some(DistroData::Osv(o)) => osv_findings(pkg, o, vex),
                 None => Vec::new(),
             };
             TargetReport {
@@ -713,7 +715,7 @@ pub(crate) fn evaluate(
         },
         offline: s.offline,
     };
-    Ok(rt.block_on(gather(&fetcher, &s.config, eco, resolved, probe)))
+    Ok(rt.block_on(gather(&fetcher, &s.config, eco, resolved, probe, &s.vex)))
 }
 
 /// Opens the on-disk cache. A cache that cannot be opened is a warning, not

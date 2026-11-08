@@ -89,6 +89,9 @@ pub struct Global {
     /// Treat this value as a package URL (repeatable).
     #[arg(long, global = true, value_name = "PURL")]
     pub purl: Vec<String>,
+    /// `OpenVEX` documents stating that a product is not affected (repeatable).
+    #[arg(long, global = true, value_name = "FILE")]
+    pub vex: Vec<std::path::PathBuf>,
     /// Check the packages listed in FILE (one `name@version` per line) instead of
     /// the installed ones; for example a list exported from another host.
     #[arg(long, global = true, value_name = "FILE")]

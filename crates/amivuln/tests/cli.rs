@@ -644,6 +644,69 @@ async fn sarif_markdown_and_csv_output() {
     assert!(String::from_utf8_lossy(&bad.stderr).contains("sarif, markdown or csv"));
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn vex_not_affected_statement_overrides_the_verdict() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let vex = sb.path().join("vex.json");
+    std::fs::write(
+        &vex,
+        r#"{"author":"Vendor Security Team","statements":[{"status":"not_affected","vulnerability_id":"CVE-2026-28356","justification":"vulnerable code not in this build","products":[{"@id":"pkg:rpm/fedora/python3-multipart@1.3.0-1.fc43"}]}]}"#,
+    )
+    .unwrap();
+    let vex_leak: &'static str = Box::leak(vex.display().to_string().into_boxed_str());
+
+    let out = run(
+        sb.cmd(),
+        vec![
+            "--vex",
+            vex_leak,
+            "--fail-on",
+            "high",
+            "-f",
+            "json",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(0), "{}", stdout(&out));
+    let v = json(&out);
+    let f = &v["targets"][0]["findings"][0];
+    assert_eq!(f["distro_status"]["state"], "not_affected");
+    assert!(
+        f["distro_status"]["fixed_in"]
+            .as_str()
+            .unwrap_or("")
+            .contains("VEX by Vendor Security Team"),
+        "{f}"
+    );
+
+    // Without the VEX file the same run fails at HIGH.
+    let bare = run(
+        sb.cmd(),
+        vec![
+            "--fail-on",
+            "high",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(bare.status.code(), Some(1));
+
+    // A malformed VEX file is a usage error.
+    let bad = sb.path().join("bad.json");
+    std::fs::write(&bad, "[").unwrap();
+    let bad_leak: &'static str = Box::leak(bad.display().to_string().into_boxed_str());
+    let out = run(sb.cmd(), vec!["--vex", bad_leak, "nginx@1.0-1"]).await;
+    assert_eq!(out.status.code(), Some(64));
+}
+
 #[test]
 fn help_version_completions_and_config_commands() {
     let dir = tempfile::tempdir().unwrap();

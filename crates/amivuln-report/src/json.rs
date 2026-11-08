@@ -197,7 +197,7 @@ fn finding(f: &Finding) -> JsonFinding<'_> {
         Verdict::Affected { fixed_in } => ("affected", fixed_in.as_ref().map(ToString::to_string)),
         Verdict::Unverified => ("unknown", None),
         Verdict::Patched => ("fixed", None),
-        Verdict::NotAffected(_) => ("not_affected", None),
+        Verdict::NotAffected(why) => ("not_affected", Some(why.clone())),
     };
     JsonFinding {
         id: &f.id,

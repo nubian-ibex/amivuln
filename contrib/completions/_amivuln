@@ -25,6 +25,7 @@ _amivuln() {
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -58,6 +59,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--all[Check every installed package]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
@@ -82,6 +84,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -105,6 +108,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -127,6 +131,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -149,6 +154,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -171,6 +177,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -201,6 +208,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -224,6 +232,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -246,6 +255,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -304,6 +314,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -334,6 +345,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -356,6 +368,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -410,6 +423,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -437,6 +451,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--json[Machine-readable output]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
