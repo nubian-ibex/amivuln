@@ -560,3 +560,145 @@ fn cache_commands_work_on_an_empty_cache() {
     assert!(String::from_utf8_lossy(&info.stdout).contains("entries: 0"));
     assert_eq!(run(&["cache", "clear"]).status.code(), Some(0));
 }
+
+/// A sandbox plus an inventory file, as the leaked path the helpers need.
+async fn inventory_sandbox() -> (MockServer, Sandbox, &'static str) {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let inventory = sb.path().join("inventory.txt");
+    std::fs::write(
+        &inventory,
+        "# exported from another host\n\
+         python3-multipart@(none):1.3.0-1.fc43\n\
+         python3-wheel@0.45.1-20.fc43\n\
+         bash@5.3.9-3.fc43\n\n",
+    )
+    .unwrap();
+    let inv: &'static str = Box::leak(inventory.display().to_string().into_boxed_str());
+    (server, sb, inv)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pending_ranks_updates_from_an_inventory() {
+    let (_server, sb, inv) = inventory_sandbox().await;
+    let out = run(
+        sb.cmd(),
+        vec![
+            "--format",
+            "json",
+            "pending",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv,
+        ],
+    )
+    .await;
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = json(&out);
+    assert_eq!(v["kind"], "pending");
+    assert_eq!(v["summary"]["updates"], 2);
+    let names: Vec<&str> = v["updates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|u| u["package"]["name"].as_str().unwrap())
+        .collect();
+    assert!(
+        names.contains(&"python3-multipart") && names.contains(&"python3-wheel"),
+        "{names:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cve_reports_affected_known_and_unknown() {
+    let (_server, sb, inv) = inventory_sandbox().await;
+    let hit = run(
+        sb.cmd(),
+        vec![
+            "-f",
+            "json",
+            "cve",
+            "CVE-2026-28356",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv,
+        ],
+    )
+    .await;
+    assert_eq!(hit.status.code(), Some(1));
+    let v = json(&hit);
+    assert_eq!(v["answers"][0]["state"], "affected");
+    assert_eq!(
+        v["answers"][0]["packages"][0]["package"]["name"],
+        "python3-multipart"
+    );
+
+    let unknown = run(
+        sb.cmd(),
+        vec![
+            "--color",
+            "never",
+            "cve",
+            "CVE-2026-99999",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv,
+        ],
+    )
+    .await;
+    assert_eq!(unknown.status.code(), Some(0));
+    assert!(
+        stdout(&unknown).contains("not a statement that this host is safe"),
+        "{}",
+        stdout(&unknown)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn check_accepts_an_inventory_and_scores_it_and_bad_input_is_rejected() {
+    let (_server, sb, inv) = inventory_sandbox().await;
+    let chk = run(
+        sb.cmd(),
+        vec![
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            inv,
+            "-f",
+            "json",
+        ],
+    )
+    .await;
+    assert_eq!(chk.status.code(), Some(0));
+    let v = json(&chk);
+    assert_eq!(v["targets"].as_array().unwrap().len(), 3);
+    assert!(v["score"]["grade"].is_string());
+
+    let bad = run(sb.cmd(), vec!["cve", "CVE-12", "--distro", "fedora:43"]).await;
+    assert_eq!(bad.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("not a CVE id"));
+    let none = run(sb.cmd(), vec!["cve", "--distro", "fedora:43"]).await;
+    assert_eq!(none.status.code(), Some(64));
+    let missing = run(
+        sb.cmd(),
+        vec![
+            "pending",
+            "--distro",
+            "fedora:43",
+            "--packages-from",
+            "/nonexistent/inv.txt",
+        ],
+    )
+    .await;
+    assert_eq!(missing.status.code(), Some(64));
+}

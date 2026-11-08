@@ -1,0 +1,16 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH AMIVULN-CVE 1  amivuln 
+.SH NAME
+cve \- Is this host affected by a CVE? Scans every installed package
+.SH SYNOPSIS
+\fBcve\fR [\fB\-h\fR|\fB\-\-help\fR] <\fICVE\-ID\fR> 
+.SH DESCRIPTION
+Is this host affected by a CVE? Scans every installed package
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+<\fICVE\-ID\fR>
+CVE ids, for example CVE\-2024\-6387

@@ -4,32 +4,118 @@
   "title": "amivuln report, schema version 1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "tool", "generated_at", "host", "complete", "sources", "targets", "unresolved"],
+  "required": [
+    "schema_version",
+    "tool",
+    "generated_at",
+    "host",
+    "complete",
+    "sources",
+    "targets",
+    "unresolved"
+  ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {
+      "const": 1
+    },
     "tool": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "version"],
-      "properties": {"name": {"const": "amivuln"}, "version": {"type": "string"}}
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "amivuln"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
     },
-    "generated_at": {"type": "string", "format": "date-time"},
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "host": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["os_id", "os_version", "arch"],
-      "properties": {"os_id": {"type": "string"}, "os_version": {"type": "string"}, "arch": {"type": "string"}}
+      "required": [
+        "os_id",
+        "os_version",
+        "arch"
+      ],
+      "properties": {
+        "os_id": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        }
+      }
     },
-    "complete": {"type": "boolean", "description": "False when a required source failed; never treat such a result as clean."},
-    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
-    "targets": {"type": "array", "items": {"$ref": "#/$defs/target"}},
+    "complete": {
+      "type": "boolean",
+      "description": "False when a required source failed; never treat such a result as clean."
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    },
     "unresolved": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["input", "reason"],
-        "properties": {"input": {"type": "string"}, "reason": {"type": "string"}}
+        "required": [
+          "input",
+          "reason"
+        ],
+        "properties": {
+          "input": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "points",
+        "grade"
+      ],
+      "description": "A to F score of the affected findings; see ADR-0011.",
+      "properties": {
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "grade": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F"
+          ]
+        }
       }
     }
   },
@@ -37,83 +123,255 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "status", "age_s", "required"],
+      "required": [
+        "id",
+        "status",
+        "age_s",
+        "required"
+      ],
       "properties": {
-        "id": {"enum": ["arch-tracker", "fedora-updateinfo", "bodhi", "osv", "kev", "epss"]},
-        "status": {"enum": ["ok", "stale", "failed", "skipped"]},
-        "detail": {"type": "string"},
-        "age_s": {"type": "integer", "minimum": 0},
-        "required": {"type": "boolean"}
+        "id": {
+          "enum": [
+            "arch-tracker",
+            "fedora-updateinfo",
+            "bodhi",
+            "osv",
+            "kev",
+            "epss"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ok",
+            "stale",
+            "failed",
+            "skipped"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "age_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "required": {
+          "type": "boolean"
+        }
       }
     },
-    "severity": {"enum": ["critical", "high", "medium", "low", "unknown"]},
+    "severity": {
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
+    },
     "target": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["input", "package", "summary", "findings", "unverified"],
+      "required": [
+        "input",
+        "package",
+        "summary",
+        "findings",
+        "unverified"
+      ],
       "properties": {
-        "input": {"type": "string"},
+        "input": {
+          "type": "string"
+        },
         "package": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["name", "version", "arch", "ecosystem", "purl", "provenance"],
+          "required": [
+            "name",
+            "version",
+            "arch",
+            "ecosystem",
+            "purl",
+            "provenance"
+          ],
           "properties": {
-            "name": {"type": "string"},
-            "version": {"type": "string"},
-            "arch": {"type": ["string", "null"]},
-            "ecosystem": {"enum": ["fedora", "arch"]},
-            "purl": {"type": "string", "pattern": "^pkg:"},
-            "provenance": {"enum": ["package_db", "user_input"]}
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "arch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ecosystem": {
+              "enum": [
+                "fedora",
+                "arch"
+              ]
+            },
+            "purl": {
+              "type": "string",
+              "pattern": "^pkg:"
+            },
+            "provenance": {
+              "enum": [
+                "package_db",
+                "user_input"
+              ]
+            }
           }
         },
         "summary": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["critical", "high", "medium", "low", "kev", "epss_max", "unverified"],
+          "required": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "kev",
+            "epss_max",
+            "unverified"
+          ],
           "properties": {
-            "critical": {"type": "integer", "minimum": 0},
-            "high": {"type": "integer", "minimum": 0},
-            "medium": {"type": "integer", "minimum": 0},
-            "low": {"type": "integer", "minimum": 0},
-            "kev": {"type": "integer", "minimum": 0},
-            "epss_max": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-            "unverified": {"type": "integer", "minimum": 0}
+            "critical": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "high": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "medium": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "low": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "kev": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "epss_max": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "unverified": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
-        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
-        "unverified": {"type": "array", "items": {"$ref": "#/$defs/finding"}}
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "unverified": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        }
       }
     },
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "severity", "distro_status", "kev", "epss"],
+      "required": [
+        "id",
+        "severity",
+        "distro_status",
+        "kev",
+        "epss"
+      ],
       "properties": {
-        "id": {"type": "string", "description": "A CVE id, or a distribution update id when the update names no CVE."},
-        "severity": {"$ref": "#/$defs/severity"},
+        "id": {
+          "type": "string",
+          "description": "A CVE id, or a distribution update id when the update names no CVE."
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
         "distro_status": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["state", "fixed_in"],
+          "required": [
+            "state",
+            "fixed_in"
+          ],
           "properties": {
-            "state": {"enum": ["affected", "unknown", "fixed", "not_affected"]},
-            "fixed_in": {"type": ["string", "null"]}
+            "state": {
+              "enum": [
+                "affected",
+                "unknown",
+                "fixed",
+                "not_affected"
+              ]
+            },
+            "fixed_in": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
         "kev": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
-          "required": ["added", "ransomware"],
-          "properties": {"added": {"type": "string"}, "ransomware": {"type": "boolean"}}
+          "required": [
+            "added",
+            "ransomware"
+          ],
+          "properties": {
+            "added": {
+              "type": "string"
+            },
+            "ransomware": {
+              "type": "boolean"
+            }
+          }
         },
         "epss": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
-          "required": ["score", "percentile", "date"],
+          "required": [
+            "score",
+            "percentile",
+            "date"
+          ],
           "properties": {
-            "score": {"type": "number", "minimum": 0, "maximum": 1},
-            "percentile": {"type": "number", "minimum": 0, "maximum": 1},
-            "date": {"type": "string"}
+            "score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "percentile": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "date": {
+              "type": "string"
+            }
           }
         }
       }

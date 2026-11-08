@@ -380,6 +380,15 @@ impl Updateinfo {
             })
     }
 
+    /// True when any update records this CVE as fixed.
+    #[must_use]
+    pub fn knows(&self, cve: &str) -> bool {
+        self.by_package
+            .values()
+            .flatten()
+            .any(|f| f.cve.eq_ignore_ascii_case(cve))
+    }
+
     /// Every CVE recorded for a package, sorted by CVE then fixed version.
     #[must_use]
     pub fn fixes_for(&self, package: &str) -> &[FedoraFix] {

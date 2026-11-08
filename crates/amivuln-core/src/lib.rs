@@ -11,8 +11,10 @@
 mod exit;
 mod matching;
 mod package;
+mod pending;
 mod process;
 mod report;
+mod score;
 mod source;
 
 pub use exit::{Condition, ExitCode, exit_code};
@@ -20,8 +22,13 @@ pub use matching::{
     DistroStatus, EpssInfo, Finding, KevInfo, Severity, Verdict, classify, sort_findings,
 };
 pub use package::{Ecosystem, PackageRef, Provenance, Version};
+pub use pending::{CveAnswer, CveHit, CveState, PendingUpdate, cve_answers, pending_updates};
 pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
-pub use report::{FailOn, HostMeta, Policy, RunReport, Summary, TargetReport, Unresolved};
+pub use report::{
+    CveReport, FailOn, HostMeta, PendingReport, Policy, RunReport, Summary, TargetReport,
+    Unresolved,
+};
+pub use score::{Grade, Score, score};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};
 
 /// Makes `cargo test` run the code examples in the README.

@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_amivuln_global_optspecs
-    string join \n f/format= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= q/quiet all h/help V/version
+    string join \n f/format= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= packages-from= q/quiet all h/help V/version
 end
 
 function __fish_amivuln_needs_command
@@ -33,6 +33,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -l distro -d 'Treat the ho
 complete -c amivuln -n "__fish_amivuln_needs_command" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_needs_command" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -41,6 +42,8 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -l all -d 'Check every ins
 complete -c amivuln -n "__fish_amivuln_needs_command" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c amivuln -n "__fish_amivuln_needs_command" -s V -l version -d 'Print version'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "check" -d 'Check packages, files, versions or purls'
+complete -c amivuln -n "__fish_amivuln_needs_command" -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
+complete -c amivuln -n "__fish_amivuln_needs_command" -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "config" -d 'Show, create or validate the configuration'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "cache" -d 'Inspect or clear the on-disk cache'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "completions" -d 'Print shell completions'
@@ -55,12 +58,43 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l distro -d 'Tre
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l all -d 'Check every installed package'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s f -l format -d 'Output format: summary, detail or json' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s f -l format -d 'Output format: summary, detail or json' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s f -l format -d 'Output format: summary, detail or json' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
@@ -70,6 +104,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -88,6 +123,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -103,6 +139,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -117,6 +154,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -135,6 +173,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_se
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -152,6 +191,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -166,6 +206,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -183,6 +224,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l distro -
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -197,18 +239,21 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l distro -d 'T
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l json -d 'Machine-readable output'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "completions" -d 'Print shell completions'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "version" -d 'Print version and build information'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "completions" -d 'Print shell completions'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "version" -d 'Print version and build information'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "show" -d 'Print the effective configuration'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "init" -d 'Write a commented default configuration file'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "validate" -d 'Load the configuration and report problems'

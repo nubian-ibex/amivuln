@@ -4,6 +4,8 @@
 
 - `amivuln [OPTIONS] TARGET...` is a shortcut for `amivuln check`.
 - `amivuln check [TARGET...] [--all]`
+- `amivuln cve CVE-ID...`: is this host affected? Exit 1 when it is.
+- `amivuln pending`: the updates that close the most risk, ranked.
 - `amivuln config show | init [--path FILE] | validate`
 - `amivuln cache info | clear`
 - `amivuln completions bash|zsh|fish|elvish|powershell`
@@ -19,6 +21,7 @@
 - `--config FILE`: use this configuration file only
 - `--color auto|always|never`: `NO_COLOR` is honored
 - `--distro fedora:NN|arch`: treat the host as this distribution
+- `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones
 - `-q, --quiet`: only errors
 
 `AMIVULN_FORMAT`, `AMIVULN_FAIL_ON`, `AMIVULN_OFFLINE`, `AMIVULN_CONFIG` and

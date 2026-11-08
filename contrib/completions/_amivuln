@@ -25,6 +25,7 @@ _amivuln() {
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -57,6 +58,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--all[Check every installed package]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -66,6 +68,51 @@ _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
 '*::targets -- Targets to check:_default' \
+&& ret=0
+;;
+(cve)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::ids -- CVE ids, for example CVE-2024-6387:_default' \
+&& ret=0
+;;
+(pending)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail or json]:FORMAT:_default' \
+'--format=[Output format\: summary, detail or json]:FORMAT:_default' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (config)
@@ -80,6 +127,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -109,6 +157,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -131,6 +180,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -152,6 +202,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -209,6 +260,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -238,6 +290,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -259,6 +312,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -312,6 +366,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -338,6 +393,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--json[Machine-readable output]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -361,6 +417,14 @@ _arguments "${_arguments_options[@]}" : \
         curcontext="${curcontext%:*:*}:amivuln-help-command-$line[1]:"
         case $line[1] in
             (check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(cve)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pending)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -441,6 +505,8 @@ esac
 _amivuln_commands() {
     local commands; commands=(
 'check:Check packages, files, versions or purls' \
+'cve:Is this host affected by a CVE? Scans every installed package' \
+'pending:Which updates close the most risk? Ranks the updates that fix affected findings' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
 'completions:Print shell completions' \
@@ -557,10 +623,17 @@ _amivuln__subcmd__config__subcmd__validate_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln config validate commands' commands "$@"
 }
+(( $+functions[_amivuln__subcmd__cve_commands] )) ||
+_amivuln__subcmd__cve_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln cve commands' commands "$@"
+}
 (( $+functions[_amivuln__subcmd__help_commands] )) ||
 _amivuln__subcmd__help_commands() {
     local commands; commands=(
 'check:Check packages, files, versions or purls' \
+'cve:Is this host affected by a CVE? Scans every installed package' \
+'pending:Which updates close the most risk? Ranks the updates that fix affected findings' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
 'completions:Print shell completions' \
@@ -621,15 +694,30 @@ _amivuln__subcmd__help__subcmd__config__subcmd__validate_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln help config validate commands' commands "$@"
 }
+(( $+functions[_amivuln__subcmd__help__subcmd__cve_commands] )) ||
+_amivuln__subcmd__help__subcmd__cve_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help cve commands' commands "$@"
+}
 (( $+functions[_amivuln__subcmd__help__subcmd__help_commands] )) ||
 _amivuln__subcmd__help__subcmd__help_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln help help commands' commands "$@"
 }
+(( $+functions[_amivuln__subcmd__help__subcmd__pending_commands] )) ||
+_amivuln__subcmd__help__subcmd__pending_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help pending commands' commands "$@"
+}
 (( $+functions[_amivuln__subcmd__help__subcmd__version_commands] )) ||
 _amivuln__subcmd__help__subcmd__version_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln help version commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__pending_commands] )) ||
+_amivuln__subcmd__pending_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln pending commands' commands "$@"
 }
 (( $+functions[_amivuln__subcmd__version_commands] )) ||
 _amivuln__subcmd__version_commands() {

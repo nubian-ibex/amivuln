@@ -89,9 +89,61 @@ pub struct Global {
     /// Treat this value as a package URL (repeatable).
     #[arg(long, global = true, value_name = "PURL")]
     pub purl: Vec<String>,
+    /// Check the packages listed in FILE (one `name@version` per line) instead of
+    /// the installed ones; for example a list exported from another host.
+    #[arg(long, global = true, value_name = "FILE")]
+    pub packages_from: Option<std::path::PathBuf>,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,
+}
+
+/// Moves a subcommand written after global options to the front, so
+/// `amivuln --color never pending` and `amivuln pending --color never` mean the
+/// same. clap would otherwise read `pending` as a target once an option has
+/// been seen. A bare word that equals a subcommand name is always the
+/// subcommand; use `--package NAME` for a package that shares a name with one.
+#[must_use]
+pub fn normalize_args(args: &[String]) -> Vec<String> {
+    use clap::CommandFactory;
+    let cmd = Cli::command();
+    let takes_value = |arg: &str| -> bool {
+        if let Some(long) = arg.strip_prefix("--") {
+            return cmd
+                .get_arguments()
+                .any(|a| a.get_long() == Some(long) && a.get_action().takes_values());
+        }
+        arg.len() == 2
+            && arg.chars().nth(1).is_some_and(|c| {
+                cmd.get_arguments()
+                    .any(|a| a.get_short() == Some(c) && a.get_action().takes_values())
+            })
+    };
+    let mut i = 1;
+    while let Some(tok) = args.get(i) {
+        if tok.starts_with('-') {
+            i += if tok.contains('=') || !takes_value(tok) {
+                1
+            } else {
+                2
+            };
+            continue;
+        }
+        if i > 1 && cmd.get_subcommands().any(|s| s.get_name() == tok) {
+            let mut out = Vec::with_capacity(args.len());
+            out.push(args.first().cloned().unwrap_or_default());
+            out.push(tok.clone());
+            out.extend(
+                args.iter()
+                    .enumerate()
+                    .filter(|(j, _)| *j != 0 && *j != i)
+                    .map(|(_, a)| a.clone()),
+            );
+            return out;
+        }
+        break;
+    }
+    args.to_vec()
 }
 
 /// On/off switches.
@@ -120,6 +172,14 @@ pub enum Command {
         #[arg(long)]
         all: bool,
     },
+    /// Is this host affected by a CVE? Scans every installed package.
+    Cve {
+        /// CVE ids, for example CVE-2024-6387.
+        #[arg(value_name = "CVE-ID", required = true)]
+        ids: Vec<String>,
+    },
+    /// Which updates close the most risk? Ranks the updates that fix affected findings.
+    Pending,
     /// Show, create or validate the configuration.
     Config {
         /// What to do.
@@ -219,6 +279,45 @@ mod tests {
         assert_eq!(cli.global.fail_on.as_deref(), Some("high"));
         let cli = Cli::try_parse_from(["amivuln", "config", "show", "--color", "never"]).unwrap();
         assert_eq!(cli.global.color.as_deref(), Some("never"));
+    }
+
+    fn parse(args: &[&str]) -> Cli {
+        let args: Vec<String> = args.iter().map(|a| (*a).to_owned()).collect();
+        Cli::try_parse_from(normalize_args(&args)).unwrap()
+    }
+
+    #[test]
+    fn subcommands_win_after_global_options() {
+        for args in [
+            vec!["amivuln", "--color", "never", "pending"],
+            vec!["amivuln", "-f", "json", "--config", "/x", "pending"],
+            vec!["amivuln", "--strict", "--fail-on=high", "pending"],
+            vec!["amivuln", "--fail-on", "high", "cve", "CVE-2024-6387"],
+            vec!["amivuln", "-q", "check", "nginx"],
+            vec!["amivuln", "pending", "--color", "never"],
+        ] {
+            let cli = parse(&args);
+            assert!(
+                cli.command.is_some(),
+                "{args:?} parsed as targets {:?}",
+                cli.targets
+            );
+            assert!(cli.targets.is_empty());
+        }
+        let cli = parse(&[
+            "amivuln",
+            "--color",
+            "never",
+            "cve",
+            "CVE-2024-6387",
+            "--offline",
+        ]);
+        assert_eq!(cli.global.color.as_deref(), Some("never"));
+        assert!(cli.global.flags.offline);
+        assert!(matches!(cli.command, Some(Command::Cve { ref ids }) if ids == &["CVE-2024-6387"]));
+        // A package that happens to share a subcommand name stays reachable.
+        let cli = parse(&["amivuln", "--package", "pending"]);
+        assert_eq!(cli.global.package, ["pending"]);
     }
 
     #[test]

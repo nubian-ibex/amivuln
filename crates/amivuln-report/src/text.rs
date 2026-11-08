@@ -173,11 +173,15 @@ fn is_clean(t: &TargetReport) -> bool {
 fn write_totals(out: &mut dyn Write, r: &RunReport) -> io::Result<()> {
     if r.targets.len() > 1 {
         let with = r.targets.iter().filter(|t| !is_clean(t)).count();
+        let all: Vec<Finding> = r.targets.iter().flat_map(|t| t.findings.clone()).collect();
+        let sc = amivuln_core::score(&all);
         writeln!(
             out,
-            "checked {} packages, {} with findings",
+            "checked {} packages, {} with findings   host score {} ({} points)",
             r.targets.len(),
-            with
+            with,
+            sc.grade.letter(),
+            sc.points
         )?;
     }
     Ok(())
@@ -271,6 +275,149 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
     }
     write_totals(out, r)?;
     write_footer(out, opts, r)
+}
+
+fn write_sources_footer(
+    out: &mut dyn Write,
+    opts: RenderOptions,
+    sources: &[amivuln_core::SourceReport],
+    complete: bool,
+) -> io::Result<()> {
+    for s in sources {
+        let detail = match &s.status {
+            SourceStatus::Failed(why) | SourceStatus::Skipped(why) => {
+                format!(" ({})", sanitize_terminal(why))
+            }
+            _ => String::new(),
+        };
+        writeln!(
+            out,
+            "source {:<18} {}{}  age {}s{}",
+            s.source.as_str(),
+            s.status.label(),
+            detail,
+            s.age.as_secs(),
+            if s.required { "  required" } else { "" }
+        )?;
+    }
+    if complete {
+        writeln!(out, "result: complete")
+    } else {
+        writeln!(
+            out,
+            "{}",
+            paint(
+                opts,
+                "1;31",
+                "result: INCOMPLETE (a required source failed); do not treat this as clean"
+            )
+        )
+    }
+}
+
+/// `amivuln pending`: the updates that close the most risk first.
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_pending(
+    r: &amivuln_core::PendingReport,
+    opts: RenderOptions,
+    out: &mut dyn Write,
+) -> io::Result<()> {
+    if r.updates.is_empty() {
+        writeln!(out, "no pending update closes an affected finding")?;
+    } else {
+        let closed: usize = r.updates.iter().map(|u| u.closes.len()).sum();
+        let kev: usize = r.updates.iter().map(|u| u.kev).sum();
+        writeln!(
+            out,
+            "{} update(s) close {} finding(s), {} in KEV",
+            r.updates.len(),
+            closed,
+            kev
+        )?;
+        writeln!(out)?;
+        for u in &r.updates {
+            let more = if u.also.is_empty() {
+                String::new()
+            } else {
+                format!(" (+{} packages)", u.also.len())
+            };
+            writeln!(
+                out,
+                "{}{} {} -> {}   closes {} ({})   KEV {}{}",
+                sanitize_terminal(&u.package.name),
+                more,
+                sanitize_terminal(&u.package.version.to_string()),
+                sanitize_terminal(&u.target.to_string()),
+                u.closes.len(),
+                severity_label(opts, u.severity),
+                u.kev,
+                u.epss_max
+                    .map_or(String::new(), |e| format!("   EPSS max {e:.2}"))
+            )?;
+        }
+    }
+    if r.without_fix > 0 {
+        writeln!(
+            out,
+            "\n{} affected finding(s) have no published fix yet, so no update closes them",
+            r.without_fix
+        )?;
+    }
+    writeln!(out)?;
+    write_sources_footer(out, opts, &r.sources, r.complete)
+}
+
+/// `amivuln cve`: what each queried CVE means for this host.
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_cve(
+    r: &amivuln_core::CveReport,
+    opts: RenderOptions,
+    out: &mut dyn Write,
+) -> io::Result<()> {
+    use amivuln_core::CveState;
+    for a in &r.answers {
+        let id = sanitize_terminal(&a.id);
+        match a.state {
+            CveState::Affected => {
+                writeln!(out, "{id}: {}", paint(opts, "1;31", "AFFECTED"))?;
+                for h in &a.hits {
+                    let fix = h.fixed_in.as_ref().map_or_else(
+                        || "no fix published".to_owned(),
+                        |v| format!("fixed in {}", sanitize_terminal(&v.to_string())),
+                    );
+                    writeln!(
+                        out,
+                        "  {} {}  {}  {}{}{}",
+                        sanitize_terminal(&h.package.name),
+                        sanitize_terminal(&h.package.version.to_string()),
+                        severity_label(opts, h.finding.severity),
+                        fix,
+                        if h.finding.kev.is_some() { "  KEV" } else { "" },
+                        h.finding
+                            .epss
+                            .as_ref()
+                            .map_or(String::new(), |e| format!("  EPSS {:.2}", e.score))
+                    )?;
+                }
+            }
+            CveState::NotAffected => writeln!(
+                out,
+                "{id}: no installed package is affected (fixed, not affected, or not installed)"
+            )?,
+            CveState::Unknown => writeln!(
+                out,
+                "{id}: the distribution data has no record of this CVE; that is not a statement that this host is safe"
+            )?,
+        }
+    }
+    writeln!(out)?;
+    write_sources_footer(out, opts, &r.sources, r.complete)
 }
 
 #[cfg(test)]

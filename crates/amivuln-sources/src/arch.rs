@@ -110,6 +110,14 @@ impl ArchTracker {
         self.groups.is_empty()
     }
 
+    /// True when any group lists this CVE.
+    #[must_use]
+    pub fn knows(&self, cve: &str) -> bool {
+        self.groups
+            .iter()
+            .any(|g| g.issues.iter().any(|i| i.eq_ignore_ascii_case(cve)))
+    }
+
     /// All CVE statuses recorded for a pacman package, sorted by CVE then AVG.
     ///
     /// A CVE can appear in several groups; every statement is returned so the

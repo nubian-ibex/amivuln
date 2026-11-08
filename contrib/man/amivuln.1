@@ -4,7 +4,7 @@
 .SH NAME
 amivuln \- Am I vulnerable? Backport\-aware CVE check for packages on this host
 .SH SYNOPSIS
-\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
+\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-\-packages\-from\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Reports which CVEs apply to an installed package, binary or version, taking the patches your distribution already shipped into account. Fedora and Arch Linux are supported.
 .SH OPTIONS
@@ -45,6 +45,9 @@ Treat this value as an installed package name or `name@version` (repeatable)
 \fB\-\-purl\fR \fI<PURL>\fR
 Treat this value as a package URL (repeatable)
 .TP
+\fB\-\-packages\-from\fR \fI<FILE>\fR
+Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host
+.TP
 \fB\-q\fR, \fB\-\-quiet\fR
 Only print errors
 .TP
@@ -60,6 +63,12 @@ Targets to check: package name, file path, `name@version` or purl
 .TP
 amivuln\-check(1)
 Check packages, files, versions or purls
+.TP
+amivuln\-cve(1)
+Is this host affected by a CVE? Scans every installed package
+.TP
+amivuln\-pending(1)
+Which updates close the most risk? Ranks the updates that fix affected findings
 .TP
 amivuln\-config(1)
 Show, create or validate the configuration
