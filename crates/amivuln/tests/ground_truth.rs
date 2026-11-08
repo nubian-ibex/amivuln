@@ -144,7 +144,7 @@ fn arch_corpus() {
     for case in &file.cases {
         check(
             case,
-            &arch_findings(&package(Ecosystem::Arch, case), &tracker),
+            &arch_findings(&package(Ecosystem::Arch, case), &tracker, &Vec::new()),
         );
     }
 }
@@ -204,7 +204,7 @@ fn debian_corpus_from_the_real_osv_response() {
         Ecosystem::Debian(12),
         file.cases.iter().find(|c| c.version == "3.0.10-1").unwrap(),
     );
-    let findings = amivuln::pipeline::osv_findings(&affected_pkg, &osv);
+    let findings = amivuln::pipeline::osv_findings(&affected_pkg, &osv, &Vec::new());
     assert_eq!(findings.len(), 4, "{findings:?}");
     for cve in [
         "CVE-2023-5363",
@@ -222,7 +222,10 @@ fn debian_corpus_from_the_real_osv_response() {
             .unwrap(),
     );
     // 3.0.11-1~deb12u1 is below every published fix, so all four still apply.
-    assert_eq!(amivuln::pipeline::osv_findings(&mid_pkg, &osv).len(), 4);
+    assert_eq!(
+        amivuln::pipeline::osv_findings(&mid_pkg, &osv, &Vec::new()).len(),
+        4
+    );
     let fixed_pkg = package(
         Ecosystem::Debian(12),
         file.cases
@@ -232,7 +235,7 @@ fn debian_corpus_from_the_real_osv_response() {
     );
     // At 3.0.11-1~deb12u2 the 5363 fix is applied; the other three fix at
     // 3.0.13-1~deb12u1 and still apply.
-    let still = amivuln::pipeline::osv_findings(&fixed_pkg, &osv);
+    let still = amivuln::pipeline::osv_findings(&fixed_pkg, &osv, &Vec::new());
     assert_eq!(still.len(), 3, "{still:?}");
     assert!(!still.iter().any(|f| f.id == "CVE-2023-5363"));
     let latest_pkg = package(
@@ -242,7 +245,7 @@ fn debian_corpus_from_the_real_osv_response() {
             .find(|c| c.version == "3.0.18-1~deb12u2")
             .unwrap(),
     );
-    assert!(amivuln::pipeline::osv_findings(&latest_pkg, &osv).is_empty());
+    assert!(amivuln::pipeline::osv_findings(&latest_pkg, &osv, &Vec::new()).is_empty());
 }
 
 #[test]
@@ -257,7 +260,7 @@ fn fedora_f45_corpus_from_the_dnf_oracle() {
     for case in &file.cases {
         check(
             case,
-            &fedora_findings(&package(Ecosystem::Fedora(45), case), &info),
+            &fedora_findings(&package(Ecosystem::Fedora(45), case), &info, &Vec::new()),
         );
     }
 }
@@ -272,7 +275,7 @@ fn fedora_corpus() {
     for case in &file.cases {
         check(
             case,
-            &fedora_findings(&package(Ecosystem::Fedora(43), case), &info),
+            &fedora_findings(&package(Ecosystem::Fedora(43), case), &info, &Vec::new()),
         );
     }
 }

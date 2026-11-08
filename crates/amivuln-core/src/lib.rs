@@ -17,6 +17,7 @@ mod process;
 mod report;
 mod score;
 mod source;
+mod vex;
 
 pub use exit::{Condition, ExitCode, exit_code};
 pub use ignore::{IgnoreEntry, IgnoreError, parse_ignore, suppress};
@@ -32,6 +33,7 @@ pub use report::{
 };
 pub use score::{Grade, Score, score};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};
+pub use vex::{VexStatement, apply_vex, parse_vex};
 
 /// Makes `cargo test` run the code examples in the README.
 #[cfg(doctest)]

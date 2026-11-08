@@ -82,6 +82,8 @@ pub(crate) struct Settings {
     pub(crate) timeout: Duration,
     /// Accepted findings from the ignore file (empty when none).
     pub(crate) ignores: Vec<amivuln_core::IgnoreEntry>,
+    /// `OpenVEX` statements from the --vex files (empty when none).
+    pub(crate) vex: Vec<amivuln_core::VexStatement>,
 }
 
 pub(crate) fn usage(stderr: &mut dyn Write, msg: &str) -> ExitCode {
@@ -126,6 +128,13 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
     }
     let ignores = config::load_ignore(&cfg, from.as_deref().and_then(|p| p.parent()), &today(env))
         .map_err(|e| format!("ignore file: {e}"))?;
+    let mut vex = Vec::new();
+    for path in &g.vex {
+        let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let parsed = amivuln_core::parse_vex(text.as_bytes())
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        vex.extend(parsed);
+    }
     let ttl = parse_duration(&cfg.general.cache_ttl).map_err(|e| e.0)?;
     let stale = parse_duration(&cfg.general.stale_max_age).map_err(|e| e.0)?;
     let timeout = parse_duration(&cfg.general.timeout).map_err(|e| e.0)?;
@@ -143,6 +152,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
             stale_max_age: secs(stale),
             timeout,
             ignores,
+            vex,
             config: cfg,
         },
         from,

@@ -5,8 +5,8 @@
 use std::collections::BTreeMap;
 
 use amivuln_core::{
-    DistroStatus, EpssInfo, Finding, KevInfo, PackageRef, Severity, Verdict, Version, classify,
-    sort_findings,
+    DistroStatus, EpssInfo, Finding, KevInfo, PackageRef, Severity, Verdict, Version, VexStatement,
+    apply_vex, classify, sort_findings,
 };
 use amivuln_sources::arch::{ArchEntry, ArchTracker};
 use amivuln_sources::epss::EpssScores;
@@ -92,7 +92,11 @@ fn one_arch_entry(installed: &Version, e: &ArchEntry) -> Option<Verdict> {
 ///
 /// Patched and not-affected CVEs are not reported.
 #[must_use]
-pub fn arch_findings(pkg: &PackageRef, tracker: &ArchTracker) -> Vec<Finding> {
+pub fn arch_findings(
+    pkg: &PackageRef,
+    tracker: &ArchTracker,
+    vex: &[VexStatement],
+) -> Vec<Finding> {
     let mut by_cve: BTreeMap<String, (Verdict, Severity)> = BTreeMap::new();
     for e in tracker.entries_for(&pkg.name) {
         let Some(verdict) = one_arch_entry(&pkg.version, &e) else {
@@ -104,7 +108,7 @@ pub fn arch_findings(pkg: &PackageRef, tracker: &ArchTracker) -> Vec<Finding> {
             None => by_cve.insert(e.cve, item),
         };
     }
-    finish(by_cve)
+    finish(by_cve, vex)
 }
 
 /// Findings for a Fedora package from `updateinfo`.
@@ -115,7 +119,7 @@ pub fn arch_findings(pkg: &PackageRef, tracker: &ArchTracker) -> Vec<Finding> {
 /// ADR-0007): the result states what Fedora has fixed, not that nothing else
 /// applies.
 #[must_use]
-pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo) -> Vec<Finding> {
+pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]) -> Vec<Finding> {
     let mut names = vec![pkg.name.as_str()];
     if let Some(src) = pkg.source_name.as_deref().filter(|s| *s != pkg.name) {
         names.push(src);
@@ -135,7 +139,7 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo) -> Vec<Finding> {
         };
         by_cve.insert(cve.to_owned(), (classify(&pkg.version, &status), severity));
     }
-    finish(by_cve)
+    finish(by_cve, vex)
 }
 
 /// Findings for a Debian or Ubuntu package from OSV.
@@ -144,8 +148,8 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo) -> Vec<Finding> {
 /// installed build means the build is affected. Advisory ids never covered by
 /// a fix keep the CVE unverified.
 #[must_use]
-pub fn osv_findings(pkg: &PackageRef, osv: &OsvData) -> Vec<Finding> {
-    let mut by_cve = BTreeMap::new();
+pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Vec<Finding> {
+    let mut by_cve: BTreeMap<String, Verdict> = BTreeMap::new();
     let mut cves: Vec<String> = osv.ids();
     cves.sort_unstable();
     cves.dedup();
@@ -154,8 +158,9 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData) -> Vec<Finding> {
             continue;
         };
         let parsed = fix.parse().unwrap_or_else(|never| match never {});
-        let verdict = classify(&pkg.version, &DistroStatus::Fixed(Version::Deb(parsed)));
-        by_cve.insert(cve.clone(), verdict);
+        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(Version::Deb(parsed)));
+        apply_vex(&mut verdict, vex, &cve);
+        by_cve.insert(cve, verdict);
     }
     let mut out: Vec<Finding> = by_cve
         .into_iter()
@@ -166,11 +171,15 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData) -> Vec<Finding> {
     out
 }
 
-fn finish(by_cve: BTreeMap<String, (Verdict, Severity)>) -> Vec<Finding> {
+fn finish(by_cve: BTreeMap<String, (Verdict, Severity)>, vex: &[VexStatement]) -> Vec<Finding> {
     let mut out: Vec<Finding> = by_cve
         .into_iter()
         .filter(|(_, (v, _))| matches!(v, Verdict::Affected { .. } | Verdict::Unverified))
-        .map(|(id, (verdict, severity))| Finding::new(id, severity, verdict))
+        .map(|(id, (verdict, severity))| {
+            let mut verdict = verdict;
+            apply_vex(&mut verdict, vex, &id);
+            Finding::new(id, severity, verdict)
+        })
         .collect();
     sort_findings(&mut out);
     out
@@ -199,7 +208,7 @@ pub fn enrich(findings: &mut [Finding], kev: Option<&Kev>, epss: Option<&EpssSco
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amivuln_core::{Ecosystem, Provenance};
+    use amivuln_core::{Ecosystem, Provenance, VexStatement};
 
     const ARCH: &[u8] =
         include_bytes!("../../../tests/fixtures/http/arch-tracker/2026-11-07/all.json");
@@ -217,6 +226,10 @@ mod tests {
         }
     }
 
+    fn no_vex() -> Vec<VexStatement> {
+        Vec::new()
+    }
+
     fn fedora_pkg(name: &str, source: Option<&str>, version: &str) -> PackageRef {
         PackageRef {
             ecosystem: Ecosystem::Fedora(43),
@@ -231,7 +244,7 @@ mod tests {
     #[test]
     fn arch_older_than_fix_is_affected_with_fix_version() {
         let t = ArchTracker::parse(ARCH).unwrap();
-        let f = arch_findings(&arch_pkg("djvulibre", "3.5.28-6"), &t);
+        let f = arch_findings(&arch_pkg("djvulibre", "3.5.28-6"), &t, &no_vex());
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].id, "CVE-2025-53367");
         assert_eq!(f[0].severity, Severity::High);
@@ -243,15 +256,15 @@ mod tests {
     #[test]
     fn arch_fixed_or_newer_is_clean() {
         let t = ArchTracker::parse(ARCH).unwrap();
-        assert!(arch_findings(&arch_pkg("djvulibre", "3.5.30-1"), &t).is_empty());
-        assert!(arch_findings(&arch_pkg("djvulibre", "3.6.0-1"), &t).is_empty());
+        assert!(arch_findings(&arch_pkg("djvulibre", "3.5.30-1"), &t, &no_vex()).is_empty());
+        assert!(arch_findings(&arch_pkg("djvulibre", "3.6.0-1"), &t, &no_vex()).is_empty());
     }
 
     #[test]
     fn arch_install_older_than_the_group_is_not_reported() {
         let t = ArchTracker::parse(ARCH).unwrap();
         // The AVG starts at 3.5.28-6; an older build is outside its range.
-        assert!(arch_findings(&arch_pkg("djvulibre", "3.5.20-1"), &t).is_empty());
+        assert!(arch_findings(&arch_pkg("djvulibre", "3.5.20-1"), &t, &no_vex()).is_empty());
     }
 
     #[test]
@@ -259,32 +272,34 @@ mod tests {
         let t = ArchTracker::parse(ARCH).unwrap();
         // The tracker recorded pam 1.7.0-2 as vulnerable and never published a
         // fix. A newer upstream version must not be claimed as affected.
-        let newer = arch_findings(&arch_pkg("pam", "1.8.0-1"), &t);
+        let newer = arch_findings(&arch_pkg("pam", "1.8.0-1"), &t, &no_vex());
         assert_eq!(newer.len(), 1);
         assert_eq!(newer[0].verdict, Verdict::Unverified);
         // A rebuild of the same upstream version is still affected.
-        let rebuild = arch_findings(&arch_pkg("pam", "1.7.0-3"), &t);
+        let rebuild = arch_findings(&arch_pkg("pam", "1.7.0-3"), &t, &no_vex());
         assert!(matches!(rebuild[0].verdict, Verdict::Affected { .. }));
         // An install older than the recorded build is outside the entry.
-        assert!(arch_findings(&arch_pkg("pam", "1.6.0-1"), &t).is_empty());
+        assert!(arch_findings(&arch_pkg("pam", "1.6.0-1"), &t, &no_vex()).is_empty());
     }
 
     #[test]
     fn arch_vulnerable_without_fix_and_unknown_stay_apart() {
         let t = ArchTracker::parse(ARCH).unwrap();
-        let pam = arch_findings(&arch_pkg("pam", "1.7.0-2"), &t);
+        let pam = arch_findings(&arch_pkg("pam", "1.7.0-2"), &t, &no_vex());
         assert!(matches!(
             pam[0].verdict,
             Verdict::Affected { fixed_in: None }
         ));
-        let vim = arch_findings(&arch_pkg("vim", "9.0.1224-1"), &t);
+        let vim = arch_findings(&arch_pkg("vim", "9.0.1224-1"), &t, &no_vex());
         assert!(!vim.is_empty());
         assert!(
             vim.iter().all(|f| f.verdict == Verdict::Unverified
                 || matches!(f.verdict, Verdict::Affected { .. }))
         );
         // not-affected is suppressed
-        assert!(arch_findings(&arch_pkg("gnome-remote-desktop", "42.1-1"), &t).is_empty());
+        assert!(
+            arch_findings(&arch_pkg("gnome-remote-desktop", "42.1-1"), &t, &no_vex()).is_empty()
+        );
     }
 
     #[test]
@@ -297,6 +312,7 @@ mod tests {
                 "0:1.3.0-1.fc43",
             ),
             &i,
+            &no_vex(),
         );
         assert_eq!(old.len(), 1);
         assert_eq!(old[0].id, "CVE-2026-28356");
@@ -310,17 +326,28 @@ mod tests {
                 "0:1.3.1-1.fc43",
             ),
             &i,
+            &no_vex(),
         );
         assert!(new.is_empty());
-        assert!(fedora_findings(&fedora_pkg("nginx", None, "0:1.0-1.fc43"), &i).is_empty());
+        assert!(
+            fedora_findings(&fedora_pkg("nginx", None, "0:1.0-1.fc43"), &i, &no_vex()).is_empty()
+        );
     }
 
     #[test]
     fn fedora_epoch_bump_counts() {
         let i = Updateinfo::parse(FEDORA).unwrap();
-        let no_epoch = fedora_findings(&fedora_pkg("python3-wheel", None, "0.45.1-20.fc43"), &i);
+        let no_epoch = fedora_findings(
+            &fedora_pkg("python3-wheel", None, "0.45.1-20.fc43"),
+            &i,
+            &no_vex(),
+        );
         assert_eq!(no_epoch.len(), 1);
-        let with = fedora_findings(&fedora_pkg("python3-wheel", None, "1:0.45.1-20.fc43"), &i);
+        let with = fedora_findings(
+            &fedora_pkg("python3-wheel", None, "1:0.45.1-20.fc43"),
+            &i,
+            &no_vex(),
+        );
         assert!(with.is_empty());
     }
 
