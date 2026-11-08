@@ -96,8 +96,17 @@ fn assets() -> Result<Vec<(PathBuf, Vec<u8>)>, String> {
         let mut buf = Vec::new();
         // The title is what `man` shows in the header; the file name carries
         // the section, so the page is found as `man amivuln-check`.
+        // The version would change on every release, and after_help is
+        // replaced by the proper EXIT STATUS and EXAMPLES sections below.
+        let page = page
+            .version(clap::builder::Resettable::Reset)
+            .long_version(clap::builder::Resettable::Reset)
+            .after_help(clap::builder::Resettable::Reset);
         clap_mangen::Man::new(page)
             .title(name.to_uppercase())
+            // Without this the footer carries the crate version, so every
+            // release bump would make `cargo xtask assets --check` fail.
+            .source("amivuln")
             .render(&mut buf)
             .map_err(|e| e.to_string())?;
         if name == "amivuln" {
