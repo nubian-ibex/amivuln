@@ -414,7 +414,7 @@ mod tests {
         let data = std::fs::read(path).unwrap();
         let started = std::time::Instant::now();
         let info = Updateinfo::parse_zst(&data).unwrap();
-        eprintln!("{} fix records in {:?}", info.len(), started.elapsed());
         assert!(info.len() > 100);
+        assert!(started.elapsed() < std::time::Duration::from_secs(30));
     }
 }
