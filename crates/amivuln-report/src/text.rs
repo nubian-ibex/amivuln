@@ -206,7 +206,8 @@ pub fn render_summary(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -
 fn write_finding(out: &mut dyn Write, opts: RenderOptions, f: &Finding) -> io::Result<()> {
     let fixed = match &f.verdict {
         Verdict::Affected { fixed_in: Some(v) } => sanitize_terminal(&v.to_string()),
-        _ => "no fix published".to_owned(),
+        Verdict::Affected { fixed_in: None } => "no fix published".to_owned(),
+        _ => "-".to_owned(),
     };
     let kev = f.kev.as_ref().map_or(String::new(), |k| {
         format!(
