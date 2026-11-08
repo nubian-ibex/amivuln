@@ -470,6 +470,80 @@ pub fn render_cve_json(r: &amivuln_core::CveReport, out: &mut dyn Write) -> io::
     writeln!(out)
 }
 
+#[derive(Serialize)]
+struct JsonRestartReport<'a> {
+    schema_version: u32,
+    kind: &'static str,
+    tool: Tool<'a>,
+    generated_at: &'a str,
+    host: Host<'a>,
+    inspected: usize,
+    unreadable: usize,
+    items: Vec<JsonRestartItem<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonRestartItem<'a> {
+    unit: Option<&'a str>,
+    pids: &'a [u32],
+    comm: &'a str,
+    executable: Option<JsonReplaced<'a>>,
+    libraries: Vec<JsonReplaced<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonReplaced<'a> {
+    path: &'a str,
+    package: Option<&'a str>,
+}
+
+/// Writes an `amivuln restart` report as JSON (`"kind": "restart"`).
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_restart_json(r: &amivuln_core::RestartReport, out: &mut dyn Write) -> io::Result<()> {
+    let doc = JsonRestartReport {
+        schema_version: SCHEMA_VERSION,
+        kind: "restart",
+        tool: Tool {
+            name: "amivuln",
+            version: &r.tool_version,
+        },
+        generated_at: &r.generated_at,
+        host: Host {
+            os_id: &r.host.os_id,
+            os_version: &r.host.os_version,
+            arch: &r.host.arch,
+        },
+        inspected: r.inspected,
+        unreadable: r.unreadable,
+        items: r
+            .items
+            .iter()
+            .map(|i| JsonRestartItem {
+                unit: i.unit.as_deref(),
+                pids: &i.pids,
+                comm: &i.comm,
+                executable: i.exe.as_ref().map(|(p, o)| JsonReplaced {
+                    path: p,
+                    package: o.as_deref(),
+                }),
+                libraries: i
+                    .libs
+                    .iter()
+                    .map(|(p, o)| JsonReplaced {
+                        path: p,
+                        package: o.as_deref(),
+                    })
+                    .collect(),
+            })
+            .collect(),
+    };
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    writeln!(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -639,6 +713,34 @@ mod tests {
         assert_eq!(v["answers"][0]["state"], "affected");
         assert_eq!(v["answers"][1]["state"], "not_affected");
         assert_eq!(v["answers"][2]["state"], "unknown");
+    }
+
+    #[test]
+    fn restart_output_validates_against_its_schema() {
+        let r = report(true);
+        let rr = amivuln_core::RestartReport {
+            tool_version: r.tool_version.clone(),
+            generated_at: r.generated_at.clone(),
+            host: r.host.clone(),
+            inspected: 10,
+            unreadable: 2,
+            items: vec![amivuln_core::RestartItem {
+                unit: Some("nginx.service".into()),
+                pids: vec![10, 11],
+                comm: "nginx".into(),
+                exe: Some(("/usr/sbin/nginx".into(), Some("nginx".into()))),
+                libs: vec![("/usr/lib64/libssl.so.3".into(), None)],
+            }],
+        };
+        let mut buf = Vec::new();
+        render_restart_json(&rr, &mut buf).unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        validate(
+            include_str!("../../../docs/book/src/schema/restart-v1.json"),
+            &v,
+        );
+        assert_eq!(v["items"][0]["pids"], serde_json::json!([10, 11]));
+        assert_eq!(v["unreadable"], 2);
     }
 
     #[test]

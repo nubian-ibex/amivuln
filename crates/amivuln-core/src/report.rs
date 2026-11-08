@@ -149,6 +149,38 @@ pub struct CveReport {
     pub answers: Vec<crate::pending::CveAnswer>,
 }
 
+/// A process, or the processes of one service, that need a restart.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestartItem {
+    /// The systemd service, when known.
+    pub unit: Option<String>,
+    /// Process ids.
+    pub pids: Vec<u32>,
+    /// Command name of the first process.
+    pub comm: String,
+    /// The replaced executable and its package.
+    pub exe: Option<(String, Option<String>)>,
+    /// Replaced libraries and the package that owns each.
+    pub libs: Vec<(String, Option<String>)>,
+}
+
+/// Result of `amivuln restart`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestartReport {
+    /// Tool version.
+    pub tool_version: String,
+    /// Generation time, RFC 3339 in UTC.
+    pub generated_at: String,
+    /// Host facts.
+    pub host: HostMeta,
+    /// Processes inspected.
+    pub inspected: usize,
+    /// Processes that could not be read (permissions).
+    pub unreadable: usize,
+    /// Things to restart, by unit.
+    pub items: Vec<RestartItem>,
+}
+
 /// Threshold for `--fail-on`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FailOn {

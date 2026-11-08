@@ -39,6 +39,38 @@ fn exec_start_path(value: &str) -> Option<String> {
     path.starts_with('/').then(|| path.to_owned())
 }
 
+/// Names of the running `.service` units, sorted.
+///
+/// # Errors
+///
+/// Fails when `systemctl` is missing or fails.
+pub fn list_running_services(runner: &dyn ProcessRunner) -> Result<Vec<String>, ResolveError> {
+    let out = runner.run(
+        Program::Systemctl,
+        &[
+            "list-units",
+            "--type=service",
+            "--state=running",
+            "--no-legend",
+            "--plain",
+            "--no-pager",
+        ],
+    )?;
+    if !out.success {
+        return Err(ResolveError::Parse("systemctl list-units failed".into()));
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut units: Vec<String> = text
+        .lines()
+        .filter_map(|l| l.split_whitespace().next())
+        .filter(|u| valid_unit(u))
+        .map(str::to_owned)
+        .collect();
+    units.sort();
+    units.dedup();
+    Ok(units)
+}
+
 /// Resolves a `.service` unit to its executable.
 ///
 /// `read_link` reads a symbolic link (injected so tests need no `/proc`).
@@ -209,6 +241,33 @@ mod tests {
         assert!(exe_for_unit(&r, &no_link, "x.service").is_err());
         let r = FakeRunner::ok("LoadState=loaded\nMainPID=0\nExecStart=\n");
         assert!(exe_for_unit(&r, &no_link, "x.service").is_err());
+    }
+
+    #[test]
+    fn running_services_are_listed_and_filtered() {
+        let r = FakeRunner::ok(
+            "sshd.service loaded active running OpenSSH\n\
+             nginx.service loaded active running nginx\n\
+             weird;name.service loaded active running x\n\
+             \n\
+             nginx.service loaded active running again\n",
+        );
+        assert_eq!(
+            list_running_services(&r).unwrap(),
+            ["nginx.service", "sshd.service"]
+        );
+        assert_eq!(
+            r.calls.borrow()[0],
+            [
+                "list-units",
+                "--type=service",
+                "--state=running",
+                "--no-legend",
+                "--plain",
+                "--no-pager"
+            ]
+        );
+        assert!(list_running_services(&FakeRunner::failing()).is_err());
     }
 
     #[test]

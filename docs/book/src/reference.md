@@ -6,6 +6,8 @@
 - `amivuln check [TARGET...] [--all]`
 - `amivuln cve CVE-ID...`: is this host affected? Exit 1 when it is.
 - `amivuln pending`: the updates that close the most risk, ranked.
+- `amivuln services`: check the package behind every running systemd service.
+- `amivuln restart`: processes that still run files an update replaced. Exit 1 when a restart is needed.
 - `amivuln config show | init [--path FILE] | validate`
 - `amivuln cache info | clear`
 - `amivuln completions bash|zsh|fish|elvish|powershell`

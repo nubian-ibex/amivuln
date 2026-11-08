@@ -5,14 +5,17 @@
 use std::io::Write;
 
 use amivuln_core::{
-    Condition, CveReport, CveState, ExitCode, PendingReport, Verdict, cve_answers, exit_code,
-    is_complete, pending_updates,
+    Condition, CveReport, CveState, ExitCode, PendingReport, RestartItem, RestartReport, Verdict,
+    cve_answers, exit_code, is_complete, pending_updates,
 };
-use amivuln_report::{RenderOptions, render_cve_report, render_pending_report};
+use amivuln_report::{
+    RenderOptions, render_cve_report, render_pending_report, render_restart_report,
+};
+use amivuln_resolve::scan_stale;
 
-use crate::app::{Env, host_ecosystem, host_meta, settings, usage};
+use crate::app::{CheckMode, Env, check_with, host_ecosystem, host_meta, settings, usage};
 use crate::cli::Cli;
-use crate::scan::{evaluate, resolve_scope};
+use crate::scan::{evaluate, owners, resolve_scope, running_services};
 
 fn now_string(env: &Env) -> String {
     jiff::Timestamp::from_second(env.now)
@@ -153,6 +156,97 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         conditions.push(Condition::Violation);
     }
     exit_code(&conditions)
+}
+
+/// `amivuln services`: check the package behind every running service.
+pub(crate) fn services(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    let units = match running_services() {
+        Ok(u) => u,
+        Err(e) => return usage(err, &format!("cannot list the running services: {e}")),
+    };
+    let mode = CheckMode {
+        hide_clean: true,
+        unresolved_is_fatal: false,
+    };
+    check_with(cli, &units, false, mode, env, out, err)
+}
+
+/// `amivuln restart`: processes that run files an update replaced.
+pub(crate) fn restart(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
+    let (s, _) = match settings(&cli.global, env) {
+        Ok(v) => v,
+        Err(m) => return usage(err, &m),
+    };
+    let scan = scan_stale(std::path::Path::new("/proc"));
+    // Package ownership is a courtesy: on an unsupported distribution the scan
+    // still works, it just cannot name packages.
+    let eco = host_ecosystem(&cli.global, env).ok();
+    let mut paths: Vec<String> = scan
+        .stale
+        .iter()
+        .flat_map(|p| p.exe.iter().chain(p.libs.iter()).cloned())
+        .collect();
+    paths.sort();
+    paths.dedup();
+    let owner = eco.map(|e| owners(e, &paths)).unwrap_or_default();
+    let owner_of = |p: &str| owner.get(p).cloned().flatten();
+
+    let mut items: Vec<RestartItem> = Vec::new();
+    for p in &scan.stale {
+        let exe = p.exe.as_ref().map(|e| (e.clone(), owner_of(e)));
+        let libs: Vec<(String, Option<String>)> =
+            p.libs.iter().map(|l| (l.clone(), owner_of(l))).collect();
+        match items
+            .iter_mut()
+            .find(|i| i.unit.is_some() && i.unit == p.unit)
+        {
+            Some(i) => {
+                i.pids.push(p.pid);
+                if i.exe.is_none() {
+                    i.exe = exe;
+                }
+                for l in libs {
+                    if !i.libs.contains(&l) {
+                        i.libs.push(l);
+                    }
+                }
+            }
+            None => items.push(RestartItem {
+                unit: p.unit.clone(),
+                pids: vec![p.pid],
+                comm: p.comm.clone(),
+                exe,
+                libs,
+            }),
+        }
+    }
+    let report = RestartReport {
+        tool_version: env!("CARGO_PKG_VERSION").to_owned(),
+        generated_at: now_string(env),
+        host: host_meta(eco.unwrap_or(amivuln_core::Ecosystem::Arch)),
+        inspected: scan.inspected,
+        unreadable: scan.unreadable,
+        items,
+    };
+    if let Err(e) = render_restart_report(
+        &report,
+        s.format,
+        RenderOptions {
+            color: s.color,
+            hide_clean: false,
+        },
+        out,
+    ) {
+        if e.kind() != std::io::ErrorKind::BrokenPipe {
+            let _ = writeln!(err, "error: cannot write the report: {e}");
+        }
+        return ExitCode::Internal;
+    }
+    if report.items.is_empty() {
+        ExitCode::Success
+    } else {
+        ExitCode::PolicyViolation
+    }
 }
 
 #[cfg(test)]

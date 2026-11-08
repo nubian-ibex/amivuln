@@ -18,5 +18,8 @@ amivuln-core = { path = "../amivuln-core", version = "0.0.4" }
 amivuln-version = { path = "../amivuln-version", version = "0.0.4" }
 thiserror = "2.0.21"
 
+[dev-dependencies]
+tempfile = "3.27.0"
+
 [lints]
 workspace = true

@@ -25,8 +25,8 @@ pub use package::{Ecosystem, PackageRef, Provenance, Version};
 pub use pending::{CveAnswer, CveHit, CveState, PendingUpdate, cve_answers, pending_updates};
 pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
 pub use report::{
-    CveReport, FailOn, HostMeta, PendingReport, Policy, RunReport, Summary, TargetReport,
-    Unresolved,
+    CveReport, FailOn, HostMeta, PendingReport, Policy, RestartItem, RestartReport, RunReport,
+    Summary, TargetReport, Unresolved,
 };
 pub use score::{Grade, Score, score};
 pub use source::{SourceId, SourceReport, SourceStatus, is_complete};
