@@ -26,6 +26,7 @@ dependencies = [
  "amivuln-report",
  "amivuln-resolve",
  "amivuln-sources",
+ "amivuln-version",
  "assert_cmd",
  "clap",
  "clap_complete",
