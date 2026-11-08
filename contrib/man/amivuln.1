@@ -70,6 +70,12 @@ Is this host affected by a CVE? Scans every installed package
 amivuln\-pending(1)
 Which updates close the most risk? Ranks the updates that fix affected findings
 .TP
+amivuln\-services(1)
+Check every running systemd service. Services that are not packaged are listed, not fatal
+.TP
+amivuln\-restart(1)
+Which running processes still use files an update replaced? Exit 1 when a restart is needed
+.TP
 amivuln\-config(1)
 Show, create or validate the configuration
 .TP

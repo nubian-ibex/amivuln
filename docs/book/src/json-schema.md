@@ -5,7 +5,7 @@
 `https://nubian-ibex.github.io/amivuln/schema/v1.json`) and the project's tests
 validate the real output against it.
 
-The `cve` and `pending` commands write their own documents (`"kind": "cve"` and `"kind": "pending"`) with the schemas [cve-v1.json](schema/cve-v1.json) and [pending-v1.json](schema/pending-v1.json). The run report also carries a `score` object.
+The `cve` and `pending` commands write their own documents (`"kind": "cve"` and `"kind": "pending"`) with the schemas [cve-v1.json](schema/cve-v1.json), [pending-v1.json](schema/pending-v1.json) and, for `restart`, [restart-v1.json](schema/restart-v1.json). The run report also carries a `score` object.
 
 Rules:
 

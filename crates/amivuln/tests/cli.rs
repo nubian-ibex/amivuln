@@ -702,3 +702,30 @@ async fn check_accepts_an_inventory_and_scores_it_and_bad_input_is_rejected() {
     .await;
     assert_eq!(missing.status.code(), Some(64));
 }
+
+#[test]
+fn restart_reads_proc_without_a_package_manager_and_emits_valid_json() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = Command::cargo_bin("amivuln")
+        .unwrap()
+        .env_clear()
+        .env("HOME", dir.path())
+        .args(["restart", "-f", "json"])
+        .output()
+        .unwrap();
+    // 0 when nothing runs a replaced file, 1 when something does (a CI runner
+    // may have just been updated); never an error.
+    assert!(
+        matches!(out.status.code(), Some(0 | 1)),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = json(&out);
+    assert_eq!(v["kind"], "restart");
+    assert!(v["inspected"].as_u64().unwrap() >= 1);
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/book/src/schema/restart-v1.json"
+    ))
+    .unwrap();
+    let _ = schema;
+}

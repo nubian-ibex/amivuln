@@ -44,6 +44,8 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -s V -l version -d 'Print 
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "check" -d 'Check packages, files, versions or purls'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
+complete -c amivuln -n "__fish_amivuln_needs_command" -a "services" -d 'Check every running systemd service. Services that are not packaged are listed, not fatal'
+complete -c amivuln -n "__fish_amivuln_needs_command" -a "restart" -d 'Which running processes still use files an update replaced? Exit 1 when a restart is needed'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "config" -d 'Show, create or validate the configuration'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "cache" -d 'Inspect or clear the on-disk cache'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "completions" -d 'Print shell completions'
@@ -95,6 +97,36 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l offline -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s f -l format -d 'Output format: summary, detail or json' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s f -l format -d 'Output format: summary, detail or json' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s f -l format -d 'Output format: summary, detail or json' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
@@ -246,14 +278,16 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l offline -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "completions" -d 'Print shell completions'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "version" -d 'Print version and build information'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "services" -d 'Check every running systemd service. Services that are not packaged are listed, not fatal'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "restart" -d 'Which running processes still use files an update replaced? Exit 1 when a restart is needed'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "completions" -d 'Print shell completions'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "version" -d 'Print version and build information'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "show" -d 'Print the effective configuration'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "init" -d 'Write a commented default configuration file'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "validate" -d 'Load the configuration and report problems'

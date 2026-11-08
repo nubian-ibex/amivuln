@@ -95,6 +95,7 @@ version = "0.0.4"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
+ "tempfile",
  "thiserror",
 ]
 

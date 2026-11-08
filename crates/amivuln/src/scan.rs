@@ -370,6 +370,32 @@ pub(crate) fn resolve_scope(
     Ok((resolved, unresolved))
 }
 
+/// The package that owns each path, or `None` when none does.
+pub(crate) fn owners(
+    eco: Ecosystem,
+    paths: &[String],
+) -> std::collections::BTreeMap<String, Option<String>> {
+    let runner = SystemRunner::default();
+    let backend = match eco {
+        Ecosystem::Fedora(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
+        Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
+    };
+    paths
+        .iter()
+        .map(|p| {
+            (
+                p.clone(),
+                backend.resolver().owner_of(p).ok().map(|pkg| pkg.name),
+            )
+        })
+        .collect()
+}
+
+/// The running service units, for `amivuln services`.
+pub(crate) fn running_services() -> Result<Vec<String>, ResolveError> {
+    amivuln_resolve::list_running_services(&SystemRunner::default())
+}
+
 pub(crate) fn resolve_all(
     targets: &[String],
     all: bool,

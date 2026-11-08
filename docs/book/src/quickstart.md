@@ -13,13 +13,15 @@ amivuln --all                          # every installed package
 ```bash
 amivuln cve CVE-2024-6387      # is any installed package affected?
 amivuln pending                # which updates close the most risk, riskiest first
+amivuln services               # check the package behind every running service
+amivuln restart                # which processes still run files an update replaced
 amivuln --packages-from list.txt   # check a package list exported from another host
 ```
 
 `cve` exits 1 when a package is affected. When the distribution data has no
 record of the CVE it says so explicitly: that is not a statement that the host
 is safe. `pending` groups subpackages built from one source into one update and
-ranks by exploited (KEV) findings, severity and EPSS. A whole-system scan also
+ranks by exploited (KEV) findings, severity and EPSS. `restart` reads `/proc` (run it as root to see every process; the output says how many it could not inspect) and exits 1 when something needs a restart. `services` lists running systemd services that are not packaged without failing the run. A whole-system scan also
 prints a host score from A to F (see ADR-0011 in the repository).
 
 ## Read the result

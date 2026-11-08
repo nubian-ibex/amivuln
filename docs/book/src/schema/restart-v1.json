@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://amivuln.dev/schema/restart-v1.json",
+  "title": "amivuln restart report, schema version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "tool",
+    "generated_at",
+    "host",
+    "inspected",
+    "unreadable",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "restart"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "const": "amivuln"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_id",
+        "os_version",
+        "arch"
+      ],
+      "properties": {
+        "os_id": {
+          "type": "string"
+        },
+        "os_version": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        }
+      }
+    },
+    "inspected": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unreadable": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Processes that could not be read; run as root to see them."
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit",
+          "pids",
+          "comm",
+          "executable",
+          "libraries"
+        ],
+        "properties": {
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "comm": {
+            "type": "string"
+          },
+          "executable": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/replaced"
+              }
+            ]
+          },
+          "libraries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/replaced"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "replaced": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "package"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "package": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

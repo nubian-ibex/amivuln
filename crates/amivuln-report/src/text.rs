@@ -420,6 +420,71 @@ pub fn render_cve(
     write_sources_footer(out, opts, &r.sources, r.complete)
 }
 
+/// `amivuln restart`: what still runs replaced files.
+///
+/// # Errors
+///
+/// Propagates write errors.
+pub fn render_restart(
+    r: &amivuln_core::RestartReport,
+    opts: RenderOptions,
+    out: &mut dyn Write,
+) -> io::Result<()> {
+    if r.items.is_empty() {
+        writeln!(out, "no inspected process runs a replaced file")?;
+    }
+    for it in &r.items {
+        let pids = it
+            .pids
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
+        let name = it.unit.as_deref().map_or_else(
+            || format!("{} (no service)", sanitize_terminal(&it.comm)),
+            sanitize_terminal,
+        );
+        writeln!(out, "{}  pid {}", paint(opts, "1;33", &name), pids)?;
+        let owner = |o: &Option<String>| {
+            o.as_ref()
+                .map_or_else(String::new, |p| format!("  ({})", sanitize_terminal(p)))
+        };
+        if let Some((path, pkg)) = &it.exe {
+            writeln!(
+                out,
+                "  executable replaced: {}{}",
+                sanitize_terminal(path),
+                owner(pkg)
+            )?;
+        }
+        for (path, pkg) in &it.libs {
+            writeln!(
+                out,
+                "  library replaced:    {}{}",
+                sanitize_terminal(path),
+                owner(pkg)
+            )?;
+        }
+        if let Some(u) = &it.unit {
+            writeln!(
+                out,
+                "  restart with: systemctl restart {}",
+                sanitize_terminal(u)
+            )?;
+        }
+    }
+    writeln!(out)?;
+    writeln!(out, "inspected {} processes", r.inspected)?;
+    if r.unreadable > 0 {
+        writeln!(
+            out,
+            "{} process(es) could not be inspected; run as root to see all of them",
+            r.unreadable
+        )?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 pub(crate) mod fixtures {
     use core::time::Duration;

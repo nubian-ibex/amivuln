@@ -180,6 +180,10 @@ pub enum Command {
     },
     /// Which updates close the most risk? Ranks the updates that fix affected findings.
     Pending,
+    /// Check every running systemd service. Services that are not packaged are listed, not fatal.
+    Services,
+    /// Which running processes still use files an update replaced? Exit 1 when a restart is needed.
+    Restart,
     /// Show, create or validate the configuration.
     Config {
         /// What to do.

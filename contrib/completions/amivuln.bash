@@ -37,6 +37,12 @@ _amivuln() {
             amivuln,pending)
                 cmd="amivuln__subcmd__pending"
                 ;;
+            amivuln,restart)
+                cmd="amivuln__subcmd__restart"
+                ;;
+            amivuln,services)
+                cmd="amivuln__subcmd__services"
+                ;;
             amivuln,version)
                 cmd="amivuln__subcmd__version"
                 ;;
@@ -103,6 +109,12 @@ _amivuln() {
             amivuln__subcmd__help,pending)
                 cmd="amivuln__subcmd__help__subcmd__pending"
                 ;;
+            amivuln__subcmd__help,restart)
+                cmd="amivuln__subcmd__help__subcmd__restart"
+                ;;
+            amivuln__subcmd__help,services)
+                cmd="amivuln__subcmd__help__subcmd__services"
+                ;;
             amivuln__subcmd__help,version)
                 cmd="amivuln__subcmd__help__subcmd__version"
                 ;;
@@ -128,7 +140,7 @@ _amivuln() {
 
     case "${cmd}" in
         amivuln)
-            opts="-f -q -h -V --format --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --purl --packages-from --quiet --all --help --version check cve pending config cache completions version help"
+            opts="-f -q -h -V --format --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --purl --packages-from --quiet --all --help --version check cve pending services restart config cache completions version help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -896,7 +908,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__help)
-            opts="check cve pending config cache completions version help"
+            opts="check cve pending services restart config cache completions version help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1077,6 +1089,34 @@ _amivuln() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
+        amivuln__subcmd__help__subcmd__restart)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        amivuln__subcmd__help__subcmd__services)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
         amivuln__subcmd__help__subcmd__version)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
@@ -1092,6 +1132,122 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__pending)
+            opts="-f -q -h --format --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --purl --packages-from --quiet --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --format)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -f)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --fail-on)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --fail-on-epss)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --config)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --distro)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --package)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --purl)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --packages-from)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        amivuln__subcmd__restart)
+            opts="-f -q -h --format --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --purl --packages-from --quiet --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --format)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -f)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --fail-on)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --fail-on-epss)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --config)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --distro)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --file)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --package)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --purl)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --packages-from)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        amivuln__subcmd__services)
             opts="-f -q -h --format --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --purl --packages-from --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )

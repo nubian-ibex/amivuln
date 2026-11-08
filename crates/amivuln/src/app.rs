@@ -202,6 +202,8 @@ pub fn run(args: &[String], env: &Env, stdout: &mut dyn Write, stderr: &mut dyn 
         Some(Command::Check { targets, all }) => check(&cli, targets, *all, env, stdout, stderr),
         Some(Command::Cve { ids }) => crate::commands::cve(&cli, ids, env, stdout, stderr),
         Some(Command::Pending) => crate::commands::pending(&cli, env, stdout, stderr),
+        Some(Command::Services) => crate::commands::services(&cli, env, stdout, stderr),
+        Some(Command::Restart) => crate::commands::restart(&cli, env, stdout, stderr),
         None => check(&cli, &cli.targets, cli.all, env, stdout, stderr),
     }
 }
@@ -344,10 +346,36 @@ fn cache_cmd(
     }
 }
 
+/// How a scan is presented and judged.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CheckMode {
+    /// Whole-scope scan: leave out clean targets and total them.
+    pub(crate) hide_clean: bool,
+    /// An unresolved target fails the run (exit 3). Off for scans whose
+    /// targets are discovered, such as services, where some are not packages.
+    pub(crate) unresolved_is_fatal: bool,
+}
+
 fn check(
     cli: &Cli,
     subcommand_targets: &[String],
     all: bool,
+    env: &Env,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> ExitCode {
+    let mode = CheckMode {
+        hide_clean: all,
+        unresolved_is_fatal: true,
+    };
+    check_with(cli, subcommand_targets, all, mode, env, out, err)
+}
+
+pub(crate) fn check_with(
+    cli: &Cli,
+    subcommand_targets: &[String],
+    all: bool,
+    mode: CheckMode,
     env: &Env,
     out: &mut dyn Write,
     err: &mut dyn Write,
@@ -392,7 +420,7 @@ fn check(
         s.format,
         RenderOptions {
             color: s.color,
-            hide_clean: all,
+            hide_clean: mode.hide_clean,
         },
         out,
     ) {
@@ -402,15 +430,15 @@ fn check(
         }
         return ExitCode::Internal;
     }
-    exit_for(&report, &s)
+    exit_for(&report, &s, mode)
 }
 
-fn exit_for(report: &RunReport, s: &Settings) -> ExitCode {
+fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
     let mut conditions = Vec::new();
     if !report.complete && s.config.policy.fail_on_incomplete {
         conditions.push(Condition::Incomplete);
     }
-    if !report.unresolved.is_empty() {
+    if mode.unresolved_is_fatal && !report.unresolved.is_empty() {
         conditions.push(Condition::Unresolved);
     }
     let findings: Vec<Finding> = report
