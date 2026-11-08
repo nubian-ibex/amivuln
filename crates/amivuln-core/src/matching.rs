@@ -73,8 +73,28 @@ pub fn classify(installed: &Version, status: &DistroStatus) -> Verdict {
     }
 }
 
-/// A reportable CVE for a target.
+/// CISA KEV details for a CVE.
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KevInfo {
+    /// Date CISA added the CVE, `YYYY-MM-DD`.
+    pub added: String,
+    /// CISA marks it as used in ransomware campaigns.
+    pub ransomware: bool,
+}
+
+/// EPSS details for a CVE.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EpssInfo {
+    /// Probability of exploitation in the next 30 days, 0.0 to 1.0.
+    pub score: f64,
+    /// Percentile among all scored CVEs, 0.0 to 1.0.
+    pub percentile: f64,
+    /// Date of the score, `YYYY-MM-DD`.
+    pub date: String,
+}
+
+/// A reportable CVE for a target.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Finding {
     /// CVE or GHSA identifier.
     pub id: String,
@@ -82,6 +102,24 @@ pub struct Finding {
     pub severity: Severity,
     /// Matching outcome.
     pub verdict: Verdict,
+    /// Present when the CVE is in the CISA KEV catalog.
+    pub kev: Option<KevInfo>,
+    /// Present when EPSS has a score.
+    pub epss: Option<EpssInfo>,
+}
+
+impl Finding {
+    /// A finding without enrichment.
+    #[must_use]
+    pub fn new(id: impl Into<String>, severity: Severity, verdict: Verdict) -> Self {
+        Self {
+            id: id.into(),
+            severity,
+            verdict,
+            kev: None,
+            epss: None,
+        }
+    }
 }
 
 /// Sorts findings by severity descending, then id ascending (deterministic output).
@@ -157,11 +195,7 @@ mod tests {
 
     #[test]
     fn sorting_is_severity_desc_then_id_asc() {
-        let f = |id: &str, severity| Finding {
-            id: id.into(),
-            severity,
-            verdict: Verdict::Unverified,
-        };
+        let f = |id: &str, severity| Finding::new(id, severity, Verdict::Unverified);
         let mut v = vec![
             f("CVE-2", Severity::Low),
             f("CVE-9", Severity::Critical),
