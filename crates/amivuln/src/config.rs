@@ -48,6 +48,8 @@ pub struct Config {
     pub policy: PolicySection,
     /// Network options.
     pub network: Network,
+    /// Webhook notifications (`[notify]`).
+    pub notify: Notify,
     /// Per-source settings.
     pub sources: Sources,
 }
@@ -76,6 +78,28 @@ pub struct Output {
     pub format: String,
     /// `auto`, `always` or `never`.
     pub color: String,
+}
+
+/// `[notify]`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct Notify {
+    /// POST a compact summary to this URL when the run trips the condition.
+    pub webhook: Option<String>,
+    /// File with a bearer token sent as `Authorization: Bearer ...`.
+    pub bearer_file: Option<String>,
+    /// `violation` (default), `incomplete` or `always`.
+    pub on: String,
+}
+
+impl Default for Notify {
+    fn default() -> Self {
+        Self {
+            webhook: None,
+            bearer_file: None,
+            on: "violation".to_owned(),
+        }
+    }
 }
 
 /// `[policy]`
@@ -183,6 +207,7 @@ impl Default for Config {
                 ca_file: None,
                 user_agent_suffix: None,
             },
+            notify: Notify::default(),
             sources: Sources {
                 distro: DistroCfg::default(),
                 kev: SourceCfg {
@@ -299,6 +324,20 @@ impl Config {
             && !(p.starts_with("http://") || p.starts_with("https://"))
         {
             return err("network.proxy must be an http:// or https:// URL");
+        }
+        if let Some(w) = &self.notify.webhook
+            && !(w.starts_with("https://")
+                || (self.network.allow_insecure_http && w.starts_with("http://")))
+        {
+            return err(
+                "notify.webhook must be an https:// URL (or http:// with network.allow_insecure_http)",
+            );
+        }
+        if !matches!(
+            self.notify.on.as_str(),
+            "violation" | "incomplete" | "always"
+        ) {
+            return err("notify.on must be violation, incomplete or always");
         }
         if let Some(ua) = &self.network.user_agent_suffix
             && (ua.is_empty()
@@ -510,6 +549,11 @@ fail_on = \"none\"        # none, low, medium, high, critical or kev
 fail_on_incomplete = true
 strict = false          # count findings without a distro statement
 # ignore_file = \".amivuln-ignore.toml\"
+
+[notify]
+# webhook = \"https://ntfy.sh/example-topic\"    # POSTed a compact summary
+# bearer_file = \"/etc/amivuln/notify-token\"   # sent as Authorization: Bearer
+on = \"violation\"                              # violation | incomplete | always
 
 [network]
 allow_insecure_http = false

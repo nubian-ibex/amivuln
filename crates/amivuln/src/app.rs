@@ -18,6 +18,7 @@ use clap::{CommandFactory, Parser};
 
 use crate::cli::{CacheAction, Cli, Command, ConfigAction, Global, Shell};
 use crate::config::{self, Config, parse_duration};
+use crate::notify::maybe_notify;
 use crate::scan::{evaluate, expand_targets, resolve_scope};
 
 /// Process environment, injectable for tests.
@@ -541,26 +542,24 @@ pub(crate) fn check_with(
         }
         return ExitCode::Internal;
     }
+    let violated = s.policy.violated_by(&policy_findings(&report, &s));
+    maybe_notify(&report, &s, violated, err);
     exit_for(&report, &s, mode)
 }
 
-fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
-    let mut conditions = Vec::new();
-    if !report.complete && s.config.policy.fail_on_incomplete {
-        conditions.push(Condition::Incomplete);
-    }
-    if mode.unresolved_is_fatal && !report.unresolved.is_empty() {
-        conditions.push(Condition::Unresolved);
-    }
+#[allow(clippy::too_many_lines)]
+/// The report's findings that count against the policy: suppressed entries
+/// removed and, with a baseline, only findings that are new.
+fn policy_findings(report: &RunReport, s: &Settings) -> Vec<Finding> {
     let findings: Vec<Finding> = report
         .targets
         .iter()
         .flat_map(|t| t.findings.clone())
         .filter(|f| !report.suppressed.contains_key(&f.id))
         .collect();
-    // With a baseline only new findings violate the policy.
-    let findings = match &s.baseline {
+    match &s.baseline {
         Some(b) => {
+            // With a baseline only new findings violate the policy.
             let new: std::collections::BTreeSet<String> = b
                 .new_findings(&report.targets)
                 .into_values()
@@ -572,7 +571,18 @@ fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
                 .collect()
         }
         None => findings,
-    };
+    }
+}
+
+fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
+    let mut conditions = Vec::new();
+    if !report.complete && s.config.policy.fail_on_incomplete {
+        conditions.push(Condition::Incomplete);
+    }
+    if mode.unresolved_is_fatal && !report.unresolved.is_empty() {
+        conditions.push(Condition::Unresolved);
+    }
+    let findings: Vec<Finding> = policy_findings(report, s);
     if s.policy.violated_by(&findings) {
         conditions.push(Condition::Violation);
     }

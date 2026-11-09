@@ -140,7 +140,9 @@ struct JsonEpss<'a> {
     date: &'a str,
 }
 
-pub(crate) fn json_severity(s: Severity) -> &'static str {
+/// The SARIF severity level for a CVSS-style severity.
+#[must_use]
+pub fn json_severity(s: Severity) -> &'static str {
     match s {
         Severity::Critical => "critical",
         Severity::High => "high",

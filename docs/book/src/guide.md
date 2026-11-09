@@ -138,3 +138,19 @@ packages (npm, PyPI, Maven and so on) are not dropped silently: they appear as
 `unresolved` entries, one per purl type with a count, and the run exits with 3.
 To gate only on OS packages, filter the SBOM first, for example with
 `jq '.components |= map(select(.purl // "" | startswith("pkg:rpm/")))'`.
+
+## Webhook notifications
+
+A `[notify]` section sends a compact summary after a `check` run: host facts,
+completeness, score, totals, finding ids. It is opt-in and carries nothing
+beyond what the JSON report already states.
+
+```toml
+[notify]
+webhook = "https://ntfy.sh/example-topic"   # any endpoint that accepts a POST
+bearer_file = "/etc/amivuln/notify-token"   # optional; sent as Authorization: Bearer
+on = "violation"                            # violation (default) | incomplete | always
+```
+
+A failed delivery prints a warning and never changes the exit code: the policy
+decision was made from the scan, not from the notification.

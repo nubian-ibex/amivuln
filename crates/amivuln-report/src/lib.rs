@@ -15,7 +15,8 @@ mod sanitize;
 mod text;
 
 pub use json::{
-    SCHEMA_VERSION, render_cve_json, render_json, render_pending_json, render_restart_json,
+    SCHEMA_VERSION, json_severity, render_cve_json, render_json, render_pending_json,
+    render_restart_json,
 };
 pub use other::{render_csv, render_markdown, render_sarif};
 pub use prometheus::render_prometheus;
