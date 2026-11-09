@@ -13,5 +13,6 @@ pub mod cli;
 pub mod commands;
 pub mod config;
 pub mod mcp;
+pub mod notify;
 pub mod pipeline;
 pub mod scan;

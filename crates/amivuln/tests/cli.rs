@@ -11,7 +11,7 @@
 use std::path::Path;
 
 use assert_cmd::Command;
-use wiremock::matchers::{method, path, path_regex};
+use wiremock::matchers::{header, method, path, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const UPDATEINFO_ZST: &[u8] =
@@ -1268,4 +1268,122 @@ async fn sbom_input_checks_os_packages_and_lists_the_rest() {
     let bad = run(sb.cmd(), vec!["--sbom", junk_arg, "--distro", "fedora:43"]).await;
     assert_eq!(bad.status.code(), Some(64));
     assert!(String::from_utf8_lossy(&bad.stderr).contains("not a CycloneDX"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_policy_violation_posts_a_webhook_summary() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let hook = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(header("authorization", "Bearer secret-token"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&hook)
+        .await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let token = sb.path().join("token");
+    std::fs::write(&token, "secret-token\n").unwrap();
+    let cfg = sb.path().join("notify.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n\
+             [sources.distro]\nurl = \"{}/updates\"\n\
+             [sources.kev]\nurl = \"{}/kev.json\"\n\
+             [sources.epss]\nurl = \"{}/epss\"\n\
+             [notify]\nwebhook = \"{}\"\nbearer_file = \"{}\"\non = \"violation\"\n",
+            server.uri(),
+            server.uri(),
+            server.uri(),
+            hook.uri(),
+            token.display()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        out.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    // A clean run on the same hook with on = violation sends nothing.
+    let other_cfg = sb.path().join("notify2.toml");
+    std::fs::write(
+        &other_cfg,
+        std::fs::read_to_string(&cfg)
+            .unwrap()
+            .replace("on = \"violation\"", "on = \"incomplete\""),
+    )
+    .unwrap();
+    let other_arg: &'static str = Box::leak(other_cfg.display().to_string().into_boxed_str());
+    let ok = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            other_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    assert_eq!(ok.status.code(), Some(1), "no notification is sent");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_broken_webhook_warns_and_keeps_the_exit_code() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("notify3.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n\
+             [sources.distro]\nurl = \"{}/updates\"\n\
+             [sources.kev]\nurl = \"{}/kev.json\"\n\
+             [sources.epss]\nurl = \"{}/epss\"\n\
+             [notify]\nwebhook = \"http://127.0.0.1:1/dead\"\n",
+            server.uri(),
+            server.uri(),
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(1));
+    let e = String::from_utf8_lossy(&out.stderr);
+    assert!(e.contains("warning: notify failed"), "{e}");
 }

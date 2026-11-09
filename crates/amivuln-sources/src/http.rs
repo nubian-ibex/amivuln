@@ -152,17 +152,32 @@ impl HttpClient {
     ///
     /// See [`HttpError`].
     pub async fn post(&self, url: &str, body: &str) -> Result<Response, HttpError> {
+        self.post_bearer(url, body, None).await
+    }
+
+    /// POST `body` as `application/json`, optionally with a bearer token.
+    ///
+    /// # Errors
+    ///
+    /// See [`HttpError`].
+    pub async fn post_bearer(
+        &self,
+        url: &str,
+        body: &str,
+        bearer: Option<&str>,
+    ) -> Result<Response, HttpError> {
         if !self.config.allow_insecure && !url.starts_with("https://") {
             return Err(HttpError::Refused(format!("{url} is not an https URL")));
         }
-        let resp = self
+        let mut req = self
             .inner
             .post(url)
             .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(body.to_owned())
-            .send()
-            .await
-            .map_err(map_error)?;
+            .body(body.to_owned());
+        if let Some(token) = bearer {
+            req = req.header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"));
+        }
+        let resp = req.send().await.map_err(map_error)?;
         Self::finish(resp, self.config.max_body).await
     }
 
