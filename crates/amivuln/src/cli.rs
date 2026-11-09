@@ -89,6 +89,9 @@ pub struct Global {
     /// Treat this value as a package URL (repeatable).
     #[arg(long, global = true, value_name = "PURL")]
     pub purl: Vec<String>,
+    /// A previous `-f json` report; only new findings violate --fail-on.
+    #[arg(long, global = true, value_name = "FILE")]
+    pub baseline: Option<std::path::PathBuf>,
     /// `OpenVEX` documents stating that a product is not affected (repeatable).
     #[arg(long, global = true, value_name = "FILE")]
     pub vex: Vec<std::path::PathBuf>,

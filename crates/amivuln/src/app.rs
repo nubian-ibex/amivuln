@@ -84,6 +84,8 @@ pub(crate) struct Settings {
     pub(crate) ignores: Vec<amivuln_core::IgnoreEntry>,
     /// `OpenVEX` statements from the --vex files (empty when none).
     pub(crate) vex: Vec<amivuln_core::VexStatement>,
+    /// The parsed `--baseline`, when given.
+    pub(crate) baseline: Option<amivuln_core::Baseline>,
 }
 
 pub(crate) fn usage(stderr: &mut dyn Write, msg: &str) -> ExitCode {
@@ -128,6 +130,17 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
     }
     let ignores = config::load_ignore(&cfg, from.as_deref().and_then(|p| p.parent()), &today(env))
         .map_err(|e| format!("ignore file: {e}"))?;
+    let baseline = g
+        .baseline
+        .as_deref()
+        .map(|path| {
+            let text =
+                std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+            amivuln_core::parse_baseline(text.as_bytes())
+                .map_err(|e| format!("{}: {e}", path.display()))
+        })
+        .transpose()
+        .map_err(|e| format!("baseline: {e}"))?;
     let mut vex = Vec::new();
     for path in &g.vex {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -153,6 +166,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
             timeout,
             ignores,
             vex,
+            baseline,
             config: cfg,
         },
         from,
@@ -497,6 +511,21 @@ fn exit_for(report: &RunReport, s: &Settings, mode: CheckMode) -> ExitCode {
         .flat_map(|t| t.findings.clone())
         .filter(|f| !report.suppressed.contains_key(&f.id))
         .collect();
+    // With a baseline only new findings violate the policy.
+    let findings = match &s.baseline {
+        Some(b) => {
+            let new: std::collections::BTreeSet<String> = b
+                .new_findings(&report.targets)
+                .into_values()
+                .flatten()
+                .collect();
+            findings
+                .into_iter()
+                .filter(|f| new.contains(&f.id))
+                .collect()
+        }
+        None => findings,
+    };
     if s.policy.violated_by(&findings) {
         conditions.push(Condition::Violation);
     }

@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_amivuln_global_optspecs
-    string join \n f/format= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= vex= packages-from= q/quiet all h/help V/version
+    string join \n f/format= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= baseline= vex= packages-from= q/quiet all h/help V/version
 end
 
 function __fish_amivuln_needs_command
@@ -33,6 +33,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -l distro -d 'Treat the ho
 complete -c amivuln -n "__fish_amivuln_needs_command" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_needs_command" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -61,6 +62,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l distro -d 'Tre
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l all -d 'Check every installed package'
@@ -78,6 +80,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l distro -d 'Treat
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -94,6 +97,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l distro -d 'T
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -110,6 +114,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l distro -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -126,6 +131,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l distro -d 'T
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -142,6 +148,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -162,6 +169,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -179,6 +187,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -195,6 +204,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -215,6 +225,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_se
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -234,6 +245,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -250,6 +262,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -269,6 +282,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l distro -
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
@@ -285,6 +299,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l distro -d 'T
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l file -d 'Treat this path as a target (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l json -d 'Machine-readable output'
