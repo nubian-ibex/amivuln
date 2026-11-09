@@ -1143,3 +1143,44 @@ async fn output_writes_atomically_and_keeps_the_old_file_on_a_usage_error() {
     assert_eq!(bad.status.code(), Some(64));
     assert_eq!(std::fs::read_to_string(&file).unwrap(), written);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn mcp_serves_a_check_over_stdio() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let input = [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}"#,
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"check_target","arguments":{"targets":["python3-multipart@0:1.3.0-1.fc43"],"distro":"fedora:43"}}}"#,
+        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"check_target","arguments":{"targets":["--output=/tmp/x"]}}}"#,
+    ]
+    .join("\n");
+    let mut cmd = sb.cmd();
+    cmd.arg("mcp").write_stdin(input);
+    let out = tokio::task::spawn_blocking(move || cmd.output().unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let replies: Vec<serde_json::Value> = stdout(&out)
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(replies.len(), 3, "{replies:?}");
+    assert_eq!(replies[0]["result"]["serverInfo"]["name"], "amivuln");
+    assert_eq!(replies[1]["result"]["isError"], false, "{}", replies[1]);
+    let report: serde_json::Value =
+        serde_json::from_str(replies[1]["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(report["complete"], true);
+    assert_eq!(report["targets"][0]["summary"]["high"], 1);
+    assert_eq!(
+        replies[2]["error"]["code"], -32602,
+        "option injection must be refused"
+    );
+}

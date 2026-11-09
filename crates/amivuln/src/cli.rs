@@ -193,6 +193,8 @@ pub enum Command {
     Services,
     /// Which running processes still use files an update replaced? Exit 1 when a restart is needed.
     Restart,
+    /// Serve read-only tools to AI agents over the Model Context Protocol on stdio.
+    Mcp,
     /// Show, create or validate the configuration.
     Config {
         /// What to do.
