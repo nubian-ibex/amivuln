@@ -507,6 +507,103 @@ fn read_inventory(path: &Path, eco: Ecosystem) -> Result<Vec<(String, PackageRef
     Ok(out)
 }
 
+/// Deepest component nesting and most components read from an SBOM.
+const MAX_SBOM_DEPTH: usize = 8;
+const MAX_SBOM_COMPONENTS: usize = 200_000;
+
+fn collect_purls(
+    components: &serde_json::Value,
+    depth: usize,
+    seen: &mut usize,
+    purls: &mut std::collections::BTreeSet<String>,
+    without: &mut usize,
+) -> Result<(), String> {
+    let Some(list) = components.as_array() else {
+        return Ok(());
+    };
+    for c in list {
+        *seen += 1;
+        if *seen > MAX_SBOM_COMPONENTS {
+            return Err(format!(
+                "the SBOM has more than {MAX_SBOM_COMPONENTS} components"
+            ));
+        }
+        match c.get("purl").and_then(serde_json::Value::as_str) {
+            Some(p) => {
+                purls.insert(p.to_owned());
+            }
+            None => *without += 1,
+        }
+        if depth < MAX_SBOM_DEPTH
+            && let Some(inner) = c.get("components")
+        {
+            collect_purls(inner, depth + 1, seen, purls, without)?;
+        }
+    }
+    Ok(())
+}
+
+/// Reads `--sbom FILE`, a `CycloneDX` JSON document. rpm, deb and alpm purls
+/// become packages; every other component is reported as unresolved, one entry
+/// per purl type, so nothing is dropped without a trace.
+fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
+    use std::io::Read;
+    let file = std::fs::File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut buf = Vec::new();
+    file.take(MAX_SBOM_BYTES + 1)
+        .read_to_end(&mut buf)
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    if buf.len() as u64 > MAX_SBOM_BYTES {
+        return Err(format!(
+            "{} is larger than {MAX_SBOM_BYTES} bytes",
+            path.display()
+        ));
+    }
+    let doc: serde_json::Value = serde_json::from_slice(&buf)
+        .map_err(|e| format!("{}: not valid JSON: {e}", path.display()))?;
+    if doc.get("bomFormat").and_then(serde_json::Value::as_str) != Some("CycloneDX") {
+        return Err(format!("{}: not a CycloneDX JSON document", path.display()));
+    }
+    let mut purls = std::collections::BTreeSet::new();
+    let (mut seen, mut without) = (0, 0);
+    if let Some(c) = doc.get("components") {
+        collect_purls(c, 0, &mut seen, &mut purls, &mut without)?;
+    }
+    let mut packages = Vec::new();
+    let mut skipped: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for purl in purls {
+        let kind = purl
+            .strip_prefix("pkg:")
+            .and_then(|r| r.split(['/', '@']).next())
+            .unwrap_or("invalid")
+            .to_owned();
+        if matches!(kind.as_str(), "rpm" | "deb" | "alpm") {
+            let pkg = amivuln_resolve::from_purl(&purl, Some(eco))
+                .map_err(|e| format!("{}: {purl}: {e}", path.display()))?;
+            packages.push((purl, pkg));
+        } else {
+            *skipped.entry(format!("pkg:{kind}")).or_default() += 1;
+        }
+    }
+    let mut unresolved: Vec<Unresolved> = skipped
+        .into_iter()
+        .map(|(kind, n)| Unresolved {
+            input: format!("sbom:{kind}"),
+            reason: format!("{n} component(s) are not OS packages, so no distro advisory applies"),
+        })
+        .collect();
+    if without > 0 {
+        unresolved.push(Unresolved {
+            input: "sbom:no-purl".to_owned(),
+            reason: format!("{without} component(s) have no purl"),
+        });
+    }
+    Ok((packages, unresolved))
+}
+
+/// Largest SBOM accepted.
+const MAX_SBOM_BYTES: u64 = 64 * 1024 * 1024;
+
 /// The packages a command works on: the host's installed packages for `--all`,
 /// a `--packages-from` inventory, and any explicit targets.
 pub(crate) fn resolve_scope(
@@ -516,8 +613,14 @@ pub(crate) fn resolve_scope(
     eco: Ecosystem,
 ) -> Result<Scope, String> {
     let (mut resolved, unresolved) = resolve_all(targets, all, eco);
+    let mut unresolved = unresolved;
     if let Some(path) = &cli.global.packages_from {
         resolved.extend(read_inventory(path, eco)?);
+    }
+    if let Some(path) = &cli.global.sbom {
+        let (pkgs, skipped) = read_sbom(path, eco)?;
+        resolved.extend(pkgs);
+        unresolved.extend(skipped);
     }
     Ok((resolved, unresolved))
 }

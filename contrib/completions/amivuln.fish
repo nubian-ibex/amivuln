@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_amivuln_global_optspecs
-    string join \n f/format= output= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= baseline= vex= packages-from= q/quiet all h/help V/version
+    string join \n f/format= output= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= purl= baseline= vex= packages-from= sbom= q/quiet all h/help V/version
 end
 
 function __fish_amivuln_needs_command
@@ -37,6 +37,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -l purl -d 'Treat this val
 complete -c amivuln -n "__fish_amivuln_needs_command" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_needs_command" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_needs_command" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -68,6 +69,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l purl -d 'Treat
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l all -d 'Check every installed package'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l offline -d 'Never use the network; answer from the cache only'
@@ -87,6 +89,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l purl -d 'Treat t
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -105,6 +108,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l purl -d 'Tre
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -123,6 +127,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l purl -d 'Tr
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -141,6 +146,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l purl -d 'Tre
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -159,6 +165,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l purl -d 'Treat t
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -177,6 +184,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -199,6 +207,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -218,6 +227,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -236,6 +246,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -258,6 +269,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_se
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -279,6 +291,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -297,6 +310,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -318,6 +332,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l purl -d 
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l no-cache -d 'Do not keep a cache on disk for this run'
@@ -336,6 +351,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l purl -d 'Tre
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l json -d 'Machine-readable output'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l offline -d 'Never use the network; answer from the cache only'

@@ -1206,3 +1206,66 @@ async fn mcp_serves_a_check_over_stdio() {
         "option injection must be refused"
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn sbom_input_checks_os_packages_and_lists_the_rest() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let sbom = sb.path().join("bom.cdx.json");
+    std::fs::write(
+        &sbom,
+        r#"{"bomFormat":"CycloneDX","specVersion":"1.5","components":[
+            {"type":"library","name":"python3-multipart","purl":"pkg:rpm/fedora/python3-multipart@0:1.3.0-1.fc43"},
+            {"type":"library","name":"left-pad","purl":"pkg:npm/left-pad@1.3.0",
+             "components":[{"type":"library","name":"inner","purl":"pkg:npm/inner@1.0.0"}]},
+            {"type":"file","name":"no purl here"}
+        ]}"#,
+    )
+    .unwrap();
+    let sbom_arg: &'static str = Box::leak(sbom.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd(),
+        vec![
+            "--sbom",
+            sbom_arg,
+            "--distro",
+            "fedora:43",
+            "-f",
+            "json",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    // 3 (unresolved) outranks 1 (policy violation).
+    assert_eq!(
+        out.status.code(),
+        Some(3),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = json(&out);
+    assert_eq!(v["targets"][0]["summary"]["high"], 1);
+    let unresolved: Vec<&str> = v["unresolved"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|u| u["input"].as_str().unwrap())
+        .collect();
+    assert_eq!(unresolved, ["sbom:pkg:npm", "sbom:no-purl"], "{v}");
+    assert!(
+        v["unresolved"][0]["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with("2 component")
+    );
+
+    let junk = sb.path().join("junk.json");
+    std::fs::write(&junk, r#"{"bomFormat":"SPDX"}"#).unwrap();
+    let junk_arg: &'static str = Box::leak(junk.display().to_string().into_boxed_str());
+    let bad = run(sb.cmd(), vec!["--sbom", junk_arg, "--distro", "fedora:43"]).await;
+    assert_eq!(bad.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("not a CycloneDX"));
+}
