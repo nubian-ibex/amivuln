@@ -196,16 +196,24 @@ async fn load_osv(
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
     for (_, pkg) in packages {
-        let amivuln_core::Version::Deb(v) = &pkg.version else {
-            return fail(format!(
-                "package {} is not a Debian or Ubuntu version; check the --distro value",
-                pkg.name
-            ));
+        let version = match &pkg.version {
+            amivuln_core::Version::Deb(v) => v.to_string(),
+            amivuln_core::Version::Rpm(v)
+                if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
+            {
+                v.to_string()
+            }
+            _ => {
+                return fail(format!(
+                    "package {} has a version kind OSV cannot match for this distro; check the --distro value",
+                    pkg.name
+                ));
+            }
         };
         let body = match amivuln_sources::osv::batch_request(
             pkg.name.as_str(),
             osv_eco.as_str(),
-            v.to_string().as_str(),
+            version.as_str(),
         ) {
             Ok(b) => b,
             Err(e) => return fail(e.to_string()),
@@ -316,7 +324,9 @@ async fn load_distro(
     let required = cfg.sources.distro.required;
     let override_url = cfg.sources.distro.url.clone();
     match eco {
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => load_osv(f, eco, cfg, resolved).await,
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+            load_osv(f, eco, cfg, resolved).await
+        }
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -519,7 +529,9 @@ pub(crate) fn owners(
 ) -> std::collections::BTreeMap<String, Option<String>> {
     let runner = SystemRunner::default();
     let backend = match eco {
-        Ecosystem::Fedora(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+            Backend::Rpm(RpmResolver::new(&runner, eco))
+        }
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
         // Debian and Ubuntu resolvers come with OSV support; ownership is not
         // needed for the restart command yet.
@@ -555,7 +567,9 @@ pub(crate) fn resolve_all(
     let mut resolved: Vec<(String, PackageRef)> = Vec::new();
     let mut unresolved: Vec<Unresolved> = Vec::new();
     let backend = match eco {
-        Ecosystem::Fedora(_) => Some(Backend::Rpm(RpmResolver::new(&runner, eco))),
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+            Some(Backend::Rpm(RpmResolver::new(&runner, eco)))
+        }
         Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
         // Debian and Ubuntu read no package database on the host: `--all` is
         // only meaningful with `--packages-from` (an inventory exported from a
@@ -612,7 +626,10 @@ async fn gather(
         let id = match eco {
             Ecosystem::Arch => SourceId::ArchTracker,
             Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
-            Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => SourceId::Osv,
+            Ecosystem::Debian(_)
+            | Ecosystem::Ubuntu(_)
+            | Ecosystem::Rocky(_)
+            | Ecosystem::Alma(_) => SourceId::Osv,
         };
         (
             None,

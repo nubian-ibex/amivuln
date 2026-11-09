@@ -157,8 +157,12 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
         let Some(fix) = osv.fix_for(&cve) else {
             continue;
         };
-        let parsed = fix.parse().unwrap_or_else(|never| match never {});
-        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(Version::Deb(parsed)));
+        // The fix is compared in the installed package's own version scheme.
+        let fixed = match &pkg.version {
+            Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
+            _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
+        };
+        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(fixed));
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }

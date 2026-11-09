@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 amivuln contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! OSV.dev: the only structured source for Debian and Ubuntu.
+//! OSV.dev: the only structured source for Debian, Ubuntu, Rocky and `AlmaLinux`.
 //!
 //! `POST /v1/querybatch` with `{package: {name, ecosystem}, version}` per
 //! query (ecosystems `Debian:12`, `Ubuntu:24.04`, ...). The response lists
@@ -74,8 +74,26 @@ pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
         .into_iter()
         .flat_map(|res| res.vulns)
         .map(|v| v.id)
-        .filter(|id| crate::is_cve_id(id.split_once('-').map_or(id, |(_, rest)| rest)))
+        .filter(|id| is_advisory_id(id))
         .collect())
+}
+
+/// Accepts `DEBIAN-CVE-...`/`UBUNTU-CVE-...` and the Rocky/Alma errata ids
+/// `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`; anything else is dropped so an id
+/// from the response never reaches a URL unchecked.
+fn is_advisory_id(id: &str) -> bool {
+    if let Some((prefix, rest)) = id.split_once('-') {
+        if matches!(prefix, "RLSA" | "ALSA") {
+            return rest.split_once(':').is_some_and(|(y, n)| {
+                !y.is_empty()
+                    && !n.is_empty()
+                    && y.bytes().all(|b| b.is_ascii_digit())
+                    && n.bytes().all(|b| b.is_ascii_digit())
+            });
+        }
+        return crate::is_cve_id(rest);
+    }
+    crate::is_cve_id(id)
 }
 
 #[derive(Debug, Deserialize)]
@@ -222,6 +240,16 @@ impl OsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn advisory_ids_accept_errata_and_reject_noise() {
+        for ok in ["DEBIAN-CVE-2023-5363", "RLSA-2024:2463", "ALSA-2024:2463"] {
+            assert!(is_advisory_id(ok), "{ok}");
+        }
+        for bad in ["RLSA-2024", "RLSA-x:1", "RLSA-2024:1/../x", "GHSA-xxxx", ""] {
+            assert!(!is_advisory_id(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn batch_request_and_response() {

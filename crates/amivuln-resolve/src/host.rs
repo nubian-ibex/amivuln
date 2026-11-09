@@ -35,6 +35,9 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         // os-release says `debian` with VERSION_CODENAME in newer releases and
         // VERSION_ID as a number in others; a floating version is not possible.
         "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
+        // Rocky and AlmaLinux declare VERSION_ID as the major release.
+        "rocky" => Ecosystem::Rocky(version_id?.parse().ok()?),
+        "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
         // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
         // long-lived OSV ecosystem, so amivuln does not claim them.
         "ubuntu" => {

@@ -44,6 +44,8 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Arch => "Arch Linux".to_owned(),
         Ecosystem::Debian(v) => format!("Debian {v}"),
         Ecosystem::Ubuntu(v) => format!("Ubuntu {}.{}", v / 100, v % 100),
+        Ecosystem::Rocky(v) => format!("Rocky Linux {v}"),
+        Ecosystem::Alma(v) => format!("AlmaLinux {v}"),
     }
 }
 
@@ -54,6 +56,7 @@ fn update_hint(target: &TargetReport) -> String {
         Ecosystem::Fedora(_) => format!("dnf upgrade {name}"),
         Ecosystem::Arch => "pacman -Syu".to_owned(),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => "apt-get upgrade".to_owned(),
+        Ecosystem::Rocky(_) | Ecosystem::Alma(_) => "dnf upgrade".to_owned(),
     }
 }
 
