@@ -62,6 +62,9 @@ pub struct Global {
         env = "AMIVULN_FORMAT"
     )]
     pub format: Option<String>,
+    /// Write the result to FILE instead of stdout, replacing it atomically.
+    #[arg(long, global = true, value_name = "FILE")]
+    pub output: Option<std::path::PathBuf>,
     /// Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev.
     #[arg(long, global = true, value_name = "LEVEL", env = "AMIVULN_FAIL_ON")]
     pub fail_on: Option<String>,

@@ -17,6 +17,7 @@ _amivuln() {
     _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -52,6 +53,7 @@ _amivuln() {
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -78,6 +80,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -103,6 +106,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -127,6 +131,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -151,6 +156,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -175,6 +181,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -207,6 +214,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -232,6 +240,7 @@ _arguments "${_arguments_options[@]}" : \
 '--path=[Where to write; defaults to the user configuration path]:FILE:_files' \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -256,6 +265,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -316,6 +326,7 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -348,6 +359,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -372,6 +384,7 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -428,6 +441,7 @@ esac
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
@@ -457,6 +471,7 @@ powershell\:"PowerShell"))' \
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
 '--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
 '--config=[Configuration file (skips the default search path)]:FILE:_files' \
