@@ -104,3 +104,26 @@ user_agent_suffix = "team-sre"
 host-specific text that can leave the machine, only when you set it. A proxy
 URL may carry credentials; amivuln never prints it. To use an internal mirror
 instead, set `sources.<name>.url`.
+
+## For AI agents: the MCP server
+
+`amivuln mcp` speaks the Model Context Protocol over stdio (newline-delimited
+JSON-RPC 2.0, protocol revisions 2025-06-18, 2025-03-26 and 2024-11-05). Register
+it in a client such as:
+
+```json
+{ "mcpServers": { "amivuln": { "command": "amivuln", "args": ["mcp"] } } }
+```
+
+The tools are read-only and each one runs a fixed command line with `-f json`;
+the result is the same versioned report the command line prints.
+
+- `check_target`: `targets` (1 to 20 package names, `name@version` or `pkg:` URLs) and an optional `distro`.
+- `check_cve`: `id` such as `CVE-2024-6387`; scans every installed package.
+- `pending_updates`, `needs_restart` and `list_services`: no arguments.
+
+There is no shell, no file path input and no way to pass options: a target that
+starts with `-` or holds control characters is refused. The server updates the
+local cache like any other run; pass `--offline` or `--no-cache` to
+`amivuln mcp` to restrict that. Always read `complete` and `sources` in a
+result before treating an empty list as clean.

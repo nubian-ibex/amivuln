@@ -12,5 +12,6 @@ pub mod app;
 pub mod cli;
 pub mod commands;
 pub mod config;
+pub mod mcp;
 pub mod pipeline;
 pub mod scan;

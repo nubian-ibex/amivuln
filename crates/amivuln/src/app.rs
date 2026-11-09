@@ -297,6 +297,7 @@ fn dispatch(cli: &Cli, env: &Env, stdout: &mut dyn Write, stderr: &mut dyn Write
         Some(Command::Cve { ids }) => crate::commands::cve(cli, ids, env, stdout, stderr),
         Some(Command::Pending) => crate::commands::pending(cli, env, stdout, stderr),
         Some(Command::Services) => crate::commands::services(cli, env, stdout, stderr),
+        Some(Command::Mcp) => mcp_cmd(cli, env, stdout),
         Some(Command::Restart) => crate::commands::restart(cli, env, stdout, stderr),
         None => check(cli, &cli.targets, cli.all, env, stdout, stderr),
     }
@@ -591,4 +592,36 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         os_version,
         arch: cpu_arch().to_owned(),
     }
+}
+
+/// Runs `amivuln mcp`: reads requests from stdin, answers on `stdout`. Each
+/// tool call re-enters [`run`] with a fixed command line and the settings
+/// that make sense for an agent (`--config`, `--offline`, `--no-cache`).
+fn mcp_cmd(cli: &Cli, env: &Env, stdout: &mut dyn Write) -> ExitCode {
+    let mut forwarded: Vec<String> = Vec::new();
+    if let Some(c) = &cli.global.config {
+        forwarded.extend(["--config".to_owned(), c.display().to_string()]);
+    }
+    if cli.global.flags.offline {
+        forwarded.push("--offline".to_owned());
+    }
+    if cli.global.flags.no_cache {
+        forwarded.push("--no-cache".to_owned());
+    }
+    let mut runner = |tool: &[String]| -> crate::mcp::ToolOutput {
+        let mut args = vec!["amivuln".to_owned()];
+        args.extend(tool.iter().cloned());
+        args.extend([
+            "-f".to_owned(),
+            "json".to_owned(),
+            "--color".to_owned(),
+            "never".to_owned(),
+        ]);
+        args.extend(forwarded.iter().cloned());
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = run(&args, env, &mut out, &mut err);
+        (code as i32, out, err)
+    };
+    let stdin = std::io::stdin();
+    crate::mcp::serve(&mut stdin.lock(), stdout, &mut runner)
 }
