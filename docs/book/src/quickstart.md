@@ -58,7 +58,7 @@ permissions:
   contents: read
   attestations: read
 steps:
-  - uses: nubian-ibex/amivuln-action@79c8be83f7a34f13d95ec83ff5fe7372fb6eb523 # v0.1.0
+  - uses: nubian-ibex/amivuln-action@5c61781a5497fbcb34401a5b2d2eee54a59e9ebc # v0.1.1
     with:
       args: --all --fail-on high
 ```
