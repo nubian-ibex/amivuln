@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 amivuln contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+[Unit]
+Description=Run the amivuln host scan every six hours
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

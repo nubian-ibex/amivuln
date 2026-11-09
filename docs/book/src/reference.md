@@ -16,6 +16,7 @@
 ## Options
 
 - `-f, --format`: `summary`, `detail`, `json`, `sarif`, `markdown`, `csv` or `prometheus`
+- `--output FILE`: write the result to FILE instead of stdout; the file is replaced atomically through a rename
 - `--fail-on`: `none`, `low`, `medium`, `high`, `critical` or `kev`
 - `--fail-on-epss SCORE`: exit 1 when an affected finding reaches this EPSS score
 - `--strict`: unverified findings count for `--fail-on`

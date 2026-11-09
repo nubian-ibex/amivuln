@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 amivuln contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+[Unit]
+Description=amivuln host scan (Prometheus textfile metrics)
+Documentation=https://nubian-ibex.github.io/amivuln/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Exit 1 (policy) and 2 (incomplete) still produce a valid metrics file, so
+# they do not mark the unit failed; 64 and 70 do.
+SuccessExitStatus=1 2 3
+ExecStart=/usr/bin/amivuln --all -f prometheus --output /var/lib/node_exporter/textfile_collector/amivuln.prom
+
+# The cache lives under /var/cache/amivuln; the textfile directory is the only
+# other writable path.
+CacheDirectory=amivuln
+Environment=XDG_CACHE_HOME=/var/cache
+ReadWritePaths=/var/lib/node_exporter/textfile_collector
+
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateUsers=no
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0022
+TimeoutStartSec=15min
