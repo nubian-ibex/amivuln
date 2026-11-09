@@ -41,8 +41,9 @@ result: complete
 
 ## Status
 
-Pre-alpha. Fedora and Arch Linux are supported. Debian, Ubuntu, Alpine and the
-RHEL family come later. See [Data sources](sources.md) for exactly what each
+Pre-alpha. Fedora and Arch Linux are supported, as are Rocky Linux and
+AlmaLinux 8 and 9 through OSV (`--distro rocky:9`, `--distro alma:9`). Alpine
+and Red Hat Enterprise Linux come later (OSV has no RHEL data). See [Data sources](sources.md) for exactly what each
 distribution report covers and where the blind spots are.
 
 Start with [Installation](installation.md) and the [Quick start](quickstart.md).

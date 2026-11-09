@@ -35,7 +35,7 @@ fn valid_deb_version(s: &str) -> bool {
 
 fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -> PackageRef {
     let parsed = match ecosystem {
-        Ecosystem::Fedora(_) => {
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
             Version::Rpm(version.parse().unwrap_or_else(|never| match never {}))
         }
         Ecosystem::Arch => Version::Pacman(version.parse().unwrap_or_else(|never| match never {})),
@@ -132,6 +132,8 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         Some(Ecosystem::Ubuntu(v)) if (kind, namespace) == ("deb", "ubuntu") => {
             Ecosystem::Ubuntu(v)
         }
+        Some(Ecosystem::Rocky(v)) if (kind, namespace) == ("rpm", "rocky") => Ecosystem::Rocky(v),
+        Some(Ecosystem::Alma(v)) if (kind, namespace) == ("rpm", "alma") => Ecosystem::Alma(v),
         Some(e) => {
             return Err(bad(format!(
                 "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu",
@@ -142,6 +144,8 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     Ecosystem::Ubuntu(v) => {
                         format!("ubuntu:{}.{:02}", v / 100, v % 100)
                     }
+                    Ecosystem::Rocky(v) => format!("rocky:{v}"),
+                    Ecosystem::Alma(v) => format!("alma:{v}"),
                 }
             )));
         }
@@ -174,7 +178,9 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         return Err(bad(format!("invalid package name {name:?}")));
     }
     let ok = match ecosystem {
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => valid_deb_version(&version),
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+            valid_deb_version(&version)
+        }
         _ => valid_version(&version),
     };
     if !ok {

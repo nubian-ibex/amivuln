@@ -50,7 +50,9 @@ struct Case {
 
 fn package(eco: Ecosystem, case: &Case) -> PackageRef {
     let version = match eco {
-        Ecosystem::Fedora(_) => Version::Rpm(case.version.parse().unwrap_or_else(|n| match n {})),
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+            Version::Rpm(case.version.parse().unwrap_or_else(|n| match n {}))
+        }
         Ecosystem::Arch => Version::Pacman(case.version.parse().unwrap_or_else(|n| match n {})),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
             Version::Deb(case.version.parse().unwrap_or_else(|n| match n {}))

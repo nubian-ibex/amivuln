@@ -16,6 +16,10 @@ pub enum Ecosystem {
     Arch,
     /// Debian, with the release number (for example 12).
     Debian(u16),
+    /// Rocky Linux, release 8 or 9.
+    Rocky(u16),
+    /// `AlmaLinux`, release 8 or 9.
+    Alma(u16),
     /// Ubuntu, an LTS release: 2004 to 9904, where 2404 is 24.04.
     Ubuntu(u16),
 }
@@ -26,6 +30,8 @@ impl Ecosystem {
     pub fn osv_ecosystem(&self) -> Option<String> {
         match self {
             Self::Debian(v) => Some(format!("Debian:{v}")),
+            Self::Rocky(v) => Some(format!("Rocky Linux:{v}")),
+            Self::Alma(v) => Some(format!("AlmaLinux:{v}")),
             // The OSV ecosystem keeps the decimal form (Ubuntu:24.04:LTS).
             Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
             Self::Fedora(_) | Self::Arch => None,
@@ -42,6 +48,8 @@ impl Ecosystem {
             Self::Arch => "pkg:alpm/arch",
             Self::Debian(_) => "pkg:deb/debian",
             Self::Ubuntu(_) => "pkg:deb/ubuntu",
+            Self::Rocky(_) => "pkg:rpm/rocky",
+            Self::Alma(_) => "pkg:rpm/alma",
         }
     }
 }
@@ -116,6 +124,18 @@ mod tests {
         let pac = Version::Pacman("1.0-1".parse().unwrap_or_else(|n| match n {}));
         assert_eq!(rpm.compare(&pac), None);
         assert_eq!(rpm.compare(&rpm), Some(Ordering::Equal));
+    }
+
+    #[test]
+    fn rhel_family_osv_ecosystems() {
+        assert_eq!(
+            Ecosystem::Rocky(9).osv_ecosystem().as_deref(),
+            Some("Rocky Linux:9")
+        );
+        assert_eq!(
+            Ecosystem::Alma(8).osv_ecosystem().as_deref(),
+            Some("AlmaLinux:8")
+        );
     }
 
     #[test]

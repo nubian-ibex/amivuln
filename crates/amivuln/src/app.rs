@@ -180,6 +180,18 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
             .parse()
             .map(Ecosystem::Fedora)
             .map_err(|_| format!("invalid Fedora release {v:?} in --distro")),
+        Some(("rocky", v)) => v
+            .parse::<u16>()
+            .ok()
+            .filter(|n| (8..=9).contains(n))
+            .map(Ecosystem::Rocky)
+            .ok_or_else(|| format!("invalid Rocky release {v:?} in --distro (use 8 or 9)")),
+        Some(("alma" | "almalinux", v)) => v
+            .parse::<u16>()
+            .ok()
+            .filter(|n| (8..=9).contains(n))
+            .map(Ecosystem::Alma)
+            .ok_or_else(|| format!("invalid AlmaLinux release {v:?} in --distro (use 8 or 9)")),
         Some(("debian", v)) => v
             .parse()
             .map(Ecosystem::Debian)
@@ -200,7 +212,7 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
         }
         None if s == "arch" => Ok(Ecosystem::Arch),
         _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN or ubuntu:NN"
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, rocky:NN or alma:NN"
         )),
     }
 }
@@ -538,6 +550,8 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Arch => ("arch".to_owned(), "rolling".to_owned()),
         Ecosystem::Debian(v) => ("debian".to_owned(), v.to_string()),
         Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{}", v / 100, v % 100)),
+        Ecosystem::Rocky(v) => ("rocky".to_owned(), v.to_string()),
+        Ecosystem::Alma(v) => ("almalinux".to_owned(), v.to_string()),
     };
     HostMeta {
         os_id,
