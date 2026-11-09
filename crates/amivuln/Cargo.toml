@@ -13,6 +13,12 @@ authors.workspace = true
 keywords = ["security", "cve", "vulnerability", "linux"]
 categories = ["command-line-utilities"]
 
+# `cargo binstall amivuln` downloads the musl release archive instead of building.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/amivuln-{ target }.tar.zst"
+pkg-fmt = "tzstd"
+bin-dir = "amivuln-{ target }/{ bin }{ binary-ext }"
+
 [lib]
 name = "amivuln"
 path = "src/lib.rs"

@@ -24,6 +24,9 @@ cargo install amivuln --locked
 
 This builds from source and needs a C compiler (SQLite is compiled in).
 
+`cargo binstall amivuln` skips the build and downloads the static `musl`
+release archive instead.
+
 ## Verify what you downloaded
 
 ```bash
