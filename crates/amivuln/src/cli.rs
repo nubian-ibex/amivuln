@@ -53,7 +53,7 @@ pub struct Cli {
 /// Options available everywhere.
 #[derive(Debug, Args, Clone)]
 pub struct Global {
-    /// Output format: summary, detail, json, sarif, markdown or csv.
+    /// Output format: summary, detail, json, sarif, markdown, csv or prometheus.
     #[arg(
         short,
         long,

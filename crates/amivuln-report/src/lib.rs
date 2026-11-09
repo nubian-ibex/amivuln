@@ -10,6 +10,7 @@
 
 mod json;
 mod other;
+mod prometheus;
 mod sanitize;
 mod text;
 
@@ -17,6 +18,7 @@ pub use json::{
     SCHEMA_VERSION, render_cve_json, render_json, render_pending_json, render_restart_json,
 };
 pub use other::{render_csv, render_markdown, render_sarif};
+pub use prometheus::render_prometheus;
 pub use sanitize::sanitize_terminal;
 pub use text::{
     RenderOptions, render_cve, render_detail, render_pending, render_restart, render_summary,
@@ -37,6 +39,8 @@ pub enum Format {
     Markdown,
     /// CSV, with formula-injection protection.
     Csv,
+    /// Prometheus text metrics, for the `node_exporter` textfile collector.
+    Prometheus,
 }
 
 impl core::str::FromStr for Format {
@@ -50,8 +54,9 @@ impl core::str::FromStr for Format {
             "sarif" => Ok(Self::Sarif),
             "markdown" => Ok(Self::Markdown),
             "csv" => Ok(Self::Csv),
+            "prometheus" => Ok(Self::Prometheus),
             other => Err(format!(
-                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown or csv"
+                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown, csv or prometheus"
             )),
         }
     }
@@ -75,6 +80,7 @@ pub fn render(
         Format::Sarif => render_sarif(report, out),
         Format::Markdown => render_markdown(report, out),
         Format::Csv => render_csv(report, out),
+        Format::Prometheus => render_prometheus(report, out),
     }
 }
 
@@ -92,9 +98,9 @@ pub fn render_pending_report(
     match format {
         Format::Json => render_pending_json(report, out),
         Format::Summary | Format::Detail => render_pending(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
-            "--format sarif|markdown|csv applies to check only",
-        )),
+        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
+            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
+        ),
     }
 }
 
@@ -112,9 +118,9 @@ pub fn render_cve_report(
     match format {
         Format::Json => render_cve_json(report, out),
         Format::Summary | Format::Detail => render_cve(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
-            "--format sarif|markdown|csv applies to check only",
-        )),
+        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
+            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
+        ),
     }
 }
 
@@ -132,8 +138,8 @@ pub fn render_restart_report(
     match format {
         Format::Json => render_restart_json(report, out),
         Format::Summary | Format::Detail => render_restart(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv => Err(std::io::Error::other(
-            "--format sarif|markdown|csv applies to check only",
-        )),
+        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
+            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
+        ),
     }
 }

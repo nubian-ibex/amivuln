@@ -24,7 +24,7 @@ function __fish_amivuln_using_subcommand
     contains -- $cmd[1] $argv
 end
 
-complete -c amivuln -n "__fish_amivuln_needs_command" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_needs_command" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_needs_command" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -53,7 +53,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -a "cache" -d 'Inspect or 
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "completions" -d 'Print shell completions'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "version" -d 'Print version and build information'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -71,7 +71,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l offline -d 'Ne
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -88,7 +88,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l offline -d 'Neve
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -105,7 +105,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l offline -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -122,7 +122,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l offline -d 
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -139,7 +139,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l offline -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -160,7 +160,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -f -a "init" -d 'Write a commented default configuration file'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -f -a "validate" -d 'Load the configuration and report problems'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -178,7 +178,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l path -d 'Where to write; defaults to the user configuration path' -r -F
-complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -195,7 +195,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -216,7 +216,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from help" -f -a "init" -d 'Write a commented default configuration file'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from help" -f -a "validate" -d 'Load the configuration and report problems'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -236,7 +236,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_se
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -f -a "info" -d 'Show where the cache lives and how big it is'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -f -a "clear" -d 'Delete every cached response'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -253,7 +253,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -273,7 +273,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from help" -f -a "info" -d 'Show where the cache lives and how big it is'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from help" -f -a "clear" -d 'Delete every cached response'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
-complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l config -d 'Configuration file (skips the default search path)' -r -F
@@ -290,7 +290,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l offline 
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s h -l help -d 'Print help (see more with \'--help\')'
-complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown or csv' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l config -d 'Configuration file (skips the default search path)' -r -F
