@@ -292,6 +292,26 @@ mod tests {
     }
 
     #[test]
+    fn sarif_validates_against_the_required_subset_of_2_1_0() {
+        // The OASIS schema is not vendored (its terms differ from this
+        // project's); this subset encodes what GitHub code scanning needs.
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("schema/sarif-2.1.0-subset.json")).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        let doc: serde_json::Value = serde_json::from_str(&render(render_sarif)).unwrap();
+        let errors: Vec<String> = validator.iter_errors(&doc).map(|e| e.to_string()).collect();
+        assert!(errors.is_empty(), "schema violations: {errors:?}");
+        assert!(!doc["runs"][0]["results"].as_array().unwrap().is_empty());
+        // Not vacuous: a wrong version and an invalid level are rejected.
+        let mut bad = doc.clone();
+        bad["version"] = serde_json::json!("2.0.0");
+        assert!(!validator.is_valid(&bad));
+        let mut bad = doc;
+        bad["runs"][0]["results"][0]["level"] = serde_json::json!("fatal");
+        assert!(!validator.is_valid(&bad));
+    }
+
+    #[test]
     fn markdown_tables_and_notes() {
         let text = render(render_markdown);
         assert!(text.contains("## nginx 1:1.26.2-1.fc41 (fedora)"));

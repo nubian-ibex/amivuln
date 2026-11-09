@@ -1028,3 +1028,49 @@ fn restart_reads_proc_without_a_package_manager_and_emits_valid_json() {
     .unwrap();
     let _ = schema;
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn exit_code_precedence_is_unresolved_over_violation_over_success() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let common = ["--distro", "fedora:43", "-f", "json"];
+    let affected = "python3-multipart@0:1.3.0-1.fc43";
+
+    // 0: findings below the (absent) threshold, 1: a violation.
+    let ok = run(sb.cmd(), [vec![affected], common.to_vec()].concat()).await;
+    assert_eq!(ok.status.code(), Some(0));
+    let hit = run(
+        sb.cmd(),
+        [vec![affected, "--fail-on", "high"], common.to_vec()].concat(),
+    )
+    .await;
+    assert_eq!(hit.status.code(), Some(1));
+
+    // 3 beats 1: the same violation plus a target that cannot be resolved.
+    let both = run(
+        sb.cmd(),
+        [
+            vec![affected, "a b@1", "--fail-on", "high"],
+            common.to_vec(),
+        ]
+        .concat(),
+    )
+    .await;
+    assert_eq!(
+        both.status.code(),
+        Some(3),
+        "{}{}",
+        stdout(&both),
+        String::from_utf8_lossy(&both.stderr)
+    );
+
+    // 64 beats everything: a bad --fail-on value is a usage error.
+    let usage = run(
+        sb.cmd(),
+        [vec![affected, "--fail-on", "bogus"], common.to_vec()].concat(),
+    )
+    .await;
+    assert_eq!(usage.status.code(), Some(64));
+}
