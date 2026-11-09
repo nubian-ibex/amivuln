@@ -49,6 +49,22 @@ keeps an outage of the advisory data from passing as a clean scan.
 
 ## A GitHub Actions step
 
+The [amivuln-action](https://github.com/nubian-ibex/amivuln-action) downloads a
+release, verifies its attestation and checksum, then runs it. Pin it to a full
+commit SHA:
+
+```yaml
+permissions:
+  contents: read
+  attestations: read
+steps:
+  - uses: nubian-ibex/amivuln-action@79c8be83f7a34f13d95ec83ff5fe7372fb6eb523 # v0.1.0
+    with:
+      args: --all --fail-on high
+```
+
+The same steps by hand:
+
 ```yaml
 - name: Download amivuln
   run: |
