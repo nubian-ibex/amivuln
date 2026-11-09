@@ -255,17 +255,50 @@ pub fn run(args: &[String], env: &Env, stdout: &mut dyn Write, stderr: &mut dyn 
             return ExitCode::Usage;
         }
     };
+    let Some(target) = cli.global.output.clone() else {
+        return dispatch(&cli, env, stdout, stderr);
+    };
+    let mut buf: Vec<u8> = Vec::new();
+    let code = dispatch(&cli, env, &mut buf, stderr);
+    // An empty result (usage or internal error) must not replace a good file.
+    if !buf.is_empty()
+        && let Err(e) = write_atomic(&target, &buf)
+    {
+        let _ = writeln!(stderr, "amivuln: cannot write {}: {e}", target.display());
+        return ExitCode::Internal;
+    }
+    code
+}
+
+/// Writes through a temporary file in the same directory and renames it, so a
+/// reader (for example the `node_exporter` textfile collector) never sees a
+/// partial file.
+fn write_atomic(target: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
+    let name = target
+        .file_name()
+        .ok_or_else(|| std::io::Error::other("the output path has no file name"))?;
+    let mut tmp_name = std::ffi::OsString::from(".");
+    tmp_name.push(name);
+    tmp_name.push(".tmp");
+    let tmp = target.with_file_name(tmp_name);
+    std::fs::write(&tmp, data)?;
+    std::fs::rename(&tmp, target).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
+}
+
+fn dispatch(cli: &Cli, env: &Env, stdout: &mut dyn Write, stderr: &mut dyn Write) -> ExitCode {
     match &cli.command {
         Some(Command::Version { json }) => version(*json, stdout),
         Some(Command::Completions { shell }) => completions(*shell, stdout),
         Some(Command::Config { action }) => config_cmd(action, &cli.global, env, stdout, stderr),
         Some(Command::Cache { action }) => cache_cmd(action, &cli.global, env, stdout, stderr),
-        Some(Command::Check { targets, all }) => check(&cli, targets, *all, env, stdout, stderr),
-        Some(Command::Cve { ids }) => crate::commands::cve(&cli, ids, env, stdout, stderr),
-        Some(Command::Pending) => crate::commands::pending(&cli, env, stdout, stderr),
-        Some(Command::Services) => crate::commands::services(&cli, env, stdout, stderr),
-        Some(Command::Restart) => crate::commands::restart(&cli, env, stdout, stderr),
-        None => check(&cli, &cli.targets, cli.all, env, stdout, stderr),
+        Some(Command::Check { targets, all }) => check(cli, targets, *all, env, stdout, stderr),
+        Some(Command::Cve { ids }) => crate::commands::cve(cli, ids, env, stdout, stderr),
+        Some(Command::Pending) => crate::commands::pending(cli, env, stdout, stderr),
+        Some(Command::Services) => crate::commands::services(cli, env, stdout, stderr),
+        Some(Command::Restart) => crate::commands::restart(cli, env, stdout, stderr),
+        None => check(cli, &cli.targets, cli.all, env, stdout, stderr),
     }
 }
 

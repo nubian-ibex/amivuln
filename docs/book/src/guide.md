@@ -71,6 +71,23 @@ no package name, hostname or path reaches the metrics store. Write the output
 to a `.prom` file in the textfile directory through a temporary file and a
 rename so the collector never reads a partial file.
 
+## Running on a timer
+
+`contrib/systemd/amivuln.service` and `amivuln.timer` scan the host every six
+hours and write `amivuln.prom` for the textfile collector, through `--output`
+so the file is replaced atomically. The service runs as a dynamic user with no
+capabilities, a read-only file system and a system call filter;
+`systemd-analyze security amivuln.service` reports an exposure of 1.2.
+
+```bash
+sudo install -m 0644 contrib/systemd/amivuln.{service,timer} /etc/systemd/system/
+sudo systemctl enable --now amivuln.timer
+```
+
+Adjust `ExecStart` and `ReadWritePaths` when the textfile directory differs.
+Exit codes 1 (policy), 2 (incomplete) and 3 (unresolved) still write a valid
+file, so the unit only fails on a usage or internal error.
+
 ## Behind a proxy or a corporate CA
 
 Set the `[network]` table in the configuration file:

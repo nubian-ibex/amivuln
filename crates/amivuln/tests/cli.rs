@@ -1096,6 +1096,55 @@ async fn exit_code_precedence_is_unresolved_over_violation_over_success() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn output_writes_atomically_and_keeps_the_old_file_on_a_usage_error() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let file = sb.path().join("amivuln.prom");
+    let file_arg: &'static str = Box::leak(file.display().to_string().into_boxed_str());
+
+    let out = run(
+        sb.cmd(),
+        vec![
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "prometheus",
+            "--output",
+            file_arg,
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(0));
+    assert!(
+        out.stdout.is_empty(),
+        "stdout must stay empty with --output"
+    );
+    let written = std::fs::read_to_string(&file).unwrap();
+    assert!(written.contains("amivuln_run_complete 1"), "{written}");
+    assert!(!sb.path().join(".amivuln.prom.tmp").exists());
+
+    // A usage error produces no output and must not clobber the good file.
+    let bad = run(
+        sb.cmd(),
+        vec![
+            "x@1",
+            "-f",
+            "bogus",
+            "--distro",
+            "fedora:43",
+            "--output",
+            file_arg,
+        ],
+    )
+    .await;
+    assert_eq!(bad.status.code(), Some(64));
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), written);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_missing_ca_file_is_a_usage_error() {
     let server = MockServer::start().await;
     let sb = Sandbox::new(&server.uri(), "/updates");
