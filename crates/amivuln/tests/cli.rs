@@ -648,9 +648,29 @@ async fn sarif_markdown_and_csv_output() {
         "{text}"
     );
 
+    let prom = run(
+        sb.cmd(),
+        vec![
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "prometheus",
+        ],
+    )
+    .await;
+    assert_eq!(prom.status.code(), Some(0));
+    let text = stdout(&prom);
+    assert!(
+        text.contains("amivuln_findings{severity=\"high\",kev=\"false\"} 1"),
+        "{text}"
+    );
+    assert!(text.contains("amivuln_run_complete 1"), "{text}");
+    assert!(!text.contains("python3-multipart"), "{text}");
+
     let bad = run(sb.cmd(), vec!["-f", "xml", "nginx@1.0-1"]).await;
     assert_eq!(bad.status.code(), Some(64));
-    assert!(String::from_utf8_lossy(&bad.stderr).contains("sarif, markdown or csv"));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("markdown, csv or prometheus"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

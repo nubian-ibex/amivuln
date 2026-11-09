@@ -60,3 +60,13 @@ and `amivuln cache clear` manage the cache; `--no-cache` skips the disk cache.
 `amivuln config init` writes a commented default file; `amivuln config show`
 prints the effective configuration and `amivuln config validate` checks it.
 Unknown keys are rejected so typos do not pass silently.
+
+## Prometheus and the node_exporter textfile collector
+
+`amivuln --all -f prometheus` writes text metrics: `amivuln_findings{severity,kev}`,
+`amivuln_unverified_findings`, `amivuln_source_up{source}`,
+`amivuln_source_age_seconds{source}`, `amivuln_run_complete` and
+`amivuln_last_run_timestamp_seconds`. Labels come from fixed vocabularies, so
+no package name, hostname or path reaches the metrics store. Write the output
+to a `.prom` file in the textfile directory through a temporary file and a
+rename so the collector never reads a partial file.
