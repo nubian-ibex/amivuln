@@ -98,6 +98,13 @@ pub struct PolicySection {
 pub struct Network {
     /// Allow plain `http://` source URLs (only for a trusted internal mirror).
     pub allow_insecure_http: bool,
+    /// Explicit proxy URL (`http://` or `https://`). Credentials in the URL
+    /// are never printed. Without it `HTTPS_PROXY` and `NO_PROXY` apply.
+    pub proxy: Option<String>,
+    /// PEM file with extra trusted root certificates (a corporate CA).
+    pub ca_file: Option<String>,
+    /// Text appended to the `User-Agent` (printable ASCII, at most 64 bytes).
+    pub user_agent_suffix: Option<String>,
 }
 
 /// `[sources]`
@@ -172,6 +179,9 @@ impl Default for Config {
             ignore_file: None,
             network: Network {
                 allow_insecure_http: false,
+                proxy: None,
+                ca_file: None,
+                user_agent_suffix: None,
             },
             sources: Sources {
                 distro: DistroCfg::default(),
@@ -285,6 +295,18 @@ impl Config {
             return err("general.stale_max_age must not be shorter than general.cache_ttl");
         }
         parse_duration(&self.general.timeout)?;
+        if let Some(p) = &self.network.proxy
+            && !(p.starts_with("http://") || p.starts_with("https://"))
+        {
+            return err("network.proxy must be an http:// or https:// URL");
+        }
+        if let Some(ua) = &self.network.user_agent_suffix
+            && (ua.is_empty()
+                || ua.len() > 64
+                || !ua.bytes().all(|b| b == b' ' || b.is_ascii_graphic()))
+        {
+            return err("network.user_agent_suffix must be 1 to 64 printable ASCII characters");
+        }
         self.output
             .format
             .parse::<amivuln_report::Format>()
@@ -491,6 +513,9 @@ strict = false          # count findings without a distro statement
 
 [network]
 allow_insecure_http = false
+# proxy = \"http://proxy.corp.example:3128\"   # default: HTTPS_PROXY / NO_PROXY
+# ca_file = \"/etc/pki/ca-trust/source/anchors/corp.pem\"
+# user_agent_suffix = \"team-sre\"
 
 # A required source that fails makes the result incomplete (exit code 2).
 [sources.distro]
@@ -551,6 +576,23 @@ mod tests {
     fn insecure_mirror_needs_an_explicit_opt_in() {
         let ok = "[network]\nallow_insecure_http = true\n[sources.kev]\nurl = \"http://mirror.internal/kev.json\"\n";
         assert!(Config::from_toml(ok).is_ok());
+    }
+
+    #[test]
+    fn network_options_are_validated() {
+        let ok = "[network]\nproxy = \"http://proxy.corp:3128\"\nca_file = \"/etc/corp.pem\"\nuser_agent_suffix = \"team-sre\"\n";
+        assert!(Config::from_toml(ok).is_ok());
+        for bad in [
+            "[network]\nproxy = \"socks5://p:1080\"\n",
+            "[network]\nproxy = \"proxy.corp:3128\"\n",
+            "[network]\nuser_agent_suffix = \"\"\n",
+            "[network]\nuser_agent_suffix = \"line\\nbreak\"\n",
+            "[network]\nuser_agent_suffix = \"x\u{e9}\"\n",
+        ] {
+            assert!(Config::from_toml(bad).is_err(), "{bad:?}");
+        }
+        let long = format!("[network]\nuser_agent_suffix = \"{}\"\n", "a".repeat(65));
+        assert!(Config::from_toml(&long).is_err());
     }
 
     #[test]

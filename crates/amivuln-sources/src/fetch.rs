@@ -202,6 +202,7 @@ mod tests {
             timeout: Duration::from_millis(timeout_ms),
             max_body,
             allow_insecure: true,
+            ..HttpConfig::default()
         })
         .unwrap()
     }

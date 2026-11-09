@@ -711,9 +711,19 @@ pub(crate) fn evaluate(
     };
     let cache = open_cache(&cli.global, s, env, err)
         .map_err(|e| internal(err, format!("cannot create a cache: {e}")))?;
+    let ca_pem = match &s.config.network.ca_file {
+        Some(path) => Some(read_ca_file(path).map_err(|e| {
+            let _ = writeln!(err, "error: {e}");
+            ExitCode::Usage
+        })?),
+        None => None,
+    };
     let http = HttpClient::new(HttpConfig {
         timeout: s.timeout,
         allow_insecure: s.config.network.allow_insecure_http,
+        proxy: s.config.network.proxy.clone(),
+        ca_pem,
+        user_agent_suffix: s.config.network.user_agent_suffix.clone(),
         ..HttpConfig::default()
     })
     .map_err(|e| internal(err, e.to_string()))?;
@@ -756,4 +766,20 @@ fn open_cache(g: &Global, s: &Settings, env: &Env, err: &mut dyn Write) -> Resul
         Ok(c) => Ok(c),
         Err(e) => memory(err, Some(format!("{}: {e}", path.display()))),
     }
+}
+
+/// Largest CA bundle accepted; a real bundle is far smaller.
+const MAX_CA_FILE_BYTES: u64 = 1024 * 1024;
+
+fn read_ca_file(path: &str) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    let file = std::fs::File::open(path).map_err(|e| format!("network.ca_file {path:?}: {e}"))?;
+    let mut buf = Vec::new();
+    file.take(MAX_CA_FILE_BYTES + 1)
+        .read_to_end(&mut buf)
+        .map_err(|e| format!("network.ca_file {path:?}: {e}"))?;
+    if buf.len() as u64 > MAX_CA_FILE_BYTES {
+        return Err(format!("network.ca_file {path:?} is larger than 1 MiB"));
+    }
+    Ok(buf)
 }

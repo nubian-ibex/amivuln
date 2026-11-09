@@ -70,3 +70,20 @@ Unknown keys are rejected so typos do not pass silently.
 no package name, hostname or path reaches the metrics store. Write the output
 to a `.prom` file in the textfile directory through a temporary file and a
 rename so the collector never reads a partial file.
+
+## Behind a proxy or a corporate CA
+
+Set the `[network]` table in the configuration file:
+
+```toml
+[network]
+proxy = "http://proxy.corp.example:3128"   # default: HTTPS_PROXY and NO_PROXY
+ca_file = "/etc/pki/ca-trust/source/anchors/corp.pem"
+user_agent_suffix = "team-sre"
+```
+
+`ca_file` adds trusted roots to the built-in ones (PEM, at most 1 MiB).
+`user_agent_suffix` is appended to the `User-Agent` and is the only
+host-specific text that can leave the machine, only when you set it. A proxy
+URL may carry credentials; amivuln never prints it. To use an internal mirror
+instead, set `sources.<name>.url`.
