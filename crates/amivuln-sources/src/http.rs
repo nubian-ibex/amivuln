@@ -62,7 +62,7 @@ pub enum HttpError {
 }
 
 /// Client configuration.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct HttpConfig {
     /// Per-request timeout.
     pub timeout: Duration,
@@ -70,6 +70,13 @@ pub struct HttpConfig {
     pub max_body: usize,
     /// Accept plain `http://` URLs. Only for tests against a local mock server.
     pub allow_insecure: bool,
+    /// Explicit proxy URL (`http://` or `https://`), used for every request.
+    /// Without it the usual `HTTPS_PROXY`/`NO_PROXY` variables apply.
+    pub proxy: Option<String>,
+    /// Extra trusted root certificates, PEM encoded (a corporate CA).
+    pub ca_pem: Option<Vec<u8>>,
+    /// Text appended to the `User-Agent`, for example a team tag.
+    pub user_agent_suffix: Option<String>,
 }
 
 impl Default for HttpConfig {
@@ -78,6 +85,9 @@ impl Default for HttpConfig {
             timeout: Duration::from_secs(10),
             max_body: 32 * 1024 * 1024,
             allow_insecure: false,
+            proxy: None,
+            ca_pem: None,
+            user_agent_suffix: None,
         }
     }
 }
@@ -103,11 +113,34 @@ impl HttpClient {
     /// Fails when the TLS backend cannot be initialised.
     pub fn new(config: HttpConfig) -> Result<Self, HttpError> {
         ensure_crypto_provider();
-        let inner = Client::builder()
-            .user_agent(concat!("amivuln/", env!("CARGO_PKG_VERSION")))
+        let agent = match config.user_agent_suffix.as_deref() {
+            Some(suffix) => format!("amivuln/{} {suffix}", env!("CARGO_PKG_VERSION")),
+            None => concat!("amivuln/", env!("CARGO_PKG_VERSION")).to_owned(),
+        };
+        let mut builder = Client::builder()
+            .user_agent(agent)
             .timeout(config.timeout)
             .redirect(redirect::Policy::limited(3))
-            .referer(false)
+            .referer(false);
+        if let Some(url) = &config.proxy {
+            // The URL may carry credentials, so the error never repeats it.
+            let proxy = reqwest::Proxy::all(url.as_str())
+                .map_err(|_| HttpError::Refused("the proxy URL is not valid".to_owned()))?;
+            builder = builder.proxy(proxy);
+        }
+        if let Some(pem) = &config.ca_pem {
+            let certs = reqwest::Certificate::from_pem_bundle(pem)
+                .map_err(|e| HttpError::Refused(format!("the CA file is not valid PEM: {e}")))?;
+            if certs.is_empty() {
+                return Err(HttpError::Refused(
+                    "the CA file holds no certificate".to_owned(),
+                ));
+            }
+            for cert in certs {
+                builder = builder.add_root_certificate(cert);
+            }
+        }
+        let inner = builder
             .build()
             .map_err(|e| HttpError::Network(e.to_string()))?;
         Ok(Self { inner, config })
@@ -209,5 +242,95 @@ fn map_error(e: reqwest::Error) -> HttpError {
     } else {
         // Without the URL: error text may be shown to users and logs.
         HttpError::Network(e.without_url().to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    use super::*;
+
+    fn plain() -> HttpConfig {
+        HttpConfig {
+            allow_insecure: true,
+            ..HttpConfig::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn the_user_agent_suffix_is_appended() {
+        let server = MockServer::start().await;
+        let ua = format!("amivuln/{} team-sre", env!("CARGO_PKG_VERSION"));
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .and(header("user-agent", ua.as_str()))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let client = HttpClient::new(HttpConfig {
+            user_agent_suffix: Some("team-sre".to_owned()),
+            ..plain()
+        })
+        .unwrap();
+        let r = client
+            .get(&format!("{}/x", server.uri()), &Validators::default())
+            .await;
+        assert!(matches!(r, Ok(Response::Fresh { .. })), "{r:?}");
+    }
+
+    #[tokio::test]
+    async fn an_explicit_proxy_carries_the_request() {
+        // The target host does not exist: only the proxy can answer.
+        let proxy = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("via proxy"))
+            .expect(1)
+            .mount(&proxy)
+            .await;
+        let client = HttpClient::new(HttpConfig {
+            proxy: Some(proxy.uri()),
+            ..plain()
+        })
+        .unwrap();
+        let r = client
+            .get("http://source.invalid/x", &Validators::default())
+            .await;
+        assert!(
+            matches!(&r, Ok(Response::Fresh { body, .. }) if body == b"via proxy"),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn a_valid_ca_bundle_is_accepted() {
+        // Throwaway self-signed certificate, generated for this test only.
+        let pem = include_str!("../../../tests/fixtures/ca/test-ca.pem");
+        assert!(
+            HttpClient::new(HttpConfig {
+                ca_pem: Some(pem.as_bytes().to_vec()),
+                ..HttpConfig::default()
+            })
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn a_bad_proxy_or_ca_is_refused_without_echoing_secrets() {
+        let e = HttpClient::new(HttpConfig {
+            proxy: Some("not a url with user:secret@".to_owned()),
+            ..HttpConfig::default()
+        })
+        .unwrap_err();
+        assert!(!e.to_string().contains("secret"), "{e}");
+        let e = HttpClient::new(HttpConfig {
+            ca_pem: Some(b"definitely not pem".to_vec()),
+            ..HttpConfig::default()
+        })
+        .unwrap_err();
+        assert!(matches!(e, HttpError::Refused(_)), "{e:?}");
     }
 }

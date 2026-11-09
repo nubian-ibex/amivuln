@@ -1143,3 +1143,25 @@ async fn output_writes_atomically_and_keeps_the_old_file_on_a_usage_error() {
     assert_eq!(bad.status.code(), Some(64));
     assert_eq!(std::fs::read_to_string(&file).unwrap(), written);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_missing_ca_file_is_a_usage_error() {
+    let server = MockServer::start().await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("ca.toml");
+    std::fs::write(&cfg, "[network]\nca_file = \"/nonexistent/corp.pem\"\n").unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("network.ca_file"));
+}
