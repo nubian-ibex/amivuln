@@ -102,6 +102,10 @@ pub struct Global {
     /// the installed ones; for example a list exported from another host.
     #[arg(long, global = true, value_name = "FILE")]
     pub packages_from: Option<std::path::PathBuf>,
+    /// Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm
+    /// purls). Other components are listed as unresolved, grouped by type.
+    #[arg(long, global = true, value_name = "FILE")]
+    pub sbom: Option<std::path::PathBuf>,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,

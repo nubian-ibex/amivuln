@@ -127,3 +127,14 @@ starts with `-` or holds control characters is refused. The server updates the
 local cache like any other run; pass `--offline` or `--no-cache` to
 `amivuln mcp` to restrict that. Always read `complete` and `sources` in a
 result before treating an empty list as clean.
+
+## Checking an SBOM
+
+`amivuln --sbom bom.cdx.json --distro fedora:44 --fail-on high` reads a
+CycloneDX JSON document (any 1.x), checks every component whose purl is an
+`rpm`, `deb` or `alpm` package and leaves the host alone. A purl whose
+namespace disagrees with `--distro` is an error. Components that are not OS
+packages (npm, PyPI, Maven and so on) are not dropped silently: they appear as
+`unresolved` entries, one per purl type with a count, and the run exits with 3.
+To gate only on OS packages, filter the SBOM first, for example with
+`jq '.components |= map(select(.purl // "" | startswith("pkg:rpm/")))'`.

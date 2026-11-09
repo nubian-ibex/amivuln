@@ -29,6 +29,7 @@ _amivuln() {
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -65,6 +66,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--all[Check every installed package]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -92,6 +94,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -118,6 +121,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -143,6 +147,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -168,6 +173,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -193,6 +199,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -218,6 +225,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -251,6 +259,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -277,6 +286,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -302,6 +312,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -363,6 +374,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -396,6 +408,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -421,6 +434,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -478,6 +492,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -508,6 +523,7 @@ _arguments "${_arguments_options[@]}" : \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
 '--json[Machine-readable output]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \

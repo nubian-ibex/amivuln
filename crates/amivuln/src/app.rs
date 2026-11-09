@@ -492,7 +492,8 @@ pub(crate) fn check_with(
         Err(m) => return usage(err, &m),
     };
     let targets = expand_targets(cli, subcommand_targets);
-    if targets.is_empty() && !all && cli.global.packages_from.is_none() {
+    if targets.is_empty() && !all && cli.global.packages_from.is_none() && cli.global.sbom.is_none()
+    {
         return usage(
             err,
             "no target given; pass a package, a file path, name@version, a purl, --all or --packages-from (see --help)",

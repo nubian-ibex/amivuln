@@ -59,7 +59,12 @@ pub(crate) fn cve(
         );
     }
     let ids: Vec<String> = ids.iter().map(|i| i.to_ascii_uppercase()).collect();
-    let (resolved, _) = match resolve_scope(cli, &[], cli.global.packages_from.is_none(), eco) {
+    let (resolved, _) = match resolve_scope(
+        cli,
+        &[],
+        cli.global.packages_from.is_none() && cli.global.sbom.is_none(),
+        eco,
+    ) {
         Ok(v) => v,
         Err(m) => return usage(err, &m),
     };
@@ -118,7 +123,12 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         Ok(e) => e,
         Err(m) => return usage(err, &m),
     };
-    let (resolved, _) = match resolve_scope(cli, &[], cli.global.packages_from.is_none(), eco) {
+    let (resolved, _) = match resolve_scope(
+        cli,
+        &[],
+        cli.global.packages_from.is_none() && cli.global.sbom.is_none(),
+        eco,
+    ) {
         Ok(v) => v,
         Err(m) => return usage(err, &m),
     };

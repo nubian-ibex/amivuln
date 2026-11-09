@@ -4,7 +4,7 @@
 .SH NAME
 amivuln \- Am I vulnerable? Backport\-aware CVE check for packages on this host
 .SH SYNOPSIS
-\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-output\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-\-baseline\fR] [\fB\-\-vex\fR] [\fB\-\-packages\-from\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
+\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-output\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-purl\fR] [\fB\-\-baseline\fR] [\fB\-\-vex\fR] [\fB\-\-packages\-from\fR] [\fB\-\-sbom\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Reports which CVEs apply to an installed package, binary or version, taking the patches your distribution already shipped into account. Fedora and Arch Linux are supported.
 .SH OPTIONS
@@ -56,6 +56,9 @@ A previous `\-f json` report; only new findings violate \-\-fail\-on
 .TP
 \fB\-\-packages\-from\fR \fI<FILE>\fR
 Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host
+.TP
+\fB\-\-sbom\fR \fI<FILE>\fR
+Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type
 .TP
 \fB\-q\fR, \fB\-\-quiet\fR
 Only print errors
