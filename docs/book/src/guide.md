@@ -88,6 +88,23 @@ Adjust `ExecStart` and `ReadWritePaths` when the textfile directory differs.
 Exit codes 1 (policy), 2 (incomplete) and 3 (unresolved) still write a valid
 file, so the unit only fails on a usage or internal error.
 
+## Behind a proxy or a corporate CA
+
+Set the `[network]` table in the configuration file:
+
+```toml
+[network]
+proxy = "http://proxy.corp.example:3128"   # default: HTTPS_PROXY and NO_PROXY
+ca_file = "/etc/pki/ca-trust/source/anchors/corp.pem"
+user_agent_suffix = "team-sre"
+```
+
+`ca_file` adds trusted roots to the built-in ones (PEM, at most 1 MiB).
+`user_agent_suffix` is appended to the `User-Agent` and is the only
+host-specific text that can leave the machine, only when you set it. A proxy
+URL may carry credentials; amivuln never prints it. To use an internal mirror
+instead, set `sources.<name>.url`.
+
 ## For AI agents: the MCP server
 
 `amivuln mcp` speaks the Model Context Protocol over stdio (newline-delimited
