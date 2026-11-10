@@ -11,7 +11,7 @@
 use std::path::Path;
 
 use assert_cmd::Command;
-use wiremock::matchers::{header, method, path, path_regex};
+use wiremock::matchers::{body_string_contains, header, method, path, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const UPDATEINFO_ZST: &[u8] =
@@ -1386,4 +1386,78 @@ async fn a_broken_webhook_warns_and_keeps_the_exit_code() {
     assert_eq!(out.status.code(), Some(1));
     let e = String::from_utf8_lossy(&out.stderr);
     assert!(e.contains("warning: notify failed"), "{e}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn osv_advisories_stay_with_the_package_they_were_found_for() {
+    // Regression: advisories of one package were judged against every other
+    // package of the run, so curl 1.0 inherited openssl's fix version.
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/osv/v1/querybatch"))
+        .and(body_string_contains("\"openssl\""))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "results": [{"vulns": [{"id": "DEBIAN-CVE-2023-5678"}]}]
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/osv/v1/querybatch"))
+        .and(body_string_contains("\"curl\""))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "results": [{}]
+        })))
+        .mount(&server)
+        .await;
+    let advisory =
+        include_str!("../../../tests/fixtures/http/osv/2026-11-08/DEBIAN-CVE-2023-5678.json");
+    Mock::given(method("GET"))
+        .and(path("/osv/v1/vulns/DEBIAN-CVE-2023-5678"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(advisory))
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    let cfg = home.path().join("cfg.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}/osv\"\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let inv = home.path().join("inv.txt");
+    std::fs::write(&inv, "openssl@3.0.10-1\ncurl@1.0-1\n").unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let inv_arg: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
+    let out = Command::cargo_bin("amivuln")
+        .unwrap()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .args([
+            "--config",
+            cfg_arg,
+            "--packages-from",
+            inv_arg,
+            "--distro",
+            "debian:12",
+            "-f",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let ids = |name: &str| -> Vec<String> {
+        v["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|t| t["package"]["name"] == name)
+            .flat_map(|t| t["findings"].as_array().unwrap().iter())
+            .map(|f| f["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert_eq!(ids("openssl"), ["CVE-2023-5678"], "{v}");
+    assert!(ids("curl").is_empty(), "curl inherited {:?}", ids("curl"));
 }
