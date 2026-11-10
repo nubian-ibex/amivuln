@@ -57,6 +57,11 @@ jobs:
           name: amivuln-bin
           path: /usr/bin
       - run: chmod +x /usr/bin/amivuln && amivuln --version
+      # Debian and Fedora base images do not ship the CA bundle the TLS client
+      # reads from the system: every HTTPS request fails without it.
+      - name: Install the trust bundle
+        run: |
+          sh -c 'if command -v apt >/dev/null; then apt-get update -qq && apt-get install -qq -y ca-certificates; elif command -v dnf >/dev/null; then dnf install -y ca-certificates; else exit 1; fi'
       - name: Warm the cache from the running system
         run: |
           amivuln --all --distro "${{ matrix.distro }}" -f json > /dev/null
