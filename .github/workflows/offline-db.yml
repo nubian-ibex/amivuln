@@ -109,6 +109,7 @@ jobs:
           MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euo pipefail
+          echo "pack pwd: $(pwd); XDG before export: ${XDG_CACHE_HOME:-unsetValue}"
           cargo build --release --locked -p amivuln
           mkdir -p signed
           printf '%s' "$MINISIGN_SECRET_KEY" > key.sec
@@ -117,6 +118,7 @@ jobs:
             cache="out/amivuln-cache-$family"
             name="offline-db-$family"
             export XDG_CACHE_HOME="$cache"
+            echo "pack XDG now: $XDG_CACHE_HOME; listing:"; ls -R "out/amivuln-cache-$family" || true
             target/release/amivuln db build --archive "signed/$name.tar.zst" > "signed/$name.manifest.txt"
             grep sha256 "signed/$name.manifest.txt" | awk '{print $2"  offline-db-$family.tar.zst"}' > "signed/$name.tar.zst.sha256.tmp" || true
             AFILE="signed/$name.tar.zst"
