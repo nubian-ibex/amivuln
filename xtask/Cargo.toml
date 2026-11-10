@@ -10,7 +10,7 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-amivuln = { path = "../crates/amivuln", version = "0.0.10" }
+amivuln = { path = "../crates/amivuln", version = "0.0.11" }
 clap = "4.6.7"
 clap_complete = "4.6.11"
 clap_mangen = "0.3.3"
