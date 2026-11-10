@@ -154,3 +154,31 @@ on = "violation"                            # violation (default) | incomplete |
 
 A failed delivery prints a warning and never changes the exit code: the policy
 decision was made from the scan, not from the notification.
+
+
+## The offline database
+
+`amivuln db` moves advisory data between hosts that may reach the network and
+hosts that may not. The archive is a `tar.zst` holding the SQLite cache and a
+manifest with a SHA-256 of the database; `--key` and `--sig` add a minisign
+signature over the manifest.
+
+```bash
+amivuln --all -f json            # warm the cache (needs the network once)
+amivuln db build --archive db.tar.zst
+amivuln db verify db.tar.zst --key amivuln.pub --sig db.tar.zst.minisig
+amivuln db pull db.tar.zst       # verify and install for this user
+amivuln db info db.tar.zst
+```
+
+`db pull` installs under `$XDG_DATA_HOME/amivuln/offline` and refuses an
+archive older than the installed one (anti-rollback); `--force` overrides.
+Once installed, a run with `--offline` answers from it and reports those
+sources as `stale`, so an air-gapped host produces the same report shapes with
+exit codes that still respect `--fail-on`. `amivuln db verify` exits 65 when
+an archive is tampered; a regressive `db pull` also exits 65.
+
+Signing is deliberately not built in: generate the project key with the
+`minisign` tool and sign outside amivuln
+(`minisign -S -s key.sec -m manifest.json -x db.tar.zst.minisig`), so the
+secret key never runs through this binary.

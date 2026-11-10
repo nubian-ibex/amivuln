@@ -5,6 +5,7 @@
 //! Only the URL and validator headers leave the host: no cookies, no referrer,
 //! and a fixed `User-Agent`. Redirects are limited and never leave HTTPS.
 
+use std::io::Write;
 use std::time::Duration;
 
 use reqwest::header::{ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED, RETRY_AFTER};
@@ -200,6 +201,49 @@ impl HttpClient {
         }
         let resp = req.send().await.map_err(map_error)?;
         Self::finish(resp, self.config.max_body).await
+    }
+
+    /// Streams `url` into `out`, with the usual checks. Returns the byte count.
+    ///
+    /// # Errors
+    ///
+    /// See [`HttpError`]. Bodies above 4 GiB are refused.
+    pub async fn download(&self, url: &str, out: &mut dyn Write) -> Result<u64, HttpError> {
+        if !self.config.allow_insecure && !url.starts_with("https://") {
+            return Err(HttpError::Refused(format!("{url} is not an https URL")));
+        }
+        let mut resp = self.inner.get(url).send().await.map_err(map_error)?;
+        let status = resp.status();
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            let secs = resp
+                .headers()
+                .get(RETRY_AFTER)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.trim().parse().ok());
+            return Err(HttpError::RateLimited(secs));
+        }
+        if status.is_client_error() || status.is_server_error() {
+            return Err(HttpError::Status(status.as_u16()));
+        }
+        if !status.is_success() {
+            return Err(HttpError::Status(status.as_u16()));
+        }
+        let limit: u64 = 4 * 1024 * 1024 * 1024;
+        let mut copied: u64 = 0;
+        while let Some(chunk) = resp
+            .chunk()
+            .await
+            .map_err(|e| HttpError::Network(e.to_string()))?
+        {
+            copied += chunk.len() as u64;
+            if copied > limit {
+                let small = usize::try_from(limit).unwrap_or(usize::MAX);
+                return Err(HttpError::TooLarge(small));
+            }
+            out.write_all(chunk.as_ref())
+                .map_err(|e| HttpError::Network(e.to_string()))?;
+        }
+        Ok(copied)
     }
 
     /// Shared response handling: status mapping and the body cap.

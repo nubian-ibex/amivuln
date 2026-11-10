@@ -4,7 +4,7 @@
 //! fetching, policy and output. The only place that touches the outside world.
 
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use amivuln_cache::Cache;
@@ -16,10 +16,11 @@ use amivuln_report::{Format, RenderOptions, render};
 use amivuln_resolve::parse_os_release;
 use clap::{CommandFactory, Parser};
 
-use crate::cli::{CacheAction, Cli, Command, ConfigAction, Global, Shell};
+use crate::cli::{CacheAction, Cli, Command, ConfigAction, DbAction, Global, Shell};
 use crate::config::{self, Config, parse_duration};
 use crate::notify::maybe_notify;
 use crate::scan::{evaluate, expand_targets, resolve_scope};
+use amivuln_sources::http::{HttpClient, HttpConfig};
 
 /// Process environment, injectable for tests.
 #[derive(Debug, Clone, Default)]
@@ -32,6 +33,8 @@ pub struct Env {
     pub xdg_config_home: Option<PathBuf>,
     /// `XDG_CACHE_HOME`.
     pub xdg_cache_home: Option<PathBuf>,
+    /// `XDG_DATA_HOME`, or `$HOME/.local/share` when unset.
+    pub xdg_data_home: Option<PathBuf>,
     /// Contents of `/etc/os-release`, when readable.
     pub os_release: Option<String>,
     /// `NO_COLOR` is set and non-empty.
@@ -62,6 +65,8 @@ impl Env {
             home: var("HOME"),
             xdg_config_home: var("XDG_CONFIG_HOME"),
             xdg_cache_home: var("XDG_CACHE_HOME"),
+            xdg_data_home: var("XDG_DATA_HOME")
+                .or_else(|| var("HOME").map(|h| h.join(".local").join("share"))),
             os_release,
             no_color: std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty()),
             stdout_is_tty: std::io::stdout().is_terminal(),
@@ -299,6 +304,7 @@ fn dispatch(cli: &Cli, env: &Env, stdout: &mut dyn Write, stderr: &mut dyn Write
         Some(Command::Pending) => crate::commands::pending(cli, env, stdout, stderr),
         Some(Command::Services) => crate::commands::services(cli, env, stdout, stderr),
         Some(Command::Mcp) => mcp_cmd(cli, env, stdout),
+        Some(Command::Db { action }) => db_cmd(action, &cli.global, env, stdout, stderr),
         Some(Command::Restart) => crate::commands::restart(cli, env, stdout, stderr),
         None => check(cli, &cli.targets, cli.all, env, stdout, stderr),
     }
@@ -399,6 +405,185 @@ pub(crate) fn cache_path(cfg: &Config, env: &Env) -> Option<PathBuf> {
             config::default_cache_dir(env.xdg_cache_home.as_deref(), env.home.as_deref())
         })?;
     Some(dir.join("cache.sqlite"))
+}
+
+/// `amivuln db ...`: build, pull, verify and inspect the offline database.
+fn db_cmd(
+    action: &DbAction,
+    g: &Global,
+    env: &Env,
+    out: &mut dyn Write,
+    err: &mut dyn Write,
+) -> ExitCode {
+    let (s, _) = match settings(g, env) {
+        Ok(v) => v,
+        Err(m) => return usage(err, &m),
+    };
+    match action {
+        DbAction::Build { archive: output } => {
+            let Some(path) = cache_path(&s.config, env) else {
+                return usage(
+                    err,
+                    "cannot determine the cache directory; set general.cache_dir",
+                );
+            };
+            if !path.is_file() {
+                return usage(
+                    err,
+                    &format!(
+                        "no cache at {}; run a scan first so the database has advisories",
+                        path.display()
+                    ),
+                );
+            }
+            let manifest =
+                amivuln_cache::offline::pack(&path, output, env!("CARGO_PKG_VERSION"), env.now);
+            match manifest {
+                Ok(m) => print_manifest(out, &m, output),
+                Err(e) => return data_or_usage_error(err, &e),
+            }
+        }
+        DbAction::Pull {
+            source,
+            force,
+            key,
+            sig,
+        } => {
+            let Some(dir) = amivuln_cache::offline::default_dir(
+                env.xdg_data_home.as_deref(),
+                env.home.as_deref(),
+            ) else {
+                return usage(
+                    err,
+                    "cannot determine the data directory; set XDG_DATA_HOME",
+                );
+            };
+            let (staged, temporary) = match fetch_archive(source, env, err) {
+                Ok(v) => v,
+                Err(ExitCode::Success) => return ExitCode::Success,
+                Err(code) => return code,
+            };
+            let cleanup = || {
+                if temporary {
+                    let _ = std::fs::remove_file(&staged);
+                }
+            };
+            let verified = match amivuln_cache::offline::verify_archive(
+                &staged,
+                key.as_deref(),
+                sig.as_deref(),
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    cleanup();
+                    return data_or_usage_error(err, &e);
+                }
+            };
+            if let Err(e) = amivuln_cache::offline::install(&dir, &verified, *force) {
+                cleanup();
+                return data_or_usage_error(err, &e);
+            }
+            cleanup();
+            print_manifest(out, &verified.manifest, &dir.join("db.sqlite"));
+        }
+        DbAction::Verify { archive, key, sig } => {
+            match amivuln_cache::offline::verify_archive(archive, key.as_deref(), sig.as_deref()) {
+                Ok(v) => print_manifest(out, &v.manifest, archive),
+                Err(e) => return data_or_usage_error(err, &e),
+            }
+        }
+        DbAction::Info { archive } => {
+            // Info runs the same integrity checks: a tampered archive has no
+            // meaningful manifest to print.
+            match amivuln_cache::offline::verify_archive(archive, None, None) {
+                Ok(v) => print_manifest(out, &v.manifest, archive),
+                Err(e) => return data_or_usage_error(err, &e),
+            }
+        }
+    }
+    ExitCode::Success
+}
+
+fn print_manifest(out: &mut dyn Write, manifest: &amivuln_cache::offline::Manifest, path: &Path) {
+    let _ = writeln!(
+        out,
+        "database:  {}\ncreated:   {}\ntool:      {}\nentries:   {}\nbytes:     {}\nsha256:    {}",
+        path.display(),
+        manifest.created_at,
+        manifest.tool_version,
+        manifest.entries,
+        manifest.bytes,
+        manifest.db_sha256
+    );
+}
+
+/// Usage for missing files, data error for integrity failures.
+fn data_or_usage_error(err: &mut dyn Write, e: &amivuln_cache::offline::OfflineError) -> ExitCode {
+    let _ = writeln!(err, "error: {e}");
+    match e {
+        // A missing input is a usage error; corrupted content is data error.
+        amivuln_cache::offline::OfflineError::NotFound(_) => ExitCode::Usage,
+        _ => ExitCode::DataError,
+    }
+}
+
+/// Downloads `source` when it is an `https://` URL, otherwise treats it as a
+/// local path. Returns the file to verify and whether it is a temporary copy
+/// the caller must remove.
+fn fetch_archive(
+    source: &str,
+    env: &Env,
+    err: &mut dyn Write,
+) -> Result<(PathBuf, bool), ExitCode> {
+    if !source.starts_with("https://") {
+        let path = PathBuf::from(source);
+        if !path.is_file() {
+            let _ = writeln!(err, "error: {} does not exist", path.display());
+            return Err(ExitCode::Usage);
+        }
+        return Ok((path, false));
+    }
+    let http = HttpClient::new(HttpConfig {
+        timeout: Duration::from_secs(600),
+        ..HttpConfig::default()
+    })
+    .map_err(|e| {
+        let _ = writeln!(err, "error: {e}");
+        ExitCode::Usage
+    })?;
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_time()
+        .enable_io()
+        .build()
+        .map_err(|e| {
+            let _ = writeln!(err, "error: cannot start the async runtime: {e}");
+            ExitCode::Internal
+        })?;
+    let staged = env
+        .cwd
+        .join(format!(".amivuln-db-{}.tar.zst", std::process::id()));
+    let target = staged.clone();
+    let result: Result<u64, String> = rt.block_on(async {
+        let file =
+            std::fs::File::create(&target).map_err(|e| format!("{}: {e}", target.display()))?;
+        let mut writer = std::io::BufWriter::new(file);
+        let n = http
+            .download(source, &mut writer)
+            .await
+            .map_err(|e| e.to_string())?;
+        writer
+            .flush()
+            .map_err(|e| format!("download failed: {e}"))?;
+        Ok(n)
+    });
+    match result {
+        Ok(_) => Ok((staged, true)),
+        Err(msg) => {
+            let _ = std::fs::remove_file(&staged);
+            let _ = writeln!(err, "error: {msg}");
+            Err(ExitCode::Internal)
+        }
+    }
 }
 
 fn cache_cmd(

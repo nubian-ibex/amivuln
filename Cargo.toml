@@ -3,6 +3,12 @@ resolver = "3"
 members = ["crates/*", "xtask"]
 default-members = ["crates/amivuln"]
 
+[workspace.dependencies]
+minisign = "0.10.0"
+minisign-verify = "0.3.0"
+tar = "0.4.44"
+zstd = "0.13.3"
+
 [workspace.package]
 version = "0.0.9"
 edition = "2024"

@@ -15,6 +15,8 @@ pub enum ExitCode {
     TargetNotResolved = 3,
     /// Usage or configuration error (`EX_USAGE`).
     Usage = 64,
+    /// Invalid data: a tampered or regressive offline database (`EX_DATAERR`).
+    DataError = 65,
     /// Internal error (`EX_SOFTWARE`).
     Internal = 70,
 }

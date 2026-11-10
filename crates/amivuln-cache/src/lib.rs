@@ -106,6 +106,16 @@ impl Cache {
         Self::init(conn)
     }
 
+    /// Opens an existing database read-only (the installed offline database).
+    ///
+    /// # Errors
+    ///
+    /// Fails on SQLite errors or a newer schema.
+    pub fn open_read_only(path: &Path) -> Result<Self, CacheError> {
+        let conn = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        Self::init(conn)
+    }
+
     /// Opens an in-memory cache (tests).
     ///
     /// # Errors
@@ -264,6 +274,8 @@ fn restrict_file(path: &Path) -> std::io::Result<()> {
 fn restrict_file(_: &Path) -> std::io::Result<()> {
     Ok(())
 }
+
+pub mod offline;
 
 #[cfg(test)]
 mod tests {

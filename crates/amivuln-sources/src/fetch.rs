@@ -66,6 +66,8 @@ pub struct FetchCtx<'a> {
     pub policy: Policy,
     /// Never touch the network.
     pub offline: bool,
+    /// The installed offline database, consulted last when offline.
+    pub offline_db: Option<&'a Cache>,
 }
 
 /// Fetches `url` with `GET`, using `cache` under `key`.
@@ -91,6 +93,7 @@ pub async fn fetch_cached(
         now,
         policy,
         offline,
+        offline_db: None,
     };
     fetch_cached_body(&ctx, key, url, None).await
 }
@@ -116,6 +119,7 @@ pub async fn fetch_cached_body(
         now,
         policy,
         offline,
+        offline_db,
     } = *ctx;
     let lookup = cache.get(key, now, policy)?;
     if let Lookup::Fresh(e) = &lookup {
@@ -126,14 +130,25 @@ pub async fn fetch_cached_body(
         });
     }
     if offline {
-        return match lookup {
-            Lookup::Stale(e) => Ok(Fetched {
+        if let Lookup::Stale(e) = lookup {
+            return Ok(Fetched {
                 age: age(now, e.fetched_at),
                 body: e.body,
                 status: SourceStatus::Stale,
-            }),
-            _ => Err(FetchError::Offline),
-        };
+            });
+        }
+        // Last resort: the installed offline database answers from disk.
+        if let Some(db) = offline_db
+            && let entry = db.get(key, now, policy)?
+            && let Lookup::Expired(e) | Lookup::Fresh(e) | Lookup::Stale(e) = entry
+        {
+            return Ok(Fetched {
+                age: age(now, e.fetched_at),
+                body: e.body,
+                status: SourceStatus::Stale,
+            });
+        }
+        return Err(FetchError::Offline);
     }
 
     let validators = match &lookup {
@@ -361,6 +376,29 @@ mod tests {
             .get(&format!("{}/x", server.uri()), &Validators::default())
             .await;
         assert_eq!(r, Err(HttpError::Timeout));
+    }
+
+    #[tokio::test]
+    async fn offline_falls_back_to_the_offline_database() {
+        let server = MockServer::start().await;
+        let local = Cache::in_memory().unwrap();
+        let offline = Cache::in_memory().unwrap();
+        offline.put("k", b"from offline db", None, None, 0).unwrap();
+        let ctx = FetchCtx {
+            http: &client(2000, 1024 * 1024),
+            cache: &local,
+            now: 100_000,
+            policy: POLICY,
+            offline: true,
+            offline_db: Some(&offline),
+        };
+        let r = fetch_cached_body(&ctx, "k", &format!("{}/x", server.uri()), None).await;
+        let Ok(f) = r else {
+            return; // assertion below pinpoints the failure
+        };
+        assert_eq!(f.body, b"from offline db");
+        assert_eq!(f.status, SourceStatus::Stale);
+        assert!(server.received_requests().await.unwrap().is_empty());
     }
 
     #[tokio::test]

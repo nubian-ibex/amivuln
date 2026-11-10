@@ -1,0 +1,23 @@
+# Reference package list for the nightly offline database (Debian).
+bash
+binutils
+curl
+expat
+glibc
+gnutls
+grub2
+libgcrypt20
+libxml2
+linux
+nghttp2
+nginx
+nss
+openldap
+openssl
+openssh
+python3
+sudo
+systemd
+util-linux
+vim
+zlib

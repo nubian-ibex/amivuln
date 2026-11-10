@@ -209,6 +209,193 @@ _arguments "${_arguments_options[@]}" : \
 '--help[Print help]' \
 && ret=0
 ;;
+(db)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_amivuln__subcmd__db_commands" \
+"*::: :->db" \
+&& ret=0
+
+    case $state in
+    (db)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-db-command-$line[1]:"
+        case $line[1] in
+            (build)
+_arguments "${_arguments_options[@]}" : \
+'--archive=[Where to write the archive]:FILE:_files' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+'--key=[Minisign public key; the signature over the manifest is checked]:FILE:_files' \
+'--sig=[Minisign signature over \`manifest.json\`]:FILE:_files' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'--force[Install even when the archive is older than the installed database]' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':source -- Archive path or `https\://` URL:_default' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+'--key=[Minisign public key]:FILE:_files' \
+'--sig=[Minisign signature over \`manifest.json\`]:FILE:_files' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':archive -- Archive path:_files' \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':archive -- Archive path:_files' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__db__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-db-help-command-$line[1]:"
+        case $line[1] in
+            (build)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
 (config)
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
@@ -570,6 +757,38 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
+(db)
+_arguments "${_arguments_options[@]}" : \
+":: :_amivuln__subcmd__help__subcmd__db_commands" \
+"*::: :->db" \
+&& ret=0
+
+    case $state in
+    (db)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:amivuln-help-db-command-$line[1]:"
+        case $line[1] in
+            (build)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
 (config)
 _arguments "${_arguments_options[@]}" : \
 ":: :_amivuln__subcmd__help__subcmd__config_commands" \
@@ -652,6 +871,7 @@ _amivuln_commands() {
 'services:Check every running systemd service. Services that are not packaged are listed, not fatal' \
 'restart:Which running processes still use files an update replaced? Exit 1 when a restart is needed' \
 'mcp:Serve read-only tools to AI agents over the Model Context Protocol on stdio' \
+'db:Build, fetch, verify or inspect the offline advisory database' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
 'completions:Print shell completions' \
@@ -773,6 +993,73 @@ _amivuln__subcmd__cve_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln cve commands' commands "$@"
 }
+(( $+functions[_amivuln__subcmd__db_commands] )) ||
+_amivuln__subcmd__db_commands() {
+    local commands; commands=(
+'build:Snapshot the local cache into a signed-ready \`tar.zst\` archive' \
+'pull:Verify an archive and install it as the offline database' \
+'verify:Check an archive\: manifest, database checksum and, with \`--key\`/\`--sig\`, the signature' \
+'info:Print the manifest of an archive (after checking its integrity)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln db commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__build_commands] )) ||
+_amivuln__subcmd__db__subcmd__build_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db build commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help_commands] )) ||
+_amivuln__subcmd__db__subcmd__help_commands() {
+    local commands; commands=(
+'build:Snapshot the local cache into a signed-ready \`tar.zst\` archive' \
+'pull:Verify an archive and install it as the offline database' \
+'verify:Check an archive\: manifest, database checksum and, with \`--key\`/\`--sig\`, the signature' \
+'info:Print the manifest of an archive (after checking its integrity)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'amivuln db help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help__subcmd__build_commands] )) ||
+_amivuln__subcmd__db__subcmd__help__subcmd__build_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db help build commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help__subcmd__help_commands] )) ||
+_amivuln__subcmd__db__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db help help commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help__subcmd__info_commands] )) ||
+_amivuln__subcmd__db__subcmd__help__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db help info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help__subcmd__pull_commands] )) ||
+_amivuln__subcmd__db__subcmd__help__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db help pull commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__help__subcmd__verify_commands] )) ||
+_amivuln__subcmd__db__subcmd__help__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db help verify commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__info_commands] )) ||
+_amivuln__subcmd__db__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__pull_commands] )) ||
+_amivuln__subcmd__db__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db pull commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__db__subcmd__verify_commands] )) ||
+_amivuln__subcmd__db__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln db verify commands' commands "$@"
+}
 (( $+functions[_amivuln__subcmd__help_commands] )) ||
 _amivuln__subcmd__help_commands() {
     local commands; commands=(
@@ -782,6 +1069,7 @@ _amivuln__subcmd__help_commands() {
 'services:Check every running systemd service. Services that are not packaged are listed, not fatal' \
 'restart:Which running processes still use files an update replaced? Exit 1 when a restart is needed' \
 'mcp:Serve read-only tools to AI agents over the Model Context Protocol on stdio' \
+'db:Build, fetch, verify or inspect the offline advisory database' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
 'completions:Print shell completions' \
@@ -846,6 +1134,36 @@ _amivuln__subcmd__help__subcmd__config__subcmd__validate_commands() {
 _amivuln__subcmd__help__subcmd__cve_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln help cve commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__db_commands] )) ||
+_amivuln__subcmd__help__subcmd__db_commands() {
+    local commands; commands=(
+'build:Snapshot the local cache into a signed-ready \`tar.zst\` archive' \
+'pull:Verify an archive and install it as the offline database' \
+'verify:Check an archive\: manifest, database checksum and, with \`--key\`/\`--sig\`, the signature' \
+'info:Print the manifest of an archive (after checking its integrity)' \
+    )
+    _describe -t commands 'amivuln help db commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__db__subcmd__build_commands] )) ||
+_amivuln__subcmd__help__subcmd__db__subcmd__build_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help db build commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__db__subcmd__info_commands] )) ||
+_amivuln__subcmd__help__subcmd__db__subcmd__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help db info commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__db__subcmd__pull_commands] )) ||
+_amivuln__subcmd__help__subcmd__db__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help db pull commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__help__subcmd__db__subcmd__verify_commands] )) ||
+_amivuln__subcmd__help__subcmd__db__subcmd__verify_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help db verify commands' commands "$@"
 }
 (( $+functions[_amivuln__subcmd__help__subcmd__help_commands] )) ||
 _amivuln__subcmd__help__subcmd__help_commands() {

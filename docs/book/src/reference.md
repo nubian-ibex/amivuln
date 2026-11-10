@@ -11,6 +11,7 @@
 - `amivuln config show | init [--path FILE] | validate`
 - `amivuln cache info | clear`
 - `amivuln completions bash|zsh|fish|elvish|powershell`
+- `amivuln db build|pull|verify|info`: the offline advisory database (see the user guide)
 - `amivuln mcp`: a read-only Model Context Protocol server on stdio (see the user guide)
 - `amivuln version [--json]`
 

@@ -1387,3 +1387,208 @@ async fn a_broken_webhook_warns_and_keeps_the_exit_code() {
     let e = String::from_utf8_lossy(&out.stderr);
     assert!(e.contains("warning: notify failed"), "{e}");
 }
+
+/// Runs the binary with a per-test HOME and returns its output.
+fn run_home(
+    home: &std::path::Path,
+    cache: Option<&std::path::Path>,
+    args: Vec<&'static str>,
+) -> std::process::Output {
+    let mut cmd = Command::cargo_bin("amivuln").unwrap();
+    cmd.env("HOME", home).env("PATH", "/nonexistent");
+    if let Some(cache) = cache {
+        cmd.env("XDG_CACHE_HOME", cache);
+    }
+    cmd.args(args).output().unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[allow(clippy::too_many_lines)]
+async fn the_offline_database_answers_when_the_network_is_gone() {
+    // Sandbox A warms a cache against the OSV mock; the archive built from it
+    // is installed into sandbox B, whose sources are unreachable.
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/osv/v1/querybatch"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "results": [{"vulns": [{"id": "DEBIAN-CVE-2023-5678"}]}]
+        })))
+        .mount(&server)
+        .await;
+    let advisory =
+        include_str!("../../../tests/fixtures/http/osv/2026-11-08/DEBIAN-CVE-2023-5678.json");
+    Mock::given(method("GET"))
+        .and(path("/osv/v1/vulns/DEBIAN-CVE-2023-5678"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(advisory))
+        .mount(&server)
+        .await;
+
+    let home_a = tempfile::tempdir().unwrap();
+    let cache_a = tempfile::tempdir().unwrap();
+    let cfg_a = home_a.path().join("cfg.toml");
+    std::fs::write(
+        &cfg_a,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}/osv\"\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let inv = home_a.path().join("inv.txt");
+    std::fs::write(&inv, "openssl@3.0.10-1\n").unwrap();
+    let inv_arg: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
+    let cfg_a_arg: &'static str = Box::leak(cfg_a.display().to_string().into_boxed_str());
+
+    let online = Command::cargo_bin("amivuln")
+        .unwrap()
+        .env("HOME", home_a.path())
+        .env("XDG_CACHE_HOME", cache_a.path())
+        .env("PATH", "/nonexistent")
+        .args([
+            "--config",
+            cfg_a_arg,
+            "--packages-from",
+            inv_arg,
+            "--distro",
+            "debian:12",
+            "-f",
+            "json",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        online.status.success(),
+        "{}",
+        String::from_utf8_lossy(&online.stderr)
+    );
+
+    let archive = home_a.path().join("db.tar.zst");
+    let archive_arg: &'static str = Box::leak(archive.display().to_string().into_boxed_str());
+    let build = run_home(
+        home_a.path(),
+        Some(cache_a.path()),
+        vec!["db", "build", "--archive", archive_arg],
+    );
+    assert!(
+        build.status.success(),
+        "{}",
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let verified = run_home(home_a.path(), None, vec!["db", "verify", archive_arg]);
+    assert_eq!(verified.status.code(), Some(0));
+
+    // Sandbox B installs the archive and goes offline.
+    let home_b = tempfile::tempdir().unwrap();
+    let pull = run_home(home_b.path(), None, vec!["db", "pull", archive_arg]);
+    assert!(
+        pull.status.success(),
+        "{}",
+        String::from_utf8_lossy(&pull.stderr)
+    );
+    assert!(
+        home_b
+            .path()
+            .join(".local/share/amivuln/offline/db.sqlite")
+            .is_file()
+    );
+
+    let dead = home_b.path().join("dead.toml");
+    std::fs::write(
+        &dead,
+        "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"http://127.0.0.1:1/osv\"\n",
+    )
+    .unwrap();
+    let dead_arg: &'static str = Box::leak(dead.display().to_string().into_boxed_str());
+    let offline = run_home(
+        home_b.path(),
+        None,
+        vec![
+            "--config",
+            dead_arg,
+            "--packages-from",
+            inv_arg,
+            "--distro",
+            "debian:12",
+            "--offline",
+            "-f",
+            "json",
+        ],
+    );
+    let v: serde_json::Value = serde_json::from_slice(&offline.stdout).unwrap_or_default();
+    assert_eq!(
+        offline.status.code(),
+        Some(0),
+        "{} | {}",
+        String::from_utf8_lossy(&offline.stdout),
+        String::from_utf8_lossy(&offline.stderr)
+    );
+    assert_eq!(v["complete"], true, "{}", offline.stdout.len());
+    assert_eq!(v["sources"][0]["id"], "osv");
+    assert_eq!(v["sources"][0]["status"], "stale");
+    let ids: Vec<&str> = v["targets"][0]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&"CVE-2023-5678"), "{ids:?}");
+
+    // A tampered archive is rejected with the data error code.
+    let bad = home_b.path().join("bad.tar.zst");
+    std::fs::copy(&archive, &bad).unwrap();
+    {
+        let mut bytes = std::fs::read(&bad).unwrap();
+        let mid = bytes.len() / 2;
+        bytes[mid] ^= 0xff;
+        std::fs::write(&bad, &bytes).unwrap();
+    }
+    let bad_arg: &'static str = Box::leak(bad.display().to_string().into_boxed_str());
+    let rejected = run_home(home_b.path(), None, vec!["db", "verify", bad_arg]);
+    assert_eq!(rejected.status.code(), Some(65));
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("error:"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn optional_sources_failing_alone_stay_complete() {
+    // Chaos: only kev and epss are down. The distro source answers, so the
+    // result is complete and the exit code comes from the findings alone.
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let out = run(
+        sb.cmd(),
+        vec![
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "json",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(1));
+    let v = json(&out);
+    assert_eq!(v["complete"], true);
+    let statuses: Vec<(&str, &str)> = v["sources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| (s["id"].as_str().unwrap(), s["status"].as_str().unwrap()))
+        .collect();
+    assert!(
+        statuses.contains(&("fedora-updateinfo", "ok")),
+        "{statuses:?}"
+    );
+    assert!(
+        statuses
+            .iter()
+            .any(|(id, st)| *id == "kev" && *st == "failed")
+    );
+    assert!(
+        statuses
+            .iter()
+            .any(|(id, st)| *id == "epss" && *st == "failed")
+    );
+}
