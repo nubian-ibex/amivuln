@@ -93,11 +93,6 @@ jobs:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
         with:
           egress-policy: audit
-      - name: Install minisign (the reference CLI)
-        run: |
-          curl -fsSL https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz -o /tmp/m.tgz
-          tar -xzf /tmp/m.tgz -C /tmp && install -m 0755 /tmp/minisign-linux/x86_64/minisign /usr/local/bin/minisign
-          minisign -v
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: amivuln-cache-*
@@ -109,7 +104,6 @@ jobs:
           MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
         run: |
           set -euo pipefail
-          echo "pack pwd: $(pwd); XDG before export: ${XDG_CACHE_HOME:-unsetValue}"
           cargo build --release --locked -p amivuln
           mkdir -p signed
           printf '%s' "$MINISIGN_SECRET_KEY" > key.sec
@@ -124,7 +118,7 @@ jobs:
             AFILE="signed/$name.tar.zst"
             sha256sum "$AFILE" | awk '{print $1"  "FILENAME}' FILENAME="$AFILE" > "${AFILE}.sha256"
             tar --zstd -xf "$AFILE" manifest.json
-            minisign -S -s key.sec -m manifest.json -x "signed/$name.tar.zst.minisig"
+            cargo xtask sign-db --key key.sec --manifest manifest.json --out "signed/$name.tar.zst.minisig"
             target/release/amivuln db verify "$AFILE" \
               --key contrib/offline-db/amivuln.pub --sig "signed/$name.tar.zst.minisig"
             test -s "signed/$name.tar.zst.minisig"
