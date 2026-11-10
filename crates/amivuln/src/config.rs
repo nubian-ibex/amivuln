@@ -129,6 +129,14 @@ pub struct Network {
     pub ca_file: Option<String>,
     /// Text appended to the `User-Agent` (printable ASCII, at most 64 bytes).
     pub user_agent_suffix: Option<String>,
+    /// Retry attempts per failing call (timeouts, 5xx and 429).
+    pub retries: u32,
+    /// How long a failing endpoint is skipped before a trial (circuit
+    /// breaker cooldown).
+    pub cooldown: String,
+    /// Minimum spacing between requests to one host, for example `"100ms"`.
+    /// None by default.
+    pub min_interval: Option<String>,
 }
 
 /// `[sources]`
@@ -159,6 +167,8 @@ pub struct DistroCfg {
     /// Override the endpoint (internal mirror). On Fedora this is the
     /// `updates` directory; on Arch it is the `issues/all.json` URL.
     pub url: Option<String>,
+    /// Ordered mirrors tried after the primary endpoint fails.
+    pub fallback: Vec<String>,
 }
 
 impl Default for DistroCfg {
@@ -167,6 +177,7 @@ impl Default for DistroCfg {
             enabled: true,
             required: true,
             url: None,
+            fallback: Vec::new(),
         }
     }
 }
@@ -181,6 +192,8 @@ pub struct SourceCfg {
     pub required: bool,
     /// Override the endpoint (internal mirror).
     pub url: Option<String>,
+    /// Ordered mirrors tried after the primary endpoint fails.
+    pub fallback: Vec<String>,
 }
 
 impl Default for Config {
@@ -210,6 +223,9 @@ impl Default for Config {
                 proxy: None,
                 ca_file: None,
                 user_agent_suffix: None,
+                retries: 2,
+                cooldown: "30s".into(),
+                min_interval: None,
             },
             notify: Notify::default(),
             sources: Sources {
@@ -218,11 +234,13 @@ impl Default for Config {
                     enabled: true,
                     required: false,
                     url: None,
+                    fallback: Vec::new(),
                 },
                 epss: SourceCfg {
                     enabled: true,
                     required: false,
                     url: None,
+                    fallback: Vec::new(),
                 },
                 // Required: a language pass that fails leaves those packages
                 // unjudged, which must not read as a clean scan.
@@ -230,6 +248,7 @@ impl Default for Config {
                     enabled: true,
                     required: true,
                     url: None,
+                    fallback: Vec::new(),
                 },
             },
         }
@@ -267,6 +286,7 @@ impl Default for SourceCfg {
             enabled: true,
             required: false,
             url: None,
+            fallback: Vec::new(),
         }
     }
 }
@@ -331,6 +351,7 @@ impl Config {
             return err("general.stale_max_age must not be shorter than general.cache_ttl");
         }
         parse_duration(&self.general.timeout)?;
+        check_network(&self.network)?;
         if let Some(p) = &self.network.proxy
             && !(p.starts_with("http://") || p.starts_with("https://"))
         {
@@ -376,47 +397,7 @@ impl Config {
         {
             return err("policy.fail_on_epss must be between 0.0 and 1.0");
         }
-        let d = &self.sources.distro;
-        for (name, s) in [
-            ("distro", (d.enabled, d.required, &d.url)),
-            (
-                "kev",
-                (
-                    self.sources.kev.enabled,
-                    self.sources.kev.required,
-                    &self.sources.kev.url,
-                ),
-            ),
-            (
-                "epss",
-                (
-                    self.sources.epss.enabled,
-                    self.sources.epss.required,
-                    &self.sources.epss.url,
-                ),
-            ),
-            (
-                "osv",
-                (
-                    self.sources.osv.enabled,
-                    self.sources.osv.required,
-                    &self.sources.osv.url,
-                ),
-            ),
-        ] {
-            let (enabled, required, url) = s;
-            if let Some(u) = url
-                && !(u.starts_with("https://")
-                    || (self.network.allow_insecure_http && u.starts_with("http://")))
-            {
-                return err(format!(
-                    "sources.{name}.url must be an https:// URL (set network.allow_insecure_http for a trusted http mirror)"
-                ));
-            }
-            if required && !enabled {
-                return err(format!("sources.{name} is required but disabled"));
-            }
-        }
+        check_sources(self)?;
         Ok(())
     }
 
@@ -576,6 +557,9 @@ on = \"violation\"                              # violation | incomplete | alway
 
 [network]
 allow_insecure_http = false
+retries = 2
+# cooldown = \"30s\"   # breaker cooldown for a dead endpoint
+# min_interval = \"100ms\"
 # proxy = \"http://proxy.corp.example:3128\"   # default: HTTPS_PROXY / NO_PROXY
 # ca_file = \"/etc/pki/ca-trust/source/anchors/corp.pem\"
 # user_agent_suffix = \"team-sre\"
@@ -585,6 +569,7 @@ allow_insecure_http = false
 enabled = true
 required = true
 # url = \"https://mirror.example/fedora/linux/updates\"
+# fallback = [\"https://mirror2.example/fedora/linux/updates\"]
 
 [sources.kev]
 enabled = true
@@ -600,6 +585,65 @@ enabled = true
 required = true
 # url = \"https://osv-mirror.example\"
 ";
+
+/// The `[network]` retry, cooldown and rate rules serde cannot express.
+fn check_network(net: &Network) -> Result<(), ConfigError> {
+    if net.retries > 10 {
+        return err("network.retries must be at most 10");
+    }
+    if parse_duration(&net.cooldown).is_ok_and(|d| d.is_zero()) {
+        return err("network.cooldown must not be zero");
+    }
+    if let Some(rate) = &net.min_interval
+        && parse_duration(rate).is_ok_and(|d| d.is_zero())
+    {
+        return err("network.min_interval must not be zero");
+    }
+    Ok(())
+}
+
+/// The `[sources]` rules: mirrors follow the endpoint rules, and `required`
+/// needs `enabled` (a required source that is disabled fails every scan).
+fn check_sources(cfg: &Config) -> Result<(), ConfigError> {
+    let https = |u: &str, what: &str, name: &str| -> Result<(), ConfigError> {
+        if !(u.starts_with("https://")
+            || (cfg.network.allow_insecure_http && u.starts_with("http://")))
+        {
+            return err(format!(
+                "sources.{name}.{what} {u:?} must be an https:// URL (or http:// with network.allow_insecure_http)"
+            ));
+        }
+        Ok(())
+    };
+    if !cfg.sources.distro.enabled && cfg.sources.distro.required {
+        return err("sources.distro is required but disabled");
+    }
+    if let Some(u) = &cfg.sources.distro.url {
+        https(u, "url", "distro")?;
+    }
+    for mirror in &cfg.sources.distro.fallback {
+        https(mirror, "fallback", "distro")?;
+    }
+    for (name, source) in [
+        (&"kev", &cfg.sources.kev),
+        (&"epss", &cfg.sources.epss),
+        (&"osv", &cfg.sources.osv),
+    ] {
+        let (name, source): (&str, &SourceCfg) = (*name, source);
+        if !source.enabled && source.required {
+            return err(format!(
+                "sources.{name}: required requires enabled (a required source that is disabled would fail every scan)"
+            ));
+        }
+        if let Some(u) = &source.url {
+            https(u, "url", name)?;
+        }
+        for mirror in &source.fallback {
+            https(mirror, "fallback", name)?;
+        }
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
