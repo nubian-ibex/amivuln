@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 amivuln contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# Maintainer: amivuln contributors <https://github.com/nubian-ibex/amivuln>
+pkgname=amivuln-bin
+_name=amivuln
+pkgver=0.0.9
+pkgrel=1
+pkgdesc='Am I vulnerable? Backport-aware CVE check (static release binary)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/nubian-ibex/amivuln'
+license=('MIT' 'Apache-2.0')
+provides=('amivuln')
+conflicts=('amivuln')
+options=('!strip')
+source_x86_64=("$_name-$pkgver-x86_64.tar.zst::$url/releases/download/v$pkgver/amivuln-x86_64-unknown-linux-musl.tar.zst")
+source_aarch64=("$_name-$pkgver-aarch64.tar.zst::$url/releases/download/v$pkgver/amivuln-aarch64-unknown-linux-musl.tar.zst")
+sha256sums_x86_64=('47c3b84d5bba600b970a9492b059b637027ea34af6ae9f670d4fca1375895ba7')
+sha256sums_aarch64=('44852e8b9bbef645b7c726e84428f126287ea8a96afc0deb37d808b77fdf0eb7')
+noextract=("$_name-$pkgver-x86_64.tar.zst" "$_name-$pkgver-aarch64.tar.zst")
+
+# Provenance can be checked before installing:
+#   gh attestation verify amivuln-$pkgver-<arch>.tar.zst --repo nubian-ibex/amivuln
+
+package() {
+  local dir="amivuln-$CARCH-unknown-linux-musl"
+  bsdtar -xf "$_name-$pkgver-$CARCH.tar.zst"
+  install -Dm755 "$dir/amivuln" "$pkgdir/usr/bin/amivuln"
+  install -Dm644 "$dir/completions/amivuln.bash" "$pkgdir/usr/share/bash-completion/completions/amivuln"
+  install -Dm644 "$dir/completions/_amivuln" "$pkgdir/usr/share/zsh/site-functions/_amivuln"
+  install -Dm644 "$dir/completions/amivuln.fish" "$pkgdir/usr/share/fish/vendor_completions.d/amivuln.fish"
+  install -Dm644 "$dir"/man/*.1 -t "$pkgdir/usr/share/man/man1/"
+  install -Dm644 "$dir/LICENSE-MIT" "$dir/LICENSE-APACHE" -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

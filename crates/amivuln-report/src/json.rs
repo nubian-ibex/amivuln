@@ -671,6 +671,57 @@ mod tests {
         assert!(text.contains("\\u001b"));
     }
 
+    /// Compares rendered output with a committed document, byte for byte.
+    /// Set `AMIVULN_UPDATE_GOLDEN=1` to rewrite the files after a deliberate
+    /// change; the diff in review is then the contract change.
+    fn assert_golden(name: &str, actual: &str) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/golden")
+            .join(name);
+        if std::env::var_os("AMIVULN_UPDATE_GOLDEN").is_some() {
+            std::fs::write(&path, actual).unwrap();
+        }
+        let expected = std::fs::read_to_string(&path).unwrap_or_default();
+        assert_eq!(
+            expected, actual,
+            "{name} changed: the JSON output is a contract (schema v1). \
+             Review the change; if it is deliberate and additive, regenerate with \
+             AMIVULN_UPDATE_GOLDEN=1."
+        );
+    }
+
+    fn rendered(complete: bool) -> String {
+        let mut buf = Vec::new();
+        render_json(&report(complete), &mut buf).unwrap();
+        String::from_utf8(buf).unwrap()
+    }
+
+    #[test]
+    fn json_output_matches_the_golden_documents() {
+        assert_golden("report-complete.json", &rendered(true));
+        assert_golden("report-incomplete.json", &rendered(false));
+    }
+
+    #[test]
+    fn golden_documents_stay_valid_under_the_current_schema() {
+        // Documents recorded under an earlier schema must keep validating:
+        // a schema change that rejects them is a breaking change.
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("../../../docs/book/src/schema/v1.json")).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        for doc in [
+            include_str!("../../../tests/golden/report-complete.json"),
+            include_str!("../../../tests/golden/report-incomplete.json"),
+        ] {
+            let value: serde_json::Value = serde_json::from_str(doc).unwrap();
+            let errors: Vec<String> = validator
+                .iter_errors(&value)
+                .map(|e| e.to_string())
+                .collect();
+            assert!(errors.is_empty(), "{errors:?}");
+        }
+    }
+
     #[test]
     fn output_validates_against_the_published_schema() {
         let schema: serde_json::Value =

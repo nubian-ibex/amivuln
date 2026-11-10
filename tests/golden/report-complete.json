@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "amivuln",
+    "version": "0.0.0-test"
+  },
+  "generated_at": "2026-11-08T00:00:00Z",
+  "host": {
+    "os_id": "fedora",
+    "os_version": "41",
+    "arch": "x86_64"
+  },
+  "complete": true,
+  "score": {
+    "points": 24,
+    "grade": "D"
+  },
+  "suppressed": [],
+  "sources": [
+    {
+      "id": "fedora-updateinfo",
+      "status": "ok",
+      "age_s": 5,
+      "required": true
+    },
+    {
+      "id": "epss",
+      "status": "failed",
+      "detail": "timeout \u001b[31m",
+      "age_s": 0,
+      "required": false
+    }
+  ],
+  "targets": [
+    {
+      "input": "nginx.service",
+      "package": {
+        "name": "nginx",
+        "version": "1:1.26.2-1.fc41",
+        "arch": "x86_64",
+        "ecosystem": "fedora",
+        "purl": "pkg:rpm/fedora/nginx@1.26.2-1.fc41?arch=x86_64&epoch=1",
+        "provenance": "package_db"
+      },
+      "summary": {
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 1,
+        "kev": 1,
+        "epss_max": 0.91,
+        "unverified": 1
+      },
+      "findings": [
+        {
+          "id": "CVE-0000-0001",
+          "severity": "high",
+          "distro_status": {
+            "state": "affected",
+            "fixed_in": "1:1.26.3-1.fc41"
+          },
+          "kev": {
+            "added": "2026-10-30",
+            "ransomware": true
+          },
+          "epss": {
+            "score": 0.91,
+            "percentile": 0.99,
+            "date": "2026-11-06"
+          }
+        },
+        {
+          "id": "CVE-0000-0002",
+          "severity": "low",
+          "distro_status": {
+            "state": "affected",
+            "fixed_in": "1:1.26.2-2.fc41"
+          },
+          "kev": null,
+          "epss": null
+        }
+      ],
+      "unverified": [
+        {
+          "id": "CVE-0000-0003",
+          "severity": "medium",
+          "distro_status": {
+            "state": "unknown",
+            "fixed_in": null
+          },
+          "kev": null,
+          "epss": null
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    {
+      "input": "ghost",
+      "reason": "no installed package matches \"ghost\""
+    }
+  ]
+}
