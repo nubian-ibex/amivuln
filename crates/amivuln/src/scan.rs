@@ -107,7 +107,9 @@ pub(crate) struct Evaluated {
 enum DistroData {
     Arch(ArchTracker),
     Fedora(Updateinfo),
-    Osv(OsvData),
+    /// One entry per package, in the order of the resolved list: an advisory
+    /// found for package A must never be judged against package B.
+    Osv(Vec<OsvData>),
 }
 
 impl DistroData {
@@ -115,9 +117,43 @@ impl DistroData {
         match self {
             Self::Arch(t) => t.knows(cve),
             Self::Fedora(i) => i.knows(cve),
-            Self::Osv(o) => o.knows(cve),
+            Self::Osv(list) => list.iter().any(|o| o.knows(cve)),
         }
     }
+}
+
+/// The version string OSV is asked about, or `None` when the version kind does
+/// not belong to the ecosystem (an RPM version for Debian, for example).
+fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<String> {
+    match version {
+        amivuln_core::Version::Deb(v) => Some(v.to_string()),
+        amivuln_core::Version::Rpm(v)
+            if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
+        {
+            Some(v.to_string())
+        }
+        _ => None,
+    }
+}
+
+/// Splits advisories back per package so each is judged only against the
+/// package it was found for.
+fn split_per_package(
+    entries: &[amivuln_sources::osv::OsvEntry],
+    ids_by_package: &[Vec<String>],
+) -> Vec<OsvData> {
+    ids_by_package
+        .iter()
+        .map(|mine| {
+            OsvData::from_entries(
+                entries
+                    .iter()
+                    .filter(|e| mine.contains(&e.advisory))
+                    .cloned()
+                    .collect(),
+            )
+        })
+        .collect()
 }
 
 /// Fetches one advisory document per id and parses it for the ecosystem.
@@ -205,23 +241,15 @@ async fn load_osv(
         .clone()
         .unwrap_or_else(|| OSV_URL.to_owned());
     let base = base.trim_end_matches('/');
-    let mut ids: Vec<String> = Vec::new();
+    let mut ids_by_package: Vec<Vec<String>> = Vec::new();
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
     for (_, pkg) in packages {
-        let version = match &pkg.version {
-            amivuln_core::Version::Deb(v) => v.to_string(),
-            amivuln_core::Version::Rpm(v)
-                if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
-            {
-                v.to_string()
-            }
-            _ => {
-                return fail(format!(
-                    "package {} has a version kind OSV cannot match for this distro; check the --distro value",
-                    pkg.name
-                ));
-            }
+        let Some(version) = osv_query_version(eco, &pkg.version) else {
+            return fail(format!(
+                "package {} has a version kind OSV cannot match for this distro; check the --distro value",
+                pkg.name
+            ));
         };
         let body = match amivuln_sources::osv::batch_request(
             pkg.name.as_str(),
@@ -251,14 +279,18 @@ async fn load_osv(
             Err(e) => return fail(describe(&e)),
         };
         match amivuln_sources::osv::parse_batch(&batch.body) {
-            Ok(mut found) => {
+            Ok(found) => {
                 status = worse(status, batch.status);
                 age = age.max(batch.age);
-                ids.append(&mut found);
+                ids_by_package.push(found);
             }
-            Err(e) => status = worse(status, SourceStatus::Failed(e.to_string())),
+            Err(e) => {
+                status = worse(status, SourceStatus::Failed(e.to_string()));
+                ids_by_package.push(Vec::new());
+            }
         }
     }
+    let mut ids: Vec<String> = ids_by_package.concat();
     ids.sort();
     ids.dedup();
     let (entries, adv_status, adv_age) = fetch_advisories(f, base, osv_eco.as_str(), &ids).await;
@@ -273,8 +305,9 @@ async fn load_osv(
             )),
         );
     }
+    let per_package = split_per_package(&entries, &ids_by_package);
     (
-        Some(DistroData::Osv(OsvData::from_entries(entries))),
+        Some(DistroData::Osv(per_package)),
         report_of(SourceId::Osv, required, status, age),
     )
 }
@@ -772,11 +805,14 @@ async fn gather(
 
     let mut reports: Vec<TargetReport> = resolved
         .iter()
-        .map(|(input, pkg)| {
+        .enumerate()
+        .map(|(index, (input, pkg))| {
             let findings = match &data {
                 Some(DistroData::Arch(t)) => arch_findings(pkg, t, vex),
                 Some(DistroData::Fedora(i)) => fedora_findings(pkg, i, vex),
-                Some(DistroData::Osv(o)) => osv_findings(pkg, o, vex),
+                Some(DistroData::Osv(list)) => list
+                    .get(index)
+                    .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
                 None => Vec::new(),
             };
             TargetReport {
