@@ -255,3 +255,15 @@ amivuln --container web --container db --fail-on high
 Alpine containers are read for completeness but have no OSV ecosystem in
 amivuln yet: the run reports the source as failed and the result as
 incomplete.
+
+## Version banners in binaries
+
+When nothing else identifies a binary (no package owner, no package note,
+no Go or Rust metadata), amivuln scans for the version banners a curated set
+of C products prints: OpenSSL, curl, zlib, SQLite, nginx and others. A hit
+becomes a target with the upstream version as printed, marked
+`string_heuristic` in every format.
+
+This is a **low-confidence** signal: the distribution may have backported
+fixes without changing the embedded banner. The verdict is real, but the
+user should verify it against the distribution's changelog.

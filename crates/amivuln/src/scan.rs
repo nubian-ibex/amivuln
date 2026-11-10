@@ -144,10 +144,26 @@ fn resolve_path(
         return Ok(vec![pkg]);
     }
     let modules = language_packages(Path::new(path))?;
-    if modules.is_empty() {
-        return package_from_note(eco, Path::new(path)).map(|pkg| vec![pkg]);
+    if !modules.is_empty() {
+        return Ok(modules);
     }
-    Ok(modules)
+    // Last resort: version banners from a curated set of C products. The
+    // upstream version is what was compiled in; the distribution may have
+    // backported fixes without changing the banner, so every formatter
+    // carries the low-confidence mark.
+    let hits = amivuln_resolve::detect_string_hits(Path::new(path)).map_err(ResolveError::Parse)?;
+    let mut out = Vec::new();
+    for hit in hits {
+        if let Ok(pkg) = from_name_version(eco, &hit.name, &hit.version) {
+            let mut pkg = pkg;
+            pkg.provenance = amivuln_core::Provenance::StringHeuristic;
+            out.push(pkg);
+        }
+    }
+    if !out.is_empty() {
+        return Ok(out);
+    }
+    package_from_note(eco, Path::new(path)).map(|pkg| vec![pkg])
 }
 
 /// What a scan produced.

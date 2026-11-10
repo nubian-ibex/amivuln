@@ -256,6 +256,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
                 amivuln_core::Provenance::UserInput => "user_input",
                 amivuln_core::Provenance::EmbeddedNote => "embedded_note",
                 amivuln_core::Provenance::EmbeddedBuildInfo => "embedded_buildinfo",
+                amivuln_core::Provenance::StringHeuristic => "string_heuristic",
             },
         },
         summary: JsonSummary {

@@ -85,6 +85,9 @@ pub enum Provenance {
     EmbeddedNote,
     /// Read from the file itself: Go build information or cargo-auditable data.
     EmbeddedBuildInfo,
+    /// A version banner string found in the file. Low confidence: the
+    /// distribution may have backported fixes without changing the banner.
+    StringHeuristic,
 }
 
 /// A version tagged with its ecosystem; only versions of the same kind compare.
