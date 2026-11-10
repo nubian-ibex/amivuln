@@ -67,11 +67,13 @@ jobs:
           amivuln --all --distro "${{ matrix.distro }}" -f json > /dev/null
       - name: Export the cache directory
         run: |
-          mkdir -p out && cp -r /__w/amivuln/cache/amivuln out/amivuln && ls -R out
+          mkdir -p out-bundle
+          cp -rp /__w/amivuln/cache out-bundle
+          find out-bundle -type f | head
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: amivuln-cache-${{ matrix.id }}
-          path: out/amivuln
+          path: out-bundle
           if-no-files-found: error
 
   pack:
@@ -112,8 +114,7 @@ jobs:
           printf '%s' "$MINISIGN_SECRET_KEY" > key.sec
           chmod 600 key.sec
           for family in fedora debian; do
-            dir="out/amivuln-cache-$family"
-            cache="$dir/amivuln"
+            cache="out/amivuln-cache-$family"
             name="offline-db-$family"
             export XDG_CACHE_HOME="$cache"
             target/release/amivuln db build --archive "signed/$name.tar.zst" > "signed/$name.manifest.txt"
