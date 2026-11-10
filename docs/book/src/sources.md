@@ -2,6 +2,7 @@
 
 - **Arch Security Tracker**: CVE status and fixed version on Arch (`https://security.archlinux.org/issues/all.json`)
 - **Fedora `updateinfo`**: security updates and the CVEs they fix on Fedora (`https://dl.fedoraproject.org/pub/fedora/linux/updates/<release>/Everything/<arch>/repodata/`)
+- **OSV**: Debian, Ubuntu, Rocky Linux, `AlmaLinux`, Go modules and `crates.io` (`https://api.osv.dev/v1/querybatch`, one advisory document per id). Advisories that also exist in the distro trackers carry the same meaning; for Go and crates exact versions are what decide.
 - **CISA KEV**: actively exploited CVEs (`https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`)
 - **FIRST EPSS**: probability of exploitation (`https://api.first.org/data/v1/epss`)
 
@@ -25,10 +26,17 @@ the fix for CVE-X" would otherwise mark CVE-X as fixed. A security update that
 names no CVE is reported under its update id. A CVE without a published fix is
 not visible in this data.
 
+## Where the data lives offline
+
+`amivuln db build` packs everything consulted into a `tar.zst` that another
+host verifies, `amivuln db pull`, and queries with `--offline` (see the guide). VEX
+input comes from documents you supply with `--vex`.
+
 ## Planned
 
-OSV for Debian, Ubuntu, Alpine and RHEL-family distributions, the Fedora Bodhi
-API as a cross-check, NVD by CPE as a fallback, and endoflife.date.
+The Fedora Bodhi API as a cross-check, NVD by CPE as a fallback, and
+endoflife.date. RHEL itself stays out until its data licensing is settled
+(ADR-0012).
 
 ## Arch specifics
 
