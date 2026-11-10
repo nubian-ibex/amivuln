@@ -115,8 +115,8 @@ jobs:
             dir="out/amivuln-cache-$family"
             cache="$dir/amivuln"
             name="offline-db-$family"
-            XDG_CACHE_HOME="$cache" \
-              target/release/amivuln db build --archive "signed/$name.tar.zst" > "signed/$name.manifest.txt"
+            export XDG_CACHE_HOME="$cache"
+            target/release/amivuln db build --archive "signed/$name.tar.zst" > "signed/$name.manifest.txt"
             grep sha256 "signed/$name.manifest.txt" | awk '{print $2"  offline-db-$family.tar.zst"}' > "signed/$name.tar.zst.sha256.tmp" || true
             AFILE="signed/$name.tar.zst"
             sha256sum "$AFILE" | awk '{print $1"  "FILENAME}' FILENAME="$AFILE" > "${AFILE}.sha256"
