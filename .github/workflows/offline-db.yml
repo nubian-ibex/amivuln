@@ -50,25 +50,19 @@ jobs:
     container:
       image: ${{ matrix.image }}
     env:
-      XDG_CACHE_HOME: /__w/amivuln/cache
+      HOME: /__w/amivuln/cache-home
     steps:
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: amivuln-bin
           path: /usr/bin
       - run: chmod +x /usr/bin/amivuln && amivuln --version
-      # Debian/Ubuntu containers do not ship the trust bundle, and the TLS
-      # client reads the system roots: without it every HTTPS request fails.
-      - name: Install the trust bundle
-        run: |
-          sh -c 'command -v apt >/dev/null && apt-get update -qq && apt-get install -qq -y ca-certificates || command -v dnf >/dev/null && dnf install -y ca-certificates'
-          ls /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt 2>/dev/null || true
       - name: Warm the cache from the running system
         run: |
           amivuln --all --distro "${{ matrix.distro }}" -f json > /dev/null
       - name: Export the cache directory
         run: |
-          mkdir -p out && cp -r /__w/amivuln/cache/amivuln out/amivuln && find out -type f | head
+          mkdir -p out && cp -r "$HOME/.cache/amivuln" out/amivuln && ls -R out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: amivuln-cache-${{ matrix.id }}
