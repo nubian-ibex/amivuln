@@ -39,7 +39,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "amivuln"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln-cache",
  "amivuln-core",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-cache"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "minisign",
  "minisign-verify",
@@ -79,7 +79,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-core"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln-version",
  "serde",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-report"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-resolve"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-sources"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln-cache",
  "amivuln-core",
@@ -131,7 +131,7 @@ dependencies = [
 
 [[package]]
 name = "amivuln-version"
-version = "0.0.9"
+version = "0.0.10"
 
 [[package]]
 name = "anstream"
@@ -2876,7 +2876,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.0.9"
+version = "0.0.10"
 dependencies = [
  "amivuln",
  "clap",
