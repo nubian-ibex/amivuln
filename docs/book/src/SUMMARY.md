@@ -9,6 +9,7 @@
   - [JSON schema](json-schema.md)
 - [Architecture](architecture.md)
 - [Data sources](sources.md)
+- [Support policy](support.md)
 - [Security and privacy](security.md)
 - [False positive FAQ](faq.md)
 - [Contributing](contributing.md)

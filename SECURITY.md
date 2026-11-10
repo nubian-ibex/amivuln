@@ -12,7 +12,7 @@ Please report vulnerabilities privately through GitHub Private Vulnerability Rep
 
 ## Supported versions
 
-Pre-1.0: only the latest release receives security fixes.
+Pre-1.0: only the latest release receives security fixes. See the [support policy](https://nubian-ibex.github.io/amivuln/support.html) for the 1.0 plan, the MSRV rules and what is a contract.
 
 ## Release integrity
 

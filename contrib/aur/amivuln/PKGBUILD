@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 amivuln contributors
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# Maintainer: amivuln contributors <https://github.com/nubian-ibex/amivuln>
+pkgname=amivuln
+pkgver=0.0.9
+pkgrel=1
+pkgdesc='Am I vulnerable? Backport-aware CVE check for binaries, services and packages on this host'
+arch=('x86_64' 'aarch64')
+url='https://github.com/nubian-ibex/amivuln'
+license=('MIT' 'Apache-2.0')
+depends=('gcc-libs')
+makedepends=('cargo')
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/source.tar.gz")
+sha256sums=('4f4e7b3e69a28af3b82fa205ef62bc879970314ab4214599ee9a458af3648f0b')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release -p amivuln
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen -p amivuln-version -p amivuln-core
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 target/release/amivuln "$pkgdir/usr/bin/amivuln"
+  install -Dm644 contrib/completions/amivuln.bash "$pkgdir/usr/share/bash-completion/completions/amivuln"
+  install -Dm644 contrib/completions/_amivuln "$pkgdir/usr/share/zsh/site-functions/_amivuln"
+  install -Dm644 contrib/completions/amivuln.fish "$pkgdir/usr/share/fish/vendor_completions.d/amivuln.fish"
+  install -Dm644 contrib/man/*.1 -t "$pkgdir/usr/share/man/man1/"
+  install -Dm644 LICENSE-MIT LICENSE-APACHE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
