@@ -10,6 +10,7 @@
 - [Architecture](architecture.md)
 - [How matching works](matching.md)
 - [Data sources](sources.md)
+- [OpenSSF badging evidence](osp-badging.md)
 - [Support policy](support.md)
 - [Security and privacy](security.md)
 - [False positive FAQ](faq.md)
