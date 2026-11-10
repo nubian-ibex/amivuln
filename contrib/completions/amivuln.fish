@@ -51,6 +51,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -a "pending" -d 'Which upd
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "services" -d 'Check every running systemd service. Services that are not packaged are listed, not fatal'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "restart" -d 'Which running processes still use files an update replaced? Exit 1 when a restart is needed'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "mcp" -d 'Serve read-only tools to AI agents over the Model Context Protocol on stdio'
+complete -c amivuln -n "__fish_amivuln_needs_command" -a "db" -d 'Build, fetch, verify or inspect the offline advisory database'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "config" -d 'Show, create or validate the configuration'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "cache" -d 'Inspect or clear the on-disk cache'
 complete -c amivuln -n "__fish_amivuln_needs_command" -a "completions" -d 'Print shell completions'
@@ -171,6 +172,117 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l offline -d 'Neve
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "build" -d 'Snapshot the local cache into a signed-ready `tar.zst` archive'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "pull" -d 'Verify an archive and install it as the offline database'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "verify" -d 'Check an archive: manifest, database checksum and, with `--key`/`--sig`, the signature'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "info" -d 'Print the manifest of an archive (after checking its integrity)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l archive -d 'Where to write the archive' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l key -d 'Minisign public key; the signature over the manifest is checked' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l sig -d 'Minisign signature over `manifest.json`' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l force -d 'Install even when the archive is older than the installed database'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l key -d 'Minisign public key' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l sig -d 'Minisign signature over `manifest.json`' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l fail-on-epss -d 'Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l config -d 'Configuration file (skips the default search path)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l color -d 'Colors: auto, always or never (`NO_COLOR` is honored)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l distro -d 'Treat the host as another distro: `fedora:44` or `arch`' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l file -d 'Treat this path as a target (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l package -d 'Treat this value as an installed package name or `name@version` (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l purl -d 'Treat this value as a package URL (repeatable)' -r
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l baseline -d 'A previous `-f json` report; only new findings violate --fail-on' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l vex -d '`OpenVEX` documents stating that a product is not affected (repeatable)' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l packages-from -d 'Check the packages listed in FILE (one `name@version` per line) instead of the installed ones; for example a list exported from another host' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l sbom -d 'Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type' -r -F
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l offline -d 'Never use the network; answer from the cache only'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s q -l quiet -d 'Only print errors'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s h -l help -d 'Print help'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "build" -d 'Snapshot the local cache into a signed-ready `tar.zst` archive'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "pull" -d 'Verify an archive and install it as the offline database'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "verify" -d 'Check an archive: manifest, database checksum and, with `--key`/`--sig`, the signature'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "info" -d 'Print the manifest of an archive (after checking its integrity)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv or prometheus' -r
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l output -d 'Write the result to FILE instead of stdout, replacing it atomically' -r -F
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l fail-on -d 'Exit 1 when a finding reaches this level: none, low, medium, high, critical or kev' -r
@@ -358,17 +470,22 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l offline -d '
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l no-cache -d 'Do not keep a cache on disk for this run'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s h -l help -d 'Print help'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "services" -d 'Check every running systemd service. Services that are not packaged are listed, not fatal'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "restart" -d 'Which running processes still use files an update replaced? Exit 1 when a restart is needed'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "mcp" -d 'Serve read-only tools to AI agents over the Model Context Protocol on stdio'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "completions" -d 'Print shell completions'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "version" -d 'Print version and build information'
-complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "cve" -d 'Is this host affected by a CVE? Scans every installed package'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "pending" -d 'Which updates close the most risk? Ranks the updates that fix affected findings'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "services" -d 'Check every running systemd service. Services that are not packaged are listed, not fatal'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "restart" -d 'Which running processes still use files an update replaced? Exit 1 when a restart is needed'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "mcp" -d 'Serve read-only tools to AI agents over the Model Context Protocol on stdio'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "db" -d 'Build, fetch, verify or inspect the offline advisory database'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "config" -d 'Show, create or validate the configuration'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "cache" -d 'Inspect or clear the on-disk cache'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "completions" -d 'Print shell completions'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "version" -d 'Print version and build information'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp db config cache completions version help" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from db" -f -a "build" -d 'Snapshot the local cache into a signed-ready `tar.zst` archive'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from db" -f -a "pull" -d 'Verify an archive and install it as the offline database'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from db" -f -a "verify" -d 'Check an archive: manifest, database checksum and, with `--key`/`--sig`, the signature'
+complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from db" -f -a "info" -d 'Print the manifest of an archive (after checking its integrity)'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "show" -d 'Print the effective configuration'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "init" -d 'Write a commented default configuration file'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and __fish_seen_subcommand_from config" -f -a "validate" -d 'Load the configuration and report problems'

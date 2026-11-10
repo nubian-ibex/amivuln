@@ -1,0 +1,78 @@
+name: offline-db
+on:
+  schedule:
+    # 04:17 UTC daily, off the busy on-the-hour window.
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+# The whole pipeline is inert until the maintainer turns it on with the
+# repository variable OFFLINE_DB_ENABLED=true and adds these secrets:
+#   MINISIGN_SECRET_KEY  the project minisign secret key (armored box)
+#   MINISIGN_PASSWORD    its password (may be empty)
+# Everything is signed and attested before it leaves the runner.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: ${{ vars.OFFLINE_DB_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # publish the nightly release attachment
+      id-token: write # cosign keyless signing and attestations
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
+        with:
+          egress-policy: audit
+      - run: rustup show
+      - name: Build amivuln
+        run: cargo build --release --locked -p amivuln
+      - name: Warm the cache from the reference distros
+        run: |
+          target/release/amivuln --distro fedora:44 \
+            --packages-from contrib/offline-db/packages-fedora.txt -f json > /dev/null
+          target/release/amivuln --distro debian:13 \
+            --packages-from contrib/offline-db/packages-debian.txt -f json > /dev/null
+      - name: Pack the offline database
+        run: |
+          target/release/amivuln db build --archive offline-db.tar.zst
+          sha256sum offline-db.tar.zst > SHA256SUMS
+      - name: Sign with minisign
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          cargo install --locked minisign
+          printf '%s' "$MINISIGN_SECRET_KEY" > key.sec
+          chmod 600 key.sec
+          tar --zstd -xf offline-db.tar.zst manifest.json
+          minisign -S -s key.sec -m manifest.json -x offline-db.tar.zst.minisig
+          rm -f key.sec
+      - name: Cosign-sign and attest the artifacts
+        env:
+          COSIGN_YES: "true"
+        run: |
+          curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
+            -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+          cosign sign-blob --bundle SHA256SUMS.sigstore.json SHA256SUMS
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            offline-db.tar.zst
+            SHA256SUMS
+      - name: Publish to the nightly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete offline-db --yes --cleanup-tag || true
+          gh release create offline-db --title "Offline database (nightly)" \
+            --notes "Built $(date -u +%Y-%m-%dT%H:%M:%SZ). Verify with amivuln db pull and the project minisign key."
+          gh release upload offline-db offline-db.tar.zst offline-db.tar.zst.minisig SHA256SUMS SHA256SUMS.sigstore.json

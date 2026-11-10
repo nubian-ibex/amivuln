@@ -1,0 +1,28 @@
+# Reference package list for the nightly offline database (Fedora).
+# Extend freely; every line is one package name queried against updateinfo.
+bash
+binutils
+curl
+expat
+ffmpeg
+firefox
+glibc
+gnutls
+grub2
+kernel
+krb5
+libgcrypt
+libxml2
+linux-firmware
+nghttp2
+nginx
+nss
+openldap
+openssl
+openssh
+python3
+sudo
+systemd
+util-linux
+vim
+zlib

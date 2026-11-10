@@ -1,0 +1,29 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH AMIVULN-DB 1  amivuln 
+.SH NAME
+db \- Build, fetch, verify or inspect the offline advisory database
+.SH SYNOPSIS
+\fBdb\fR [\fB\-h\fR|\fB\-\-help\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+Build, fetch, verify or inspect the offline advisory database
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+db\-build(1)
+Snapshot the local cache into a signed\-ready `tar.zst` archive
+.TP
+db\-pull(1)
+Verify an archive and install it as the offline database
+.TP
+db\-verify(1)
+Check an archive: manifest, database checksum and, with `\-\-key`/`\-\-sig`, the signature
+.TP
+db\-info(1)
+Print the manifest of an archive (after checking its integrity)
+.TP
+db\-help(1)
+Print this message or the help of the given subcommand(s)

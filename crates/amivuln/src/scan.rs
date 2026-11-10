@@ -4,7 +4,7 @@
 //! `check`, `cve`, `pending` and the other commands that need findings.
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use amivuln_cache::{Cache, Policy as CachePolicy};
@@ -20,7 +20,7 @@ use amivuln_resolve::{
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
 use amivuln_sources::fedora::{Updateinfo, updateinfo_location};
-use amivuln_sources::fetch::{FetchCtx, FetchError, Fetched, fetch_cached, fetch_cached_body};
+use amivuln_sources::fetch::{FetchCtx, FetchError, Fetched, fetch_cached_body};
 use amivuln_sources::http::{HttpClient, HttpConfig};
 use amivuln_sources::kev::Kev;
 use amivuln_sources::osv::OsvData;
@@ -122,6 +122,20 @@ impl DistroData {
     }
 }
 
+/// The version string OSV is asked about, or `None` when the version kind does
+/// not belong to the ecosystem (an RPM version for Debian, for example).
+fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<String> {
+    match version {
+        amivuln_core::Version::Deb(v) => Some(v.to_string()),
+        amivuln_core::Version::Rpm(v)
+            if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
+        {
+            Some(v.to_string())
+        }
+        _ => None,
+    }
+}
+
 /// Splits advisories back per package so each is judged only against the
 /// package it was found for.
 fn split_per_package(
@@ -155,7 +169,20 @@ async fn fetch_advisories(
     for id in ids.iter().take(MAX_OSV_ADVISORIES) {
         let url = format!("{base}/v1/vulns/{id}");
         let key = format!("osv-advisory:{id}");
-        let doc = match fetch_cached(f.http, f.cache, &key, &url, f.now, f.policy, f.offline).await
+        let doc = match fetch_cached_body(
+            &FetchCtx {
+                http: f.http,
+                cache: f.cache,
+                now: f.now,
+                policy: f.policy,
+                offline: f.offline,
+                offline_db: f.offline_db,
+            },
+            &key,
+            &url,
+            None,
+        )
+        .await
         {
             Ok(d) => d,
             Err(e) => {
@@ -218,19 +245,11 @@ async fn load_osv(
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
     for (_, pkg) in packages {
-        let version = match &pkg.version {
-            amivuln_core::Version::Deb(v) => v.to_string(),
-            amivuln_core::Version::Rpm(v)
-                if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
-            {
-                v.to_string()
-            }
-            _ => {
-                return fail(format!(
-                    "package {} has a version kind OSV cannot match for this distro; check the --distro value",
-                    pkg.name
-                ));
-            }
+        let Some(version) = osv_query_version(eco, &pkg.version) else {
+            return fail(format!(
+                "package {} has a version kind OSV cannot match for this distro; check the --distro value",
+                pkg.name
+            ));
         };
         let body = match amivuln_sources::osv::batch_request(
             pkg.name.as_str(),
@@ -248,6 +267,7 @@ async fn load_osv(
                 now: f.now,
                 policy: f.policy,
                 offline: f.offline,
+                offline_db: f.offline_db,
             },
             &key,
             &format!("{base}/v1/querybatch"),
@@ -325,18 +345,24 @@ struct Fetcher<'a> {
     now: i64,
     policy: CachePolicy,
     offline: bool,
+    /// The installed offline database, consulted when offline.
+    offline_db: Option<&'a Cache>,
 }
 
 impl Fetcher<'_> {
     async fn get(&self, url: &str) -> Result<Fetched, FetchError> {
-        fetch_cached(
-            self.http,
-            self.cache,
+        fetch_cached_body(
+            &FetchCtx {
+                http: self.http,
+                cache: self.cache,
+                now: self.now,
+                policy: self.policy,
+                offline: self.offline,
+                offline_db: self.offline_db,
+            },
             url,
             url,
-            self.now,
-            self.policy,
-            self.offline,
+            None,
         )
         .await
     }
@@ -865,6 +891,21 @@ pub(crate) fn evaluate(
         .enable_io()
         .build()
         .map_err(|e| internal(err, format!("cannot start the async runtime: {e}")))?;
+    // The offline database is read-only and only consulted offline; a missing
+    // or broken one is a warning, never a failure.
+    let offline_db = if s.offline {
+        match amivuln_cache::offline::open_installed(&offline_dir(env)) {
+            Ok(db) => db,
+            Err(e) => {
+                if !cli.global.quiet {
+                    let _ = writeln!(err, "warning: offline database unusable: {e}");
+                }
+                None
+            }
+        }
+    } else {
+        None
+    };
     let fetcher = Fetcher {
         http: &http,
         cache: &cache,
@@ -874,8 +915,15 @@ pub(crate) fn evaluate(
             stale_max_age: s.stale_max_age,
         },
         offline: s.offline,
+        offline_db: offline_db.as_ref(),
     };
     Ok(rt.block_on(gather(&fetcher, &s.config, eco, resolved, probe, &s.vex)))
+}
+
+/// The offline database directory for this user.
+fn offline_dir(env: &Env) -> PathBuf {
+    amivuln_cache::offline::default_dir(env.xdg_data_home.as_deref(), env.home.as_deref())
+        .unwrap_or_else(|| PathBuf::from("/var/lib/amivuln/offline"))
 }
 
 /// Opens the on-disk cache. A cache that cannot be opened is a warning, not

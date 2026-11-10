@@ -19,6 +19,7 @@ EXIT CODES:
   2   result incomplete: a required source was unavailable
   3   a target could not be resolved
   64  usage or configuration error
+  65  invalid offline database data (tampered or regressive)
   70  internal error
 
 Only the ecosystem, package name and version ever leave the host.";
@@ -199,6 +200,12 @@ pub enum Command {
     Restart,
     /// Serve read-only tools to AI agents over the Model Context Protocol on stdio.
     Mcp,
+    /// Build, fetch, verify or inspect the offline advisory database.
+    Db {
+        /// What to do.
+        #[command(subcommand)]
+        action: DbAction,
+    },
     /// Show, create or validate the configuration.
     Config {
         /// What to do.
@@ -222,6 +229,50 @@ pub enum Command {
         /// Machine-readable output.
         #[arg(long)]
         json: bool,
+    },
+}
+
+/// `amivuln db ...`
+#[derive(Debug, Subcommand)]
+pub enum DbAction {
+    /// Snapshot the local cache into a signed-ready `tar.zst` archive.
+    Build {
+        /// Where to write the archive.
+        #[arg(long, value_name = "FILE")]
+        archive: std::path::PathBuf,
+    },
+    /// Verify an archive and install it as the offline database.
+    Pull {
+        /// Archive path or `https://` URL.
+        #[arg(value_name = "SOURCE")]
+        source: String,
+        /// Install even when the archive is older than the installed database.
+        #[arg(long)]
+        force: bool,
+        /// Minisign public key; the signature over the manifest is checked.
+        #[arg(long, value_name = "FILE")]
+        key: Option<std::path::PathBuf>,
+        /// Minisign signature over `manifest.json`.
+        #[arg(long, value_name = "FILE")]
+        sig: Option<std::path::PathBuf>,
+    },
+    /// Check an archive: manifest, database checksum and, with `--key`/`--sig`, the signature.
+    Verify {
+        /// Archive path.
+        #[arg(value_name = "FILE")]
+        archive: std::path::PathBuf,
+        /// Minisign public key.
+        #[arg(long, value_name = "FILE")]
+        key: Option<std::path::PathBuf>,
+        /// Minisign signature over `manifest.json`.
+        #[arg(long, value_name = "FILE")]
+        sig: Option<std::path::PathBuf>,
+    },
+    /// Print the manifest of an archive (after checking its integrity).
+    Info {
+        /// Archive path.
+        #[arg(value_name = "FILE")]
+        archive: std::path::PathBuf,
     },
 }
 
