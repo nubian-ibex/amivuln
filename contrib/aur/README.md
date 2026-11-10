@@ -7,7 +7,7 @@ name. Publishing to the AUR needs the maintainer's AUR account:
 ```bash
 # per release: bump pkgver, update sha256sums from the release's .sha256 files
 cd amivuln-bin && makepkg --printsrcinfo > .SRCINFO
-git add PKGBUILD .SRCINFO && git commit -m "upgpkg: amivuln-bin 0.0.9-1"
+git add PKGBUILD .SRCINFO && git commit -m "upgpkg: amivuln-bin 0.0.10-1"
 ```
 
 `makepkg --verifysource` checks the checksums; `gh attestation verify` checks
