@@ -8,6 +8,8 @@
 
 #![forbid(unsafe_code)]
 
+pub(crate) mod sign_db;
+
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -161,9 +163,17 @@ fn run(root: &Path, check: bool, err: &mut dyn Write) -> Result<(), String> {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut err = std::io::stderr();
+    if args.first().map(String::as_str) == Some("sign-db") {
+        let tail = args.get(1..).unwrap_or(&[]);
+        return sign_db::run(tail, &mut err);
+    }
     let check = args.iter().any(|a| a == "--check");
     if args.first().map(String::as_str) != Some("assets") {
-        let _ = writeln!(err, "usage: cargo xtask assets [--check]");
+        let _ = writeln!(
+            err,
+            "usage: cargo xtask sign-db --key KEY --manifest MANIFEST --out SIG"
+        );
+        let _ = writeln!(err, "       cargo xtask assets [--check]");
         return ExitCode::from(2);
     }
     // xtask lives in <root>/xtask, so the repository root is its parent.
