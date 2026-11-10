@@ -14,25 +14,25 @@ url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 
 [policy.amivuln]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-cache]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-core]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-report]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-resolve]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-sources]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [policy.amivuln-version]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [[exemptions.ahash]]
 version = "0.8.12"
