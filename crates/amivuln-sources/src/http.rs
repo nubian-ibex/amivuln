@@ -6,10 +6,13 @@
 //! and a fixed `User-Agent`. Redirects are limited and never leave HTTPS.
 
 use std::io::Write;
-use std::time::Duration;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 use reqwest::header::{ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED, RETRY_AFTER};
 use reqwest::{Client, StatusCode, redirect};
+
+use crate::resilience::{BreakerPolicy, Breakers, Limiter, Next, RetryPolicy};
 
 /// Validators sent to make a request conditional.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -60,6 +63,9 @@ pub enum HttpError {
     /// Refused before sending (for example a non-HTTPS URL).
     #[error("refused: {0}")]
     Refused(String),
+    /// The endpoint is down for longer than the retry budget.
+    #[error("{0} is down; the circuit breaker is open")]
+    CircuitOpen(String),
 }
 
 /// Client configuration.
@@ -78,6 +84,13 @@ pub struct HttpConfig {
     pub ca_pem: Option<Vec<u8>>,
     /// Text appended to the `User-Agent`, for example a team tag.
     pub user_agent_suffix: Option<String>,
+    /// Retry attempts on retriable failures (timeouts, 5xx, 429).
+    pub retry: RetryPolicy,
+    /// Circuit breaker thresholds per endpoint (host).
+    pub breaker: BreakerPolicy,
+    /// Minimum spacing between requests to one host, when set.
+    #[allow(dead_code)]
+    pub min_interval: Option<Duration>,
 }
 
 impl Default for HttpConfig {
@@ -89,6 +102,9 @@ impl Default for HttpConfig {
             proxy: None,
             ca_pem: None,
             user_agent_suffix: None,
+            retry: RetryPolicy::default(),
+            breaker: BreakerPolicy::default(),
+            min_interval: None,
         }
     }
 }
@@ -98,6 +114,8 @@ impl Default for HttpConfig {
 pub struct HttpClient {
     inner: Client,
     config: HttpConfig,
+    breakers: std::sync::Arc<Mutex<Breakers>>,
+    limiter: std::sync::Arc<Mutex<Limiter>>,
 }
 
 /// Installs the `ring` crypto provider once; later calls are no-ops.
@@ -144,7 +162,122 @@ impl HttpClient {
         let inner = builder
             .build()
             .map_err(|e| HttpError::Network(e.to_string()))?;
-        Ok(Self { inner, config })
+        let breakers = std::sync::Arc::new(Mutex::new(Breakers::new(config.breaker)));
+        let limiter = std::sync::Arc::new(Mutex::new(Limiter::new(config.min_interval)));
+        Ok(Self {
+            inner,
+            config,
+            breakers,
+            limiter,
+        })
+    }
+
+    /// The endpoint a URL belongs to: scheme plus authority, so the circuit
+    /// breaker and rate limiter treat each mirror as independent.
+    fn endpoint(url: &str) -> String {
+        url.split_once('/')
+            .filter(|(scheme, _)| scheme.ends_with(':'))
+            .map_or_else(
+                || url.to_owned(),
+                |(scheme, rest)| {
+                    format!("{scheme}//{}", rest.split('/').next().unwrap_or_default())
+                },
+            )
+    }
+
+    /// Locks the breakers; a poisoned lock still hands out its contents.
+    fn breakers(&self) -> std::sync::MutexGuard<'_, Breakers> {
+        self.breakers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn limiter(&self) -> std::sync::MutexGuard<'_, Limiter> {
+        self.limiter
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn record(&self, endpoint: &str, ok: bool) {
+        if ok {
+            self.breakers().success(endpoint);
+        } else {
+            self.breakers().failure(endpoint, Instant::now());
+        }
+    }
+
+    /// Sends one request for `url`, with the circuit breaker, the retry
+    /// policy (honoring `Retry-After`) and the per-host spacing. 5xx and 429
+    /// are retried; a 4xx is handed to the caller untouched, since the
+    /// endpoint answered and the same call would fail the same way.
+    async fn execute(
+        &self,
+        url: &str,
+        build: impl Fn(&Client) -> reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, HttpError> {
+        if !self.config.allow_insecure && !url.starts_with("https://") {
+            return Err(HttpError::Refused(format!("{url} is not an https URL")));
+        }
+        let endpoint = Self::endpoint(url);
+        let policy = self.config.retry;
+        let mut attempt: u32 = 0;
+        loop {
+            if !self.breakers().allow(&endpoint, Instant::now()) {
+                return Err(HttpError::CircuitOpen(endpoint.clone()));
+            }
+            let wait_for_slot = self.limiter().reserve(&endpoint, Instant::now());
+            if wait_for_slot > Duration::ZERO {
+                tokio::time::sleep(wait_for_slot).await;
+            }
+
+            match build(&self.inner).send().await {
+                Ok(response) => {
+                    let status = response.status();
+                    let retry_after = if status == StatusCode::TOO_MANY_REQUESTS {
+                        Some(
+                            response
+                                .headers()
+                                .get(RETRY_AFTER)
+                                .and_then(|v| v.to_str().ok())
+                                .and_then(|v| v.trim().parse::<u64>().ok()),
+                        )
+                    } else if status.is_server_error() {
+                        Some(None)
+                    } else {
+                        // Answered correctly: the circuit stays closed and
+                        // the caller maps the status (200, 304, an error).
+                        self.record(&endpoint, true);
+                        return Ok(response);
+                    };
+                    match policy.next(attempt, retry_after.flatten(), jitter(url, attempt + 1)) {
+                        Next::Wait(wait) => {
+                            tokio::time::sleep(wait).await;
+                            attempt += 1;
+                        }
+                        Next::GiveUp => {
+                            // One failing call is one breaker failure, no
+                            // matter how many attempts it took.
+                            self.record(&endpoint, false);
+                            return Err(if status == StatusCode::TOO_MANY_REQUESTS {
+                                HttpError::RateLimited(retry_after.unwrap_or_default())
+                            } else {
+                                HttpError::Server(status.as_u16())
+                            });
+                        }
+                    }
+                }
+                Err(e) => match policy.next(attempt, None, jitter(url, attempt + 1)) {
+                    Next::Wait(wait) => {
+                        tokio::time::sleep(wait).await;
+                        attempt += 1;
+                    }
+                    Next::GiveUp => {
+                        self.record(&endpoint, false);
+                        return Err(map_error(e));
+                    }
+                },
+            }
+        }
     }
 
     /// POST `body` as `application/json` to `url`.
@@ -167,19 +300,20 @@ impl HttpClient {
         body: &str,
         bearer: Option<&str>,
     ) -> Result<Response, HttpError> {
-        if !self.config.allow_insecure && !url.starts_with("https://") {
-            return Err(HttpError::Refused(format!("{url} is not an https URL")));
-        }
-        let mut req = self
-            .inner
-            .post(url)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(body.to_owned());
-        if let Some(token) = bearer {
-            req = req.header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"));
-        }
-        let resp = req.send().await.map_err(map_error)?;
-        Self::finish(resp, self.config.max_body).await
+        let response = self
+            .execute(url, |client| {
+                let req = client
+                    .post(url)
+                    .header(reqwest::header::CONTENT_TYPE, "application/json")
+                    .body(body.to_owned());
+                if let Some(token) = bearer {
+                    req.header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))
+                } else {
+                    req
+                }
+            })
+            .await?;
+        Self::finish(response, self.config.max_body).await
     }
 
     /// GET `url`, optionally conditional on `validators`.
@@ -189,18 +323,19 @@ impl HttpClient {
     /// See [`HttpError`]. 429 and 5xx are reported as such so callers can fall
     /// back to cached data.
     pub async fn get(&self, url: &str, validators: &Validators) -> Result<Response, HttpError> {
-        if !self.config.allow_insecure && !url.starts_with("https://") {
-            return Err(HttpError::Refused(format!("{url} is not an https URL")));
-        }
-        let mut req = self.inner.get(url);
-        if let Some(etag) = &validators.etag {
-            req = req.header(IF_NONE_MATCH, etag);
-        }
-        if let Some(lm) = &validators.last_modified {
-            req = req.header(IF_MODIFIED_SINCE, lm);
-        }
-        let resp = req.send().await.map_err(map_error)?;
-        Self::finish(resp, self.config.max_body).await
+        let response = self
+            .execute(url, |client| {
+                let mut req = client.get(url);
+                if let Some(etag) = &validators.etag {
+                    req = req.header(IF_NONE_MATCH, etag);
+                }
+                if let Some(lm) = &validators.last_modified {
+                    req = req.header(IF_MODIFIED_SINCE, lm);
+                }
+                req
+            })
+            .await?;
+        Self::finish(response, self.config.max_body).await
     }
 
     /// Streams `url` into `out`, with the usual checks. Returns the byte count.
@@ -209,28 +344,14 @@ impl HttpClient {
     ///
     /// See [`HttpError`]. Bodies above 4 GiB are refused.
     pub async fn download(&self, url: &str, out: &mut dyn Write) -> Result<u64, HttpError> {
-        if !self.config.allow_insecure && !url.starts_with("https://") {
-            return Err(HttpError::Refused(format!("{url} is not an https URL")));
-        }
-        let mut resp = self.inner.get(url).send().await.map_err(map_error)?;
-        let status = resp.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let secs = resp
-                .headers()
-                .get(RETRY_AFTER)
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.trim().parse().ok());
-            return Err(HttpError::RateLimited(secs));
-        }
-        if status.is_client_error() || status.is_server_error() {
-            return Err(HttpError::Status(status.as_u16()));
-        }
-        if !status.is_success() {
-            return Err(HttpError::Status(status.as_u16()));
+        let response = self.execute(url, |client| client.get(url)).await?;
+        if !response.status().is_success() {
+            return Err(HttpError::Status(response.status().as_u16()));
         }
         let limit: u64 = 4 * 1024 * 1024 * 1024;
         let mut copied: u64 = 0;
-        while let Some(chunk) = resp
+        let mut response = response;
+        while let Some(chunk) = response
             .chunk()
             .await
             .map_err(|e| HttpError::Network(e.to_string()))?
@@ -295,6 +416,16 @@ impl HttpClient {
         })
     }
 }
+/// A deterministic per-URL jitter (per mille of the delay to subtract), so
+/// clients that failed together spread out without another dependency.
+fn jitter(url: &str, salt: u32) -> u64 {
+    use std::hash::{DefaultHasher, Hasher};
+    let mut hasher = DefaultHasher::new();
+    hasher.write(url.as_bytes());
+    hasher.write(&salt.to_le_bytes());
+    hasher.finish() % 1001
+}
+
 fn map_error(e: reqwest::Error) -> HttpError {
     if e.is_timeout() {
         HttpError::Timeout
@@ -391,5 +522,135 @@ mod tests {
         })
         .unwrap_err();
         assert!(matches!(e, HttpError::Refused(_)), "{e:?}");
+    }
+}
+
+#[cfg(test)]
+mod resilience_tests {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    use super::*;
+    use crate::resilience::RetryPolicy;
+
+    fn base() -> HttpConfig {
+        HttpConfig {
+            allow_insecure: true,
+            ..HttpConfig::default()
+        }
+    }
+
+    fn fast() -> HttpConfig {
+        HttpConfig {
+            allow_insecure: true,
+            retry: RetryPolicy {
+                retries: 2,
+                base: Duration::from_millis(1),
+                max_wait: Duration::from_millis(20),
+            },
+            ..base()
+        }
+    }
+
+    #[tokio::test]
+    async fn retries_5xx_until_it_works() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(503))
+            .up_to_n_times(2)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("finally"))
+            .mount(&server)
+            .await;
+        let client = HttpClient::new(fast()).unwrap();
+        let r = client
+            .get(&format!("{}/x", server.uri()), &Validators::default())
+            .await;
+        assert!(
+            matches!(&r, Ok(Response::Fresh { body, .. }) if body == b"finally"),
+            "{r:?}"
+        );
+        assert_eq!(server.received_requests().await.unwrap().len(), 3);
+    }
+
+    #[tokio::test]
+    async fn retry_after_zero_is_honored_without_a_long_stop() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(
+                ResponseTemplate::new(429)
+                    .append_header("retry-after", "0")
+                    .set_body_string("later"),
+            )
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("ok"))
+            .mount(&server)
+            .await;
+        let client = HttpClient::new(fast()).unwrap();
+        let r = client
+            .get(&format!("{}/x", server.uri()), &Validators::default())
+            .await;
+        assert!(
+            matches!(&r, Ok(Response::Fresh { body, .. }) if body == b"ok"),
+            "{r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_4xx_is_never_retried() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(404))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let client = HttpClient::new(fast()).unwrap();
+        let r = client
+            .get(&format!("{}/x", server.uri()), &Validators::default())
+            .await;
+        assert!(matches!(r, Err(HttpError::Status(404))), "{r:?}");
+    }
+
+    #[tokio::test]
+    async fn the_breaker_skips_calls_shortly_after_the_budget_is_spent() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/x"))
+            .respond_with(ResponseTemplate::new(503))
+            .expect(2)
+            .mount(&server)
+            .await;
+        // Two calls reach the server and burn the retry budget; the third is
+        // refused by the breaker without touching it (one failed call = one
+        // breaker failure, and the threshold here is 2).
+        let client = HttpClient::new(HttpConfig {
+            retry: RetryPolicy {
+                retries: 0,
+                ..RetryPolicy::default()
+            },
+            breaker: crate::resilience::BreakerPolicy {
+                threshold: 2,
+                cooldown: Duration::from_secs(30),
+            },
+            ..fast()
+        })
+        .unwrap();
+        let url = format!("{}/x", server.uri());
+        for _ in 0..2 {
+            let r = client.get(&url, &Validators::default()).await;
+            assert!(matches!(r, Err(HttpError::Server(503))), "{r:?}");
+        }
+        let r = client.get(&url, &Validators::default()).await;
+        assert!(matches!(r, Err(HttpError::CircuitOpen(_))), "{r:?}");
     }
 }

@@ -24,6 +24,7 @@ use amivuln_sources::fetch::{FetchCtx, FetchError, Fetched, fetch_cached_body};
 use amivuln_sources::http::{HttpClient, HttpConfig};
 use amivuln_sources::kev::Kev;
 use amivuln_sources::osv::OsvData;
+use amivuln_sources::resilience::{BreakerPolicy, RetryPolicy};
 
 use crate::app::{Env, Settings, cache_path, cpu_arch};
 use crate::cli::{Cli, Global};
@@ -966,8 +967,17 @@ async fn gather(
     let (data, rep) = if distro_resolved.is_empty() {
         (None, None)
     } else if cfg.sources.distro.enabled {
-        let (d, r) = load_distro(fetcher, eco, cfg, &distro_resolved).await;
-        (d, Some(r))
+        let mut attempt = cfg.clone();
+        let mut latest = load_distro(fetcher, eco, &attempt, &distro_resolved).await;
+        // Then the declared mirrors, only after a failed primary.
+        for mirror_url in &cfg.sources.distro.fallback {
+            if !matches!(latest.1.status, SourceStatus::Failed(_)) {
+                break;
+            }
+            attempt.sources.distro.url = Some(mirror_url.clone());
+            latest = load_distro(fetcher, eco, &attempt, &distro_resolved).await;
+        }
+        (latest.0, Some(latest.1))
     } else {
         let id = host_source_id(eco);
         (
@@ -984,13 +994,22 @@ async fn gather(
     let lang_data = if lang_resolved.is_empty() {
         None
     } else {
-        let (d, r) = load_osv(fetcher, cfg, &lang_resolved, true).await;
+        let mut attempt = cfg.clone();
+        let mut latest = load_osv(fetcher, &attempt, &lang_resolved, true).await;
+        for mirror_url in &cfg.sources.osv.fallback {
+            if !matches!(latest.1.status, SourceStatus::Failed(_)) {
+                break;
+            }
+            attempt.sources.osv.url = Some(mirror_url.clone());
+            latest = load_osv(fetcher, &attempt, &lang_resolved, true).await;
+        }
+        let (d, r) = latest;
         sources.push(r);
         d
     };
     let known: Vec<String> = data
         .as_ref()
-        .map(|d| probe.iter().filter(|c| d.knows(c)).cloned().collect())
+        .map(|d: &DistroData| probe.iter().filter(|c| d.knows(c)).cloned().collect())
         .unwrap_or_default();
 
     let mut reports = build_reports(
@@ -1011,19 +1030,8 @@ async fn gather(
     cves.sort_unstable();
     cves.dedup();
 
-    let (mut kev, mut epss) = (None, None);
-    if !cves.is_empty() {
-        if cfg.sources.kev.enabled {
-            let (k, rep) = load_kev(fetcher, cfg).await;
-            kev = k;
-            sources.push(rep);
-        }
-        if cfg.sources.epss.enabled {
-            let (e, rep) = load_epss(fetcher, cfg, &cves).await;
-            epss = e;
-            sources.push(rep);
-        }
-    }
+    let (kev, epss, enrichment_reports) = load_enrichment(fetcher, cfg, &cves).await;
+    sources.extend(enrichment_reports);
     for t in &mut reports {
         enrich(&mut t.findings, kev.as_ref(), epss.as_ref());
         sort_findings(&mut t.findings);
@@ -1049,6 +1057,7 @@ pub(crate) fn evaluate(
         let _ = writeln!(err, "error: {msg}");
         ExitCode::Internal
     };
+
     let cache = open_cache(&cli.global, s, env, err)
         .map_err(|e| internal(err, format!("cannot create a cache: {e}")))?;
     let ca_pem = match &s.config.network.ca_file {
@@ -1064,6 +1073,15 @@ pub(crate) fn evaluate(
         proxy: s.config.network.proxy.clone(),
         ca_pem,
         user_agent_suffix: s.config.network.user_agent_suffix.clone(),
+        retry: RetryPolicy {
+            retries: s.net.retries,
+            ..RetryPolicy::default()
+        },
+        breaker: BreakerPolicy {
+            cooldown: s.cooldown,
+            ..BreakerPolicy::default()
+        },
+        min_interval: s.min_interval,
         ..HttpConfig::default()
     })
     .map_err(|e| internal(err, e.to_string()))?;
@@ -1144,4 +1162,48 @@ fn read_ca_file(path: &str) -> Result<Vec<u8>, String> {
         return Err(format!("network.ca_file {path:?} is larger than 1 MiB"));
     }
     Ok(buf)
+}
+
+/// Loads KEV and EPSS with failover over their mirrors, when there are CVE
+/// ids to enrich. Sources that are disabled are simply skipped.
+async fn load_enrichment(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    cves: &[String],
+) -> (Option<Kev>, Option<EpssScores>, Vec<SourceReport>) {
+    let mut sources = Vec::new();
+    let mut kev = None;
+    let mut epss = None;
+    if cves.is_empty() {
+        return (kev, epss, sources);
+    }
+    if cfg.sources.kev.enabled {
+        let mut attempt = cfg.clone();
+        let mut latest = load_kev(fetcher, &attempt).await;
+        for mirror_url in &cfg.sources.kev.fallback {
+            if !matches!(latest.1.status, SourceStatus::Failed(_)) {
+                break;
+            }
+            attempt.sources.kev.url = Some(mirror_url.clone());
+            latest = load_kev(fetcher, &attempt).await;
+        }
+        let (k, rep) = latest;
+        kev = k;
+        sources.push(rep);
+    }
+    if cfg.sources.epss.enabled {
+        let mut attempt = cfg.clone();
+        let mut latest = load_epss(fetcher, &attempt, cves).await;
+        for mirror_url in &cfg.sources.epss.fallback {
+            if !matches!(latest.1.status, SourceStatus::Failed(_)) {
+                break;
+            }
+            attempt.sources.epss.url = Some(mirror_url.clone());
+            latest = load_epss(fetcher, &attempt, cves).await;
+        }
+        let (e, rep) = latest;
+        epss = e;
+        sources.push(rep);
+    }
+    (kev, epss, sources)
 }
