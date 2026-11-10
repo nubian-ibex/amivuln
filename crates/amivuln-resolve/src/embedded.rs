@@ -83,7 +83,7 @@ pub fn package_from_note(
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => "deb",
         Ecosystem::Arch => "alpm",
         // A host is never a language ecosystem; no note can match it.
-        Ecosystem::Go | Ecosystem::Crates => "none",
+        Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => "none",
     };
     let declared = note.pkg_type.as_deref().unwrap_or(host_kind);
     // Arch notes are written as `alpm` by some builders and `pacman` by others.

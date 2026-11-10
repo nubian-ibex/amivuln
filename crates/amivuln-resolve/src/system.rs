@@ -37,6 +37,8 @@ fn locate(program: Program) -> Option<&'static str> {
         Program::Rpm => &["/usr/bin/rpm", "/bin/rpm"],
         Program::Pacman => &["/usr/bin/pacman", "/bin/pacman"],
         Program::Systemctl => &["/usr/bin/systemctl", "/bin/systemctl"],
+        Program::Podman => &["/usr/bin/podman", "/bin/podman"],
+        Program::Docker => &["/usr/bin/docker", "/bin/docker"],
     };
     candidates
         .iter()

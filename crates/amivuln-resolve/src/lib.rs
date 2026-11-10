@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod build;
+pub mod container;
 pub mod embedded;
 mod host;
 mod pacman;
@@ -18,6 +19,9 @@ mod target;
 mod unit;
 
 pub use build::{from_name_version, from_purl};
+pub use container::{
+    ContainerError, available_runtime, export as export_container, packages as container_packages,
+};
 pub use embedded::{Detected, Origin, detect, detect_bytes, language_packages, package_from_note};
 pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;

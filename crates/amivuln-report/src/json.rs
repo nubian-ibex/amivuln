@@ -367,6 +367,7 @@ pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
         Ecosystem::Alma(_) => "alma",
         Ecosystem::Go => "go",
         Ecosystem::Crates => "crates",
+        Ecosystem::Alpine => "alpine",
     }
 }
 

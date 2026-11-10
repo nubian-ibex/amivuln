@@ -235,3 +235,23 @@ published on the release. The project's private key lives only in the
 repository secrets (`MINISIGN_SECRET_KEY` plus `MINISIGN_PASSWORD`) and never
 on a developer machine, so a compromised mirror cannot fake freshness or
 replay an old database past the anti-rollback timestamp.
+
+
+## Scanning a container
+
+`amivuln --container ID` checks the packages installed inside a container.
+The runtime (podman, then docker) is invoked only to export the rootfs,
+which never executes anything inside the container. The container's own
+`os-release` decides the ecosystem, so the host distribution never leaks
+into the answer, and the packages are judged by the matching source (OSV
+for Debian, Ubuntu, Rocky, `AlmaLinux`; the rpm database through the host
+`rpm` for Fedora-family containers). Findings are labeled with the
+container id, for example `web:nginx`.
+
+```bash
+amivuln --container web --container db --fail-on high
+```
+
+Alpine containers are read for completeness but have no OSV ecosystem in
+amivuln yet: the run reports the source as failed and the result as
+incomplete.

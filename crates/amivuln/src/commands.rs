@@ -62,7 +62,9 @@ pub(crate) fn cve(
     let (resolved, _) = match resolve_scope(
         cli,
         &[],
-        cli.global.packages_from.is_none() && cli.global.sbom.is_none(),
+        cli.global.packages_from.is_none()
+            && cli.global.sbom.is_none()
+            && cli.global.container.is_empty(),
         eco,
     ) {
         Ok(v) => v,
@@ -126,7 +128,9 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
     let (resolved, _) = match resolve_scope(
         cli,
         &[],
-        cli.global.packages_from.is_none() && cli.global.sbom.is_none(),
+        cli.global.packages_from.is_none()
+            && cli.global.sbom.is_none()
+            && cli.global.container.is_empty(),
         eco,
     ) {
         Ok(v) => v,

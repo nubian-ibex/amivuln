@@ -31,6 +31,7 @@ _amivuln() {
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -69,6 +70,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--all[Check every installed package]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -98,6 +100,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -126,6 +129,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -153,6 +157,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -180,6 +185,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -207,6 +213,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -234,6 +241,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -270,6 +278,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -299,6 +308,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--force[Install even when the archive is older than the installed database]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
@@ -330,6 +340,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -358,6 +369,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -426,6 +438,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -461,6 +474,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -489,6 +503,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -516,6 +531,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -579,6 +595,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -614,6 +631,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -641,6 +659,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -700,6 +719,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
@@ -732,6 +752,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
 '--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
 '--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
 '--json[Machine-readable output]' \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
