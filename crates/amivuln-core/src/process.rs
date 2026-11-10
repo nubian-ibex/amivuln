@@ -11,6 +11,10 @@ pub enum Program {
     Pacman,
     /// systemd's control tool, for read-only `show` queries.
     Systemctl,
+    /// The podman container runtime, for read-only `export` of a rootfs.
+    Podman,
+    /// The docker container runtime, for read-only `export` of a rootfs.
+    Docker,
 }
 
 /// Result of a finished program.

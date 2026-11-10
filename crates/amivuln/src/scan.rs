@@ -473,6 +473,17 @@ async fn load_distro(
         | Ecosystem::Alma(_)
         | Ecosystem::Go
         | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
+        // Alpine has no OSV ecosystem in amivuln yet: the honest answer is a
+        // failed required source, never a silent clean scan.
+        Ecosystem::Alpine => (
+            None,
+            report_of(
+                SourceId::Osv,
+                required,
+                SourceStatus::Failed("alpine has no OSV ecosystem in amivuln yet".to_owned()),
+                Duration::ZERO,
+            ),
+        ),
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -768,7 +779,46 @@ pub(crate) fn resolve_scope(
         resolved.extend(pkgs);
         unresolved.extend(skipped);
     }
+    for container_id in &cli.global.container {
+        match read_container(container_id) {
+            Ok((container_eco, pkgs)) => {
+                // The container's own os-release decides the ecosystem: the
+                // host's --distro value is not reused and never overrides it.
+                resolved.extend(pkgs.into_iter().map(|pkg| {
+                    let label = format!("{container_id}:{pkg_name}", pkg_name = pkg.name);
+                    (label, pkg)
+                }));
+                let _ = container_eco;
+            }
+            Err(e) => unresolved.push(Unresolved {
+                input: format!("--container {container_id}"),
+                reason: e.to_string(),
+            }),
+        }
+    }
     Ok((resolved, unresolved))
+}
+
+/// Reads a container's installed packages: export, then the package database.
+/// Returns the container's ecosystem, for the caller's report labels.
+fn read_container(
+    container_id: &str,
+) -> Result<(Ecosystem, Vec<PackageRef>), amivuln_resolve::ContainerError> {
+    use amivuln_resolve::{container_packages, export_container};
+    let runner = SystemRunner::default();
+    let dir = std::env::temp_dir().join(format!(
+        "amivuln-container-{}-{}",
+        container_id,
+        std::process::id()
+    ));
+    let result = (|| {
+        let eco = export_container(&runner, container_id, &dir)?;
+        let packages = container_packages(&runner, eco, &dir)?;
+        Ok((eco, packages))
+    })();
+    // The export can be large; it never outlives the run.
+    let _ = std::fs::remove_dir_all(&dir);
+    result
 }
 
 /// The package that owns each path, or `None` when none does.
@@ -784,7 +834,11 @@ pub(crate) fn owners(
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
         // Debian and Ubuntu resolvers come with OSV support; ownership is not
         // needed for the restart command yet.
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Go | Ecosystem::Crates => {
+        Ecosystem::Debian(_)
+        | Ecosystem::Ubuntu(_)
+        | Ecosystem::Go
+        | Ecosystem::Crates
+        | Ecosystem::Alpine => {
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
@@ -823,7 +877,11 @@ pub(crate) fn resolve_all(
         // Debian and Ubuntu read no package database on the host: `--all` is
         // only meaningful with `--packages-from` (an inventory exported from a
         // Debian/Ubuntu host), which resolve_scope adds below.
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Go | Ecosystem::Crates => None,
+        Ecosystem::Debian(_)
+        | Ecosystem::Ubuntu(_)
+        | Ecosystem::Go
+        | Ecosystem::Crates
+        | Ecosystem::Alpine => None,
     };
     if all {
         match backend.as_ref().map(|b| b.resolver().list_all()) {
@@ -876,7 +934,8 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
         | Ecosystem::Rocky(_)
         | Ecosystem::Alma(_)
         | Ecosystem::Go
-        | Ecosystem::Crates => SourceId::Osv,
+        | Ecosystem::Crates
+        | Ecosystem::Alpine => SourceId::Osv,
     }
 }
 
@@ -888,15 +947,21 @@ type LanguageSplit = (Vec<(String, PackageRef)>, Vec<(String, PackageRef)>, bool
 /// and those that get an OSV pass of their own (Go modules and crates on a
 /// host whose own source is not OSV). On OSV hosts everything shares one pass.
 fn split_language(eco: Ecosystem, resolved: &[(String, PackageRef)]) -> LanguageSplit {
-    let osv_host = matches!(
-        eco,
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
-    );
-    let separate = !osv_host && resolved.iter().any(|(_, p)| p.ecosystem.is_language());
-    let pick = |language: bool| -> Vec<(String, PackageRef)> {
+    // Packages whose source differs from the host's get an OSV pass of their
+    // own: Debian or Ubuntu packages on a Fedora host (a `--container` scan)
+    // and Go or Rust crates anywhere.
+    let host_source = host_source_id(eco);
+    let separate = resolved
+        .iter()
+        .any(|(_, p)| p.ecosystem.is_language() || host_source_id(p.ecosystem) != host_source);
+    let pick = |own_source: bool| -> Vec<(String, PackageRef)> {
         resolved
             .iter()
-            .filter(|(_, p)| !separate || p.ecosystem.is_language() == language)
+            .filter(|(_, p)| {
+                !separate
+                    || (p.ecosystem.is_language() || host_source_id(p.ecosystem) != host_source)
+                        == own_source
+            })
             .cloned()
             .collect()
     };

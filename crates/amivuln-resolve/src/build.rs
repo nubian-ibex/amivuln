@@ -46,7 +46,7 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         ),
         // Language packages are built by `language_package`, which validates
         // the version; this arm only keeps the match total.
-        Ecosystem::Go | Ecosystem::Crates => {
+        Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => {
             Version::Semver(amivuln_version::SemverVersion::default())
         }
     };
@@ -151,7 +151,9 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     }
                     Ecosystem::Rocky(v) => format!("rocky:{v}"),
                     Ecosystem::Alma(v) => format!("alma:{v}"),
-                    Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
+                    Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => {
+                        "a language ecosystem".to_owned()
+                    }
                 }
             )));
         }

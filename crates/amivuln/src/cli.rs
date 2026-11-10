@@ -110,6 +110,11 @@ pub struct Global {
     /// purls). Other components are listed as unresolved, grouped by type.
     #[arg(long, global = true, value_name = "FILE")]
     pub sbom: Option<std::path::PathBuf>,
+    /// Scan a container's installed packages (repeatable): the rootfs is
+    /// exported with podman or docker, nothing inside the container runs.
+    /// The container's own `os-release` decides the ecosystem.
+    #[arg(long, global = true, value_name = "ID")]
+    pub container: Vec<String>,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,

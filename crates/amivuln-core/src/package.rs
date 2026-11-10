@@ -26,6 +26,8 @@ pub enum Ecosystem {
     Go,
     /// Rust crates (OSV ecosystem `crates.io`), found by cargo-auditable.
     Crates,
+    /// Alpine Linux (rolling), read from an exported container rootfs.
+    Alpine,
 }
 
 impl Ecosystem {
@@ -40,7 +42,9 @@ impl Ecosystem {
             Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
             Self::Go => Some("Go".to_owned()),
             Self::Crates => Some("crates.io".to_owned()),
-            Self::Fedora(_) | Self::Arch => None,
+            // Alpine has no OSV ecosystem amivuln can query today; container
+            // scans still read its package database for completeness.
+            Self::Fedora(_) | Self::Arch | Self::Alpine => None,
         }
     }
 
@@ -63,6 +67,7 @@ impl Ecosystem {
             Self::Ubuntu(_) => "pkg:deb/ubuntu",
             Self::Rocky(_) => "pkg:rpm/rocky",
             Self::Alma(_) => "pkg:rpm/alma",
+            Self::Alpine => "pkg:apk/alpine",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
         }

@@ -106,6 +106,7 @@ dependencies = [
  "amivuln-core",
  "amivuln-version",
  "serde_json",
+ "tar",
  "tempfile",
  "thiserror",
 ]

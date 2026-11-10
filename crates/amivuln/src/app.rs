@@ -696,11 +696,15 @@ pub(crate) fn check_with(
         Err(m) => return usage(err, &m),
     };
     let targets = expand_targets(cli, subcommand_targets);
-    if targets.is_empty() && !all && cli.global.packages_from.is_none() && cli.global.sbom.is_none()
+    if targets.is_empty()
+        && !all
+        && cli.global.packages_from.is_none()
+        && cli.global.sbom.is_none()
+        && cli.global.container.is_empty()
     {
         return usage(
             err,
-            "no target given; pass a package, a file path, name@version, a purl, --all or --packages-from (see --help)",
+            "no target given; pass a package, a file path, name@version, a purl, --all, --packages-from or --container (see --help)",
         );
     }
 
@@ -803,6 +807,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         // A host is never a language ecosystem; kept total for the match.
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),
         Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
+        Ecosystem::Alpine => ("alpine".to_owned(), "rolling".to_owned()),
     };
     HostMeta {
         os_id,
