@@ -16,6 +16,6 @@ jobs:
       - uses: taiki-e/install-action@3a3daafd3b7f23b8f65d9f5ba2db203fb59b79e2 # v2.90.2
         with: { tool: "zizmor" }
       - name: actionlint
-        uses: rhysd/actionlint@e01e0e0a5e98f47ab0b4d0d3b1fabef46ba58a26 # v1.7.12 wrapped by the official action
+        uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
       - name: Run zizmor
         run: zizmor --min-severity medium .github/workflows
