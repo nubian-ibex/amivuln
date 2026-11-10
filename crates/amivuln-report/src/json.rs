@@ -247,6 +247,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
             provenance: match t.package.provenance {
                 amivuln_core::Provenance::PackageDb => "package_db",
                 amivuln_core::Provenance::UserInput => "user_input",
+                amivuln_core::Provenance::EmbeddedNote => "embedded_note",
             },
         },
         summary: JsonSummary {

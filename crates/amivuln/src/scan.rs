@@ -15,7 +15,7 @@ use amivuln_core::{
 };
 use amivuln_resolve::{
     PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target, exe_for_unit,
-    from_name_version, from_purl, parse_target,
+    from_name_version, from_purl, package_from_note, parse_target,
 };
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
@@ -83,7 +83,14 @@ fn resolve_one(
         // in and must agree with the purl's namespace.
         Target::Purl(p) => from_purl(&p, Some(eco)),
         Target::NameVersion(n, v) => from_name_version(eco, &n, &v),
-        Target::Path(p) => backend.resolver().owner_of(&p),
+        Target::Path(p) => match backend.resolver().owner_of(&p) {
+            // No package owns the file: its own `.note.package` may say what
+            // it was built from (containers, vendored binaries).
+            Err(ResolveError::NotFound(_) | ResolveError::Process(_)) => {
+                package_from_note(eco, Path::new(&p))
+            }
+            other => other,
+        },
         Target::Name(n) => backend.resolver().by_name(&n),
         Target::Unit(u) => {
             let link = |p: &str| std::fs::read_link(p).ok().map(|l| l.display().to_string());
@@ -744,11 +751,16 @@ pub(crate) fn resolve_all(
         }
     }
     for t in targets {
-        match backend
-            .as_ref()
-            .ok_or_else(|| ResolveError::NotFound(t.clone()))
-            .and_then(|b| resolve_one(t, eco, b, &runner))
-        {
+        // Debian and Ubuntu have no host package database, so a file can only
+        // be identified by its own `.note.package`.
+        let resolved_one = match backend.as_ref() {
+            Some(b) => resolve_one(t, eco, b, &runner),
+            None => match parse_target(t, |p| Path::new(p).exists()) {
+                Target::Path(p) => package_from_note(eco, Path::new(&p)),
+                _ => Err(ResolveError::NotFound(t.clone())),
+            },
+        };
+        match resolved_one {
             Ok(p) => resolved.push((t.clone(), p)),
             Err(e) => unresolved.push(Unresolved {
                 input: t.clone(),

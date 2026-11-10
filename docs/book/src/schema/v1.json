@@ -241,7 +241,8 @@
             "provenance": {
               "enum": [
                 "package_db",
-                "user_input"
+                "user_input",
+                "embedded_note"
               ]
             }
           }

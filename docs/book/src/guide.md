@@ -182,3 +182,14 @@ Signing is deliberately not built in: generate the project key with the
 `minisign` tool and sign outside amivuln
 (`minisign -S -s key.sec -m manifest.json -x db.tar.zst.minisig`), so the
 secret key never runs through this binary.
+
+## Files no package owns
+
+A path target that the package manager does not know (a binary copied into a
+container, vendored software) is identified by its own systemd
+`.note.package` when it has one. The package, version and packaging system
+come from the file, and the report marks the package with the provenance
+`embedded_note`. A note for another packaging system than the host's (a `deb`
+note on an RPM host) is refused as unresolved instead of guessed, and the file
+is never executed. On Debian and Ubuntu hosts, which have no package database
+to ask, the note is the only way to identify a file.

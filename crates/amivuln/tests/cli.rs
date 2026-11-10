@@ -1666,3 +1666,51 @@ async fn optional_sources_failing_alone_stay_complete() {
             .any(|(id, st)| *id == "epss" && *st == "failed")
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_file_no_package_owns_is_identified_by_its_package_note() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let elf = sb.path().join("multipart-tool");
+    std::fs::copy(
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/elf/with-package-note.elf"
+        ),
+        &elf,
+    )
+    .unwrap();
+    let elf_arg: &'static str = Box::leak(elf.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd(),
+        vec![elf_arg, "--distro", "fedora:43", "-f", "json"],
+    )
+    .await;
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = json(&out);
+    let pkg = &v["targets"][0]["package"];
+    assert_eq!(pkg["name"], "python3-multipart");
+    assert_eq!(pkg["provenance"], "embedded_note");
+    assert_eq!(v["targets"][0]["summary"]["high"], 1, "{v}");
+
+    // A note for another packaging system is refused, not guessed.
+    let wrong = run(
+        sb.cmd(),
+        vec![elf_arg, "--distro", "debian:12", "-f", "json"],
+    )
+    .await;
+    assert_eq!(wrong.status.code(), Some(3));
+    assert!(
+        json(&wrong)["unresolved"][0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("for rpm packages but this host uses deb")
+    );
+}
