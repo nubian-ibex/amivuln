@@ -90,6 +90,9 @@ pub struct Global {
     /// Treat this value as an installed package name or `name@version` (repeatable).
     #[arg(long, global = true, value_name = "NAME[@VERSION]")]
     pub package: Vec<String>,
+    /// Check the executable of this running process (repeatable).
+    #[arg(long, global = true, value_name = "PID")]
+    pub pid: Vec<u32>,
     /// Treat this value as a package URL (repeatable).
     #[arg(long, global = true, value_name = "PURL")]
     pub purl: Vec<String>,

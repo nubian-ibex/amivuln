@@ -68,7 +68,28 @@ pub(crate) fn expand_targets(cli: &Cli, subcommand_targets: &[String]) -> Vec<St
         }
     }));
     v.extend(cli.global.purl.iter().cloned());
+    v.extend(cli.global.pid.iter().map(|pid| pid_executable(*pid)));
     v
+}
+
+/// The path of a process's executable, from `/proc/PID/exe`. A process that
+/// is gone, or not readable, or whose binary was replaced on disk
+/// (`(deleted)`) keeps the `/proc` path, which then fails to resolve with a
+/// message that names the process rather than checking the new file by
+/// mistake: the running code is the old one.
+fn pid_executable(pid: u32) -> String {
+    let link = format!("/proc/{pid}/exe");
+    match std::fs::read_link(&link) {
+        Ok(path) => {
+            let path = path.display().to_string();
+            if path.ends_with(" (deleted)") {
+                link
+            } else {
+                path
+            }
+        }
+        Err(_) => link,
+    }
 }
 
 fn resolve_one(
@@ -102,6 +123,12 @@ fn resolve_path(
     eco: Ecosystem,
     backend: Option<&Backend<'_>>,
 ) -> Result<Vec<PackageRef>, ResolveError> {
+    // `--pid` leaves the /proc path when the process cannot be followed.
+    if path.starts_with("/proc/") && path.ends_with("/exe") {
+        return Err(ResolveError::NotFound(format!(
+            "{path} (the process is gone, unreadable, or its executable was replaced on disk)"
+        )));
+    }
     let owner = match backend {
         Some(b) => b.resolver().owner_of(path),
         None => Err(ResolveError::NotFound(path.to_owned())),
