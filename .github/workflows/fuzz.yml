@@ -1,0 +1,52 @@
+name: fuzz
+on:
+  schedule:
+    - cron: "43 5 * * *" # daily, short run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  short:
+    if: ${{ github.event_name == 'schedule' || vars.FUZZ_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
+        with:
+          egress-policy: audit
+      - run: rustup toolchain install nightly --profile minimal
+      - name: Fuzz the embedded-metadata parsers
+        run: |
+          cargo install --locked cargo-fuzz || true
+          cargo fuzz build -O
+          cargo fuzz run embedded_detect -O -- -max_total_time=60
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: fuzzer-crash
+          path: crash-*
+
+  long:
+    if: ${{ vars.FUZZ_LONG_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
+        with:
+          egress-policy: audit
+      - run: rustup toolchain install nightly --profile minimal
+      - name: Fuzz for an hour, weekly
+        run: |
+          cargo install --locked cargo-fuzz || true
+          cargo fuzz build -O
+          cargo fuzz run embedded_detect -O -- -max_total_time=3600
