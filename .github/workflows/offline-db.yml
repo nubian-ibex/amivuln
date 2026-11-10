@@ -91,7 +91,11 @@ jobs:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2
         with:
           egress-policy: audit
-      - run: rustup show && cargo install --locked minisign
+      - name: Install minisign (the reference CLI)
+        run: |
+          curl -fsSL https://github.com/jedisct1/minisign/releases/latest/download/minisign-Linux-x86_64-static.tgz -o /tmp/m.tgz
+          tar -xzf /tmp/m.tgz -C /usr/local/bin && chown runner:runner /usr/local/bin/minisign && chmod +x /usr/local/bin/minisign
+          minisign --version
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: amivuln-cache-*
