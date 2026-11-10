@@ -1883,3 +1883,67 @@ async fn pid_checks_a_running_executable_and_names_a_missing_process() {
         .to_owned();
     assert!(input.starts_with('/'), "{input}");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn failover_tries_the_mirrors_after_a_failed_primary() {
+    // The primary port is closed; the mirror serves the same data.
+    let mirror = MockServer::start().await;
+    mount_fedora(&mirror).await;
+    mount_enrichment(&mirror).await;
+    let sb = Sandbox::new(&mirror.uri(), "/updates");
+    let cfg = sb.path().join("mirror.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n\
+             [sources.distro]\nurl = \"http://127.0.0.1:1/updates\"\n\
+             fallback = [\"{}/updates\"]\n\
+             [sources.kev]\nurl = \"http://127.0.0.1:1/kev.json\"\n\
+             [sources.epss]\nurl = \"http://127.0.0.1:1/epss\"\n",
+            mirror.uri()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "json",
+        ],
+    )
+    .await;
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = json(&out);
+    assert_eq!(v["complete"], true);
+    assert_eq!(v["sources"][0]["status"], "ok");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn retries_run_out_before_the_mirror_is_abandoned() {
+    // Every source dies: the run is incomplete with exit 2, never clean.
+    let sb = Sandbox::new("http://127.0.0.1:1", "/updates");
+    let out = run(
+        sb.cmd(),
+        vec![
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "-f",
+            "json",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(2));
+    assert_eq!(json(&out)["complete"], false);
+}

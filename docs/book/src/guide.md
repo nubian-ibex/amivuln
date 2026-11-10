@@ -139,6 +139,23 @@ packages (npm, PyPI, Maven and so on) are not dropped silently: they appear as
 To gate only on OS packages, filter the SBOM first, for example with
 `jq '.components |= map(select(.purl // "" | startswith("pkg:rpm/")))'`.
 
+## Resilient networks
+
+Sources can have mirrors. A source that fails on its primary endpoint is asked
+again on each mirror in `fallback`, in the order written, before it counts as
+failed. Every failing call is retried with exponential backoff and jitter
+(`retries`, default 2, at most 10); a `Retry-After` the server sends is honored
+inside the retry budget. An endpoint that fails repeatedly trips a per-endpoint
+circuit breaker and is skipped for the remainder of a run (`cooldown`, 30 s by
+default), so a dead mirror does not stall the scan. A slow host can be slowed
+down deliberately with `min_interval`, which spaces requests to the same host
+(for example `"100ms"`).
+
+The fallback order is: primary endpoint, then mirrors, then the cache, then
+the installed offline database (see the offline database section), then failure. `sources` in
+every output says which of them answered, their age, and whether the result is
+complete.
+
 ## Webhook notifications
 
 A `[notify]` section sends a compact summary after a `check` run: host facts,

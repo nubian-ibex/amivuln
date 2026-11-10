@@ -86,6 +86,12 @@ pub(crate) struct Settings {
     pub(crate) cache_ttl: i64,
     pub(crate) stale_max_age: i64,
     pub(crate) timeout: Duration,
+    /// Retry attempts, breaker cooldown and min interval for HTTP.
+    pub(crate) net: crate::config::Network,
+    /// Parsed cooldown, for the circuit breaker.
+    pub(crate) cooldown: Duration,
+    /// Parsed minimum spacing between requests to one host, when set.
+    pub(crate) min_interval: Option<Duration>,
     /// Accepted findings from the ignore file (empty when none).
     pub(crate) ignores: Vec<amivuln_core::IgnoreEntry>,
     /// `OpenVEX` statements from the --vex files (empty when none).
@@ -157,6 +163,14 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
     let ttl = parse_duration(&cfg.general.cache_ttl).map_err(|e| e.0)?;
     let stale = parse_duration(&cfg.general.stale_max_age).map_err(|e| e.0)?;
     let timeout = parse_duration(&cfg.general.timeout).map_err(|e| e.0)?;
+    let cooldown = parse_duration(&cfg.network.cooldown).map_err(|e| e.0)?;
+    let min_interval = cfg
+        .network
+        .min_interval
+        .as_deref()
+        .map(parse_duration)
+        .transpose()
+        .map_err(|e| e.0)?;
     Ok((
         Settings {
             format,
@@ -170,6 +184,10 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
             cache_ttl: secs(ttl),
             stale_max_age: secs(stale),
             timeout,
+            // Only what the transport needs beyond `timeout` is copied.
+            net: cfg.network.clone(),
+            cooldown,
+            min_interval,
             ignores,
             vex,
             baseline,

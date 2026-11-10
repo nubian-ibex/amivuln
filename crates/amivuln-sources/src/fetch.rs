@@ -188,14 +188,28 @@ pub async fn fetch_cached_body(
             // A 304 we never asked for: treat as a protocol failure.
             _ => Err(HttpError::Status(304).into()),
         },
-        Err(err) => match lookup {
-            Lookup::Stale(e) => Ok(Fetched {
-                age: age(now, e.fetched_at),
-                body: e.body,
-                status: SourceStatus::Stale,
-            }),
-            _ => Err(err.into()),
-        },
+        Err(err) => {
+            if let Lookup::Stale(e) = lookup {
+                return Ok(Fetched {
+                    age: age(now, e.fetched_at),
+                    body: e.body,
+                    status: SourceStatus::Stale,
+                });
+            }
+            // Fallback hierarchy, last step: when nothing online answers, the
+            // installed offline database may still hold the body.
+            if let Some(db) = offline_db
+                && let Ok(Lookup::Fresh(e) | Lookup::Stale(e) | Lookup::Expired(e)) =
+                    db.get(key, now, policy)
+            {
+                return Ok(Fetched {
+                    age: age(now, e.fetched_at),
+                    body: e.body,
+                    status: SourceStatus::Stale,
+                });
+            }
+            Err(err.into())
+        }
     }
 }
 
@@ -217,6 +231,12 @@ mod tests {
             timeout: Duration::from_millis(timeout_ms),
             max_body,
             allow_insecure: true,
+            // Retries are tested through the client's own tests; the fetch
+            // tests pin single-shot request counts.
+            retry: crate::resilience::RetryPolicy {
+                retries: 0,
+                ..crate::resilience::RetryPolicy::default()
+            },
             ..HttpConfig::default()
         })
         .unwrap()
