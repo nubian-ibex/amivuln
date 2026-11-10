@@ -249,7 +249,8 @@
                 "package_db",
                 "user_input",
                 "embedded_note",
-                "embedded_buildinfo"
+                "embedded_buildinfo",
+                "string_heuristic"
               ]
             }
           }
