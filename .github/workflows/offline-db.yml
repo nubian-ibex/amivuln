@@ -57,6 +57,12 @@ jobs:
           name: amivuln-bin
           path: /usr/bin
       - run: chmod +x /usr/bin/amivuln && amivuln --version
+      # Debian/Ubuntu containers do not ship the trust bundle, and the TLS
+      # client reads the system roots: without it every HTTPS request fails.
+      - name: Install the trust bundle
+        run: |
+          sh -c 'command -v apt >/dev/null && apt-get update -qq && apt-get install -qq -y ca-certificates || command -v dnf >/dev/null && dnf install -y ca-certificates'
+          ls /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt 2>/dev/null || true
       - name: Warm the cache from the running system
         run: |
           amivuln --all --distro "${{ matrix.distro }}" -f json > /dev/null
