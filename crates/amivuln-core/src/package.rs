@@ -61,6 +61,8 @@ pub enum Provenance {
     PackageDb,
     /// Supplied by the user on the command line (`name@version`, purl).
     UserInput,
+    /// Read from the file itself: a `.note.package` entry.
+    EmbeddedNote,
 }
 
 /// A version tagged with its ecosystem; only versions of the same kind compare.
