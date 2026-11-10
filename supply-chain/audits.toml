@@ -1,37 +1,4 @@
 
 # cargo-vet audits file
 
-[[audits.amivuln]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; the tag v0.0.9 is the reviewed source."
-
-[[audits.amivuln-cache]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
-
-[[audits.amivuln-core]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
-
-[[audits.amivuln-report]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
-
-[[audits.amivuln-resolve]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
-
-[[audits.amivuln-sources]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
-
-[[audits.amivuln-version]]
-criteria = "safe-to-deploy"
-version = "0.0.9"
-notes = "Published from this repository; see audits.amivuln."
+[audits]
