@@ -226,3 +226,12 @@ The OSV endpoint for this pass is `[sources.osv]` (required by default: a
 failed pass leaves those modules unjudged, which must not look clean).
 Textual severity comes from the advisory when it states one (GitHub advisories
 do; RUSTSEC entries do not and report `unknown`).
+
+## The project minisign key
+
+`contrib/offline-db/amivuln.pub` is the project minisign public key. It is
+also what the nightly workflow uses to verify the database before it is
+published on the release. The project's private key lives only in the
+repository secrets (`MINISIGN_SECRET_KEY` plus `MINISIGN_PASSWORD`) and never
+on a developer machine, so a compromised mirror cannot fake freshness or
+replay an old database past the anti-rollback timestamp.
