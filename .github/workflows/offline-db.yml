@@ -115,9 +115,9 @@ jobs:
           printf '%s' "$MINISIGN_SECRET_KEY" > key.sec
           chmod 600 key.sec
           for family in fedora debian; do
-            cache="out/amivuln-cache-$family"
+            XDG="$PWD/out/amivuln-cache-$family"
             name="offline-db-$family"
-            export XDG_CACHE_HOME="$cache"
+            export XDG_CACHE_HOME="$XDG"
             echo "pack XDG now: $XDG_CACHE_HOME; listing:"; ls -R "out/amivuln-cache-$family" || true
             target/release/amivuln db build --archive "signed/$name.tar.zst" > "signed/$name.manifest.txt"
             grep sha256 "signed/$name.manifest.txt" | awk '{print $2"  offline-db-$family.tar.zst"}' > "signed/$name.tar.zst.sha256.tmp" || true
