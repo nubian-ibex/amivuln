@@ -93,7 +93,7 @@ jobs:
           egress-policy: audit
       - name: Install minisign (the reference CLI)
         run: |
-          curl -fsSL https://github.com/jedisct1/minisign/releases/latest/download/minisign-0.12-linux.tar.gz -o /tmp/m.tgz
+          curl -fsSL https://github.com/jedisct1/minisign/releases/download/0.12/minisign-0.12-linux.tar.gz -o /tmp/m.tgz
           tar -xzf /tmp/m.tgz -C /usr/local/bin && chown runner:runner /usr/local/bin/minisign && chmod +x /usr/local/bin/minisign
           minisign --version
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
