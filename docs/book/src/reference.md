@@ -27,6 +27,7 @@
 - `--color auto|always|never`: `NO_COLOR` is honored
 - `--distro fedora:NN|arch`: treat the host as this distribution
 - `--baseline FILE`: a previous `-f json` report; only findings absent from it violate `--fail-on`
+- `--pid PID`: check the executable of a running process (repeatable); a process that is gone, unreadable or whose executable was replaced on disk is reported as unresolved
 - `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb and alpm purls); other components are listed as unresolved, one entry per purl type
 - `--vex FILE`: an `OpenVEX` document; a `not_affected` statement overrides the verdict and shows the author and justification
 - `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones

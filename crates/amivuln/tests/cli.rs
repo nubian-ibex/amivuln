@@ -1845,3 +1845,41 @@ async fn unowned_binaries_are_judged_by_their_embedded_go_and_rust_dependencies(
         );
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pid_checks_a_running_executable_and_names_a_missing_process() {
+    let server = MockServer::start().await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    // A process that cannot exist: the failure names it instead of guessing.
+    let gone = run(
+        sb.cmd(),
+        vec!["--pid", "4294967295", "--distro", "fedora:43", "-f", "json"],
+    )
+    .await;
+    assert_eq!(gone.status.code(), Some(3));
+    let reason = json(&gone)["unresolved"][0]["reason"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(reason.contains("the process is gone"), "{reason}");
+
+    // The test process itself is a real executable that no package owns and
+    // that carries no metadata: unresolved, with the file named.
+    let me: &'static str = Box::leak(std::process::id().to_string().into_boxed_str());
+    let own = run(
+        sb.cmd(),
+        vec!["--pid", me, "--distro", "fedora:43", "-f", "json"],
+    )
+    .await;
+    assert_eq!(
+        own.status.code(),
+        Some(3),
+        "{}",
+        String::from_utf8_lossy(&own.stderr)
+    );
+    let input = json(&own)["unresolved"][0]["input"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert!(input.starts_with('/'), "{input}");
+}

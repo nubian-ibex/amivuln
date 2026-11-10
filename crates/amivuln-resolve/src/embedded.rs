@@ -520,17 +520,23 @@ fn parse_cargo_auditable(bytes: &[u8]) -> Vec<Detected> {
         .collect()
 }
 
-/// Finds the first occurrence of `needle`.
+/// Finds the first occurrence of `needle`, skipping quickly to candidates by
+/// their first byte: binaries are large and this runs three times per file.
 fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() || haystack.len() < needle.len() {
-        return None;
-    }
-    let last = haystack.len() - needle.len();
-    (0..=last).find(|i| {
-        haystack
-            .get(*i..i + needle.len())
+    let first = *needle.first()?;
+    let mut from = 0usize;
+    while let Some(rest) = haystack.get(from..) {
+        let hit = from + rest.iter().position(|&b| b == first)?;
+        let end = hit.checked_add(needle.len())?;
+        if haystack
+            .get(hit..end)
             .is_some_and(|window| window == needle)
-    })
+        {
+            return Some(hit);
+        }
+        from = hit + 1;
+    }
+    None
 }
 
 #[cfg(test)]
@@ -722,6 +728,41 @@ mod tests {
                 }
             ]
         );
+    }
+
+    #[test]
+    fn mutated_and_truncated_fixtures_never_panic() {
+        // Deterministic xorshift so a failure is reproducible.
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let seeds: [&[u8]; 3] = [
+            include_bytes!("../../../tests/fixtures/elf/with-package-note.elf"),
+            include_bytes!("../../../tests/fixtures/elf/go-app.bin"),
+            include_bytes!("../../../tests/fixtures/elf/rust-app.bin"),
+        ];
+        for seed in seeds {
+            for _ in 0..3000 {
+                let mut bytes = seed.to_vec();
+                let flips = 1 + next() % 8;
+                for _ in 0..flips {
+                    let at = usize::try_from(next() % bytes.len() as u64).unwrap_or(0);
+                    if let Some(b) = bytes.get_mut(at) {
+                        *b = u8::try_from(next() % 256).unwrap_or(0);
+                    }
+                }
+                if next() % 3 == 0 {
+                    let keep = usize::try_from(next() % bytes.len() as u64).unwrap_or(0);
+                    bytes.truncate(keep);
+                }
+                // Must return, whatever it finds.
+                let _ = detect_bytes(&bytes);
+            }
+        }
     }
 
     #[test]

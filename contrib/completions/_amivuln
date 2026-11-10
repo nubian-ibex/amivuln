@@ -25,6 +25,7 @@ _amivuln() {
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -62,6 +63,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -90,6 +92,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -117,6 +120,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -143,6 +147,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -169,6 +174,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -195,6 +201,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -221,6 +228,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -256,6 +264,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -284,6 +293,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -314,6 +324,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -341,6 +352,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -408,6 +420,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -442,6 +455,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -469,6 +483,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -495,6 +510,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -557,6 +573,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -591,6 +608,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -617,6 +635,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -675,6 +694,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
@@ -706,6 +726,7 @@ _arguments "${_arguments_options[@]}" : \
 '--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
 '*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
 '*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
 '*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
 '--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
 '*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
