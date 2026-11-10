@@ -1714,3 +1714,134 @@ async fn a_file_no_package_owns_is_identified_by_its_package_note() {
             .contains("for rpm packages but this host uses deb")
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+#[allow(clippy::too_many_lines)]
+async fn unowned_binaries_are_judged_by_their_embedded_go_and_rust_dependencies() {
+    let server = MockServer::start().await;
+    mount_enrichment(&server).await;
+    let osv_batch = |needle: &'static str, id: Option<&'static str>| {
+        let vulns = id.map_or_else(
+            || serde_json::json!({}),
+            |id| serde_json::json!({"vulns": [{"id": id}]}),
+        );
+        (needle, serde_json::json!({ "results": [vulns] }))
+    };
+    for (needle, body) in [
+        osv_batch("golang.org/x/net", Some("GHSA-4374-p667-p6c8")),
+        osv_batch("github.com/pkg/errors", None),
+        osv_batch("\"time\"", Some("RUSTSEC-2020-0071")),
+        osv_batch("\"serde\"", None),
+    ] {
+        Mock::given(method("POST"))
+            .and(path("/osv/v1/querybatch"))
+            .and(body_string_contains(needle))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+    }
+    for (id, doc) in [
+        (
+            "GHSA-4374-p667-p6c8",
+            include_str!(
+                "../../../tests/fixtures/http/osv/2026-11-10-lang/GHSA-4374-p667-p6c8.json"
+            ),
+        ),
+        (
+            "RUSTSEC-2020-0071",
+            include_str!("../../../tests/fixtures/http/osv/2026-11-10-lang/RUSTSEC-2020-0071.json"),
+        ),
+    ] {
+        Mock::given(method("GET"))
+            .and(path(format!("/osv/v1/vulns/{id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_string(doc))
+            .mount(&server)
+            .await;
+    }
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("lang.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n\
+             [sources.osv]\nurl = \"{u}/osv\"\n\
+             [sources.kev]\nurl = \"{u}/kev.json\"\n\
+             [sources.epss]\nurl = \"{u}/epss\"\n",
+            u = server.uri()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    for (file, package, cve, fixed, severity) in [
+        (
+            "go-app.bin",
+            "golang.org/x/net",
+            "CVE-2023-39325",
+            "0.17.0",
+            "high",
+        ),
+        ("rust-app.bin", "time", "CVE-2020-26235", "0.2.0", "unknown"),
+    ] {
+        let bin = sb.path().join(file);
+        std::fs::copy(
+            format!(
+                "{}/../../tests/fixtures/elf/{file}",
+                env!("CARGO_MANIFEST_DIR")
+            ),
+            &bin,
+        )
+        .unwrap();
+        let bin_arg: &'static str = Box::leak(bin.display().to_string().into_boxed_str());
+        let out = run(
+            sb.cmd_opts(false),
+            vec![
+                "--config",
+                cfg_arg,
+                bin_arg,
+                "--distro",
+                "fedora:43",
+                "-f",
+                "json",
+            ],
+        )
+        .await;
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "{file}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let v = json(&out);
+        let sources: Vec<(&str, &str)> = v["sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| (s["id"].as_str().unwrap(), s["status"].as_str().unwrap()))
+            .collect();
+        assert!(sources.contains(&("osv", "ok")), "{sources:?}");
+        assert!(
+            !sources.iter().any(|(id, _)| *id == "fedora-updateinfo"),
+            "no distro package is involved: {sources:?}"
+        );
+        let target = v["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["package"]["name"] == package)
+            .unwrap_or_else(|| panic!("{package} missing: {v}"));
+        assert_eq!(target["package"]["provenance"], "embedded_buildinfo");
+        let finding = &target["findings"][0];
+        assert_eq!(finding["id"], cve);
+        assert_eq!(finding["distro_status"]["fixed_in"], fixed);
+        assert_eq!(finding["severity"], severity);
+        // The other module in the file has no advisory and no finding.
+        assert!(
+            v["targets"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|t| t["package"]["name"] != package)
+                .all(|t| t["findings"].as_array().unwrap().is_empty())
+        );
+    }
+}

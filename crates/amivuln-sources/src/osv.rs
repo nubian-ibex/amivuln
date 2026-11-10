@@ -82,6 +82,28 @@ pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
 /// `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`; anything else is dropped so an id
 /// from the response never reaches a URL unchecked.
 fn is_advisory_id(id: &str) -> bool {
+    is_language_advisory_id(id) || is_distro_advisory_id(id)
+}
+
+/// `GO-YYYY-NNNN`, `RUSTSEC-YYYY-NNNN` and `GHSA-xxxx-xxxx-xxxx`.
+fn is_language_advisory_id(id: &str) -> bool {
+    let digits = |s: &str, min: usize| s.len() >= min && s.bytes().all(|b| b.is_ascii_digit());
+    let mut parts = id.split('-');
+    match (parts.next(), parts.next(), parts.next(), parts.next()) {
+        (Some("GO" | "RUSTSEC"), Some(year), Some(seq), None) => digits(year, 4) && digits(seq, 4),
+        (Some("GHSA"), Some(a), Some(b), Some(c)) => {
+            parts.next().is_none()
+                && [a, b, c].iter().all(|g| {
+                    g.len() == 4
+                        && g.bytes()
+                            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+                })
+        }
+        _ => false,
+    }
+}
+
+fn is_distro_advisory_id(id: &str) -> bool {
     if let Some((prefix, rest)) = id.split_once('-') {
         if matches!(prefix, "RLSA" | "ALSA") {
             return rest.split_once(':').is_some_and(|(y, n)| {
@@ -99,9 +121,22 @@ fn is_advisory_id(id: &str) -> bool {
 #[derive(Debug, Deserialize)]
 struct RawVuln {
     #[serde(default)]
+    id: String,
+    #[serde(default)]
     affected: Vec<RawAffected>,
     #[serde(default)]
     upstream: Vec<String>,
+    #[serde(default)]
+    aliases: Vec<String>,
+    #[serde(default)]
+    database_specific: Option<RawDatabaseSpecific>,
+}
+
+/// The vendor block; only the textual severity GitHub advisories carry.
+#[derive(Debug, Deserialize)]
+struct RawDatabaseSpecific {
+    #[serde(default)]
+    severity: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -114,6 +149,8 @@ struct RawAffected {
 #[derive(Debug, Deserialize)]
 struct RawPackage {
     ecosystem: String,
+    #[serde(default)]
+    name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,6 +174,13 @@ pub struct OsvEntry {
     /// First fixed version, when published. `None` means the distro has not
     /// fixed it yet, which mirrors the other sources.
     pub fixed: Option<String>,
+    /// Every `(package, fixed version)` pair for the ecosystem. Language
+    /// advisories list one range per release branch, so the fix that matters
+    /// depends on the installed version.
+    pub fixes: Vec<(String, String)>,
+    /// Textual severity (`CRITICAL`, `HIGH`, `MODERATE`, `LOW`) when the
+    /// advisory database states one, upper-cased.
+    pub severity: Option<String>,
 }
 
 /// Advisories grouped by CVE.
@@ -156,7 +200,30 @@ impl OsvData {
             return Err(OsvError::TooLarge(bytes.len()));
         }
         let raw: RawVuln = serde_json::from_slice(bytes)?;
-        let advisory = raw
+        let mut fixes: Vec<(String, String)> = Vec::new();
+        for affected in &raw.affected {
+            let Some(package) = affected
+                .package
+                .as_ref()
+                .filter(|p| p.ecosystem == ecosystem)
+            else {
+                continue;
+            };
+            for range in affected
+                .ranges
+                .iter()
+                .filter(|r| matches!(r.kind.as_str(), "ECOSYSTEM" | "SEMVER"))
+            {
+                for event in &range.events {
+                    if let Some(fixed) = event.0.get("fixed") {
+                        fixes.push((package.name.clone(), fixed.clone()));
+                    }
+                }
+            }
+        }
+        // Distro advisories keep their historical meaning: the first range's
+        // fix, lowest across packages of the release.
+        let lowest_fix = raw
             .affected
             .iter()
             .filter(|a| a.package.as_ref().is_some_and(|p| p.ecosystem == ecosystem))
@@ -167,16 +234,29 @@ impl OsvData {
                     .filter_map(|r| r.events.iter().find_map(|e| e.0.get("fixed").cloned()))
             })
             .min();
-        let cves: Vec<String> = raw
+        let mut cves: Vec<String> = raw
             .upstream
             .iter()
+            .chain(raw.aliases.iter())
             .filter(|c| crate::is_cve_id(c))
             .cloned()
             .collect();
+        // A language advisory without a CVE alias is reported under its own
+        // id instead of vanishing.
+        if cves.is_empty() && is_language_advisory_id(&raw.id) {
+            cves.push(raw.id.clone());
+        }
+        cves.sort();
+        cves.dedup();
         Ok(Self::from_entries(vec![OsvEntry {
-            advisory: advisory.clone().unwrap_or_default(),
+            advisory: lowest_fix.clone().unwrap_or_default(),
             cves,
-            fixed: advisory,
+            fixed: lowest_fix,
+            fixes,
+            severity: raw
+                .database_specific
+                .and_then(|d| d.severity)
+                .map(|v| v.to_ascii_uppercase()),
         }]))
     }
 
@@ -195,6 +275,34 @@ impl OsvData {
             list.sort_by(|a, b| a.fixed.cmp(&b.fixed));
         }
         Self { by_cve }
+    }
+
+    /// Every `(package, fixed version)` pair recorded for a CVE.
+    #[must_use]
+    pub fn fixes_for(&self, cve: &str) -> Vec<(String, String)> {
+        self.by_cve
+            .get(cve)
+            .into_iter()
+            .flatten()
+            .flat_map(|e| e.fixes.iter().cloned())
+            .collect()
+    }
+
+    /// The most severe textual severity recorded for a CVE, when any.
+    #[must_use]
+    pub fn severity_for(&self, cve: &str) -> Option<&str> {
+        let rank = |s: &str| match s {
+            "CRITICAL" => 4,
+            "HIGH" => 3,
+            "MODERATE" | "MEDIUM" => 2,
+            "LOW" => 1,
+            _ => 0,
+        };
+        self.by_cve
+            .get(cve)?
+            .iter()
+            .filter_map(|e| e.severity.as_deref())
+            .max_by_key(|s| rank(s))
     }
 
     /// The earliest fix published for a CVE, when any.
@@ -240,6 +348,49 @@ impl OsvData {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn language_advisories_carry_cves_and_every_fix() {
+        let go = include_bytes!(
+            "../../../tests/fixtures/http/osv/2026-11-10-lang/GHSA-4374-p667-p6c8.json"
+        );
+        let d = OsvData::parse_advisory(go, "Go").unwrap();
+        assert!(d.knows("CVE-2023-39325"));
+        let entry = d.entries().into_iter().next().unwrap();
+        assert_eq!(
+            entry.fixes,
+            [("golang.org/x/net".to_owned(), "0.17.0".to_owned())]
+        );
+
+        let rust = include_bytes!(
+            "../../../tests/fixtures/http/osv/2026-11-10-lang/RUSTSEC-2020-0071.json"
+        );
+        let d = OsvData::parse_advisory(rust, "crates.io").unwrap();
+        assert!(d.knows("CVE-2020-26235"));
+        let entry = d.entries().into_iter().next().unwrap();
+        // One range per release branch: several fixes for one package.
+        assert!(entry.fixes.len() > 3, "{:?}", entry.fixes);
+        assert!(entry.fixes.iter().all(|(name, _)| name == "time"));
+        // Another ecosystem's data is ignored.
+        let none = OsvData::parse_advisory(rust, "Go").unwrap();
+        assert!(none.entries().iter().all(|e| e.fixes.is_empty()));
+    }
+
+    #[test]
+    fn language_advisory_ids_are_accepted_and_garbage_is_not() {
+        for ok in ["GO-2023-2102", "RUSTSEC-2020-0071", "GHSA-4374-p667-p6c8"] {
+            assert!(is_advisory_id(ok), "{ok}");
+        }
+        for bad in [
+            "GHSA-4374-p667",
+            "GHSA-ABCD-p667-p6c8",
+            "GO-23-2102",
+            "GHSA-4374-p667-p6c8-x",
+            "RUSTSEC-2020",
+        ] {
+            assert!(!is_advisory_id(bad), "{bad}");
+        }
+    }
 
     #[test]
     fn advisory_ids_accept_errata_and_reject_noise() {

@@ -149,6 +149,9 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]
 /// a fix keep the CVE unverified.
 #[must_use]
 pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Vec<Finding> {
+    if let Version::Semver(installed) = &pkg.version {
+        return osv_language_findings(pkg, installed, osv, vex);
+    }
     let mut by_cve: BTreeMap<String, Verdict> = BTreeMap::new();
     let mut cves: Vec<String> = osv.ids();
     cves.sort_unstable();
@@ -169,8 +172,55 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
     let mut out: Vec<Finding> = by_cve
         .into_iter()
         .filter(|(_, v)| matches!(v, Verdict::Affected { .. } | Verdict::Unverified))
-        .map(|(id, verdict)| Finding::new(id, Severity::Unknown, verdict))
+        .map(|(id, verdict)| {
+            let severity = osv_severity(osv.severity_for(&id));
+            Finding::new(id, severity, verdict)
+        })
         .collect();
+    sort_findings(&mut out);
+    out
+}
+
+/// Maps the textual severity of an advisory database to a [`Severity`].
+fn osv_severity(text: Option<&str>) -> Severity {
+    match text {
+        Some("CRITICAL") => Severity::Critical,
+        Some("HIGH") => Severity::High,
+        Some("MODERATE" | "MEDIUM") => Severity::Medium,
+        Some("LOW") => Severity::Low,
+        _ => Severity::Unknown,
+    }
+}
+
+/// Findings for a Go module or Rust crate from OSV.
+///
+/// `querybatch` already answered for this exact version, so every advisory it
+/// returned affects it. The fix to report is the lowest fixed version above
+/// the installed one among the ranges that name this package; none means no
+/// fix is published.
+fn osv_language_findings(
+    pkg: &PackageRef,
+    installed: &amivuln_version::SemverVersion,
+    osv: &OsvData,
+    vex: &[VexStatement],
+) -> Vec<Finding> {
+    let mut out: Vec<Finding> = Vec::new();
+    for cve in osv.ids() {
+        let fixed_in = osv
+            .fixes_for(&cve)
+            .into_iter()
+            .filter(|(name, _)| *name == pkg.name)
+            .filter_map(|(_, fix)| amivuln_version::SemverVersion::parse(&fix).ok())
+            .filter(|fix| fix > installed)
+            .min()
+            .map(Version::Semver);
+        let mut verdict = Verdict::Affected { fixed_in };
+        apply_vex(&mut verdict, vex, &cve);
+        if matches!(verdict, Verdict::Affected { .. } | Verdict::Unverified) {
+            let severity = osv_severity(osv.severity_for(&cve));
+            out.push(Finding::new(cve, severity, verdict));
+        }
+    }
     sort_findings(&mut out);
     out
 }

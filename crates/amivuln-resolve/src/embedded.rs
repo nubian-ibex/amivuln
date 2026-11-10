@@ -82,6 +82,8 @@ pub fn package_from_note(
         Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => "rpm",
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => "deb",
         Ecosystem::Arch => "alpm",
+        // A host is never a language ecosystem; no note can match it.
+        Ecosystem::Go | Ecosystem::Crates => "none",
     };
     let declared = note.pkg_type.as_deref().unwrap_or(host_kind);
     // Arch notes are written as `alpm` by some builders and `pacman` by others.
@@ -98,6 +100,49 @@ pub fn package_from_note(
     let mut package = crate::from_name_version(eco, &note.name, &note.version)?;
     package.provenance = Provenance::EmbeddedNote;
     Ok(package)
+}
+
+/// Most language packages taken from one file.
+const MAX_LANGUAGE_PACKAGES: usize = 5000;
+
+/// The Go modules and Rust crates a file declares, as packages. Entries whose
+/// version is not a semantic version are dropped.
+///
+/// These are for files **no distribution package owns**: a distribution
+/// backports fixes into vendored code without changing the module version, so
+/// judging an owned binary's modules by version would report false positives.
+///
+/// # Errors
+///
+/// Fails when the file cannot be read.
+pub fn language_packages(
+    path: &std::path::Path,
+) -> Result<Vec<amivuln_core::PackageRef>, crate::ResolveError> {
+    use amivuln_core::{Ecosystem, PackageRef, Provenance, Version};
+    let found = detect(path).map_err(crate::ResolveError::Parse)?;
+    let mut out = Vec::new();
+    for d in found {
+        let ecosystem = match d.origin {
+            Origin::GoBuildinfo => Ecosystem::Go,
+            Origin::CargoAuditable => Ecosystem::Crates,
+            Origin::PackageNote => continue,
+        };
+        let Ok(version) = amivuln_version::SemverVersion::parse(&d.version) else {
+            continue;
+        };
+        out.push(PackageRef {
+            ecosystem,
+            name: d.name,
+            source_name: None,
+            version: Version::Semver(version),
+            arch: None,
+            provenance: Provenance::EmbeddedBuildInfo,
+        });
+        if out.len() >= MAX_LANGUAGE_PACKAGES {
+            break;
+        }
+    }
+    Ok(out)
 }
 
 /// The in-memory form of [`detect`].
@@ -520,6 +565,25 @@ mod tests {
         assert_eq!(found[0].name, "python3-multipart");
         assert_eq!(found[0].version, "0:1.3.0-1.fc43");
         assert_eq!(found[0].pkg_type.as_deref(), Some("rpm"));
+    }
+
+    #[test]
+    fn recorded_go_and_rust_fixtures_are_detected() {
+        let go = detect_bytes(include_bytes!("../../../tests/fixtures/elf/go-app.bin"));
+        let names: Vec<(&str, &str)> = go
+            .iter()
+            .map(|d| (d.name.as_str(), d.version.as_str()))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                ("github.com/pkg/errors", "v0.9.1"),
+                ("golang.org/x/net", "v0.7.0")
+            ]
+        );
+        let rust = detect_bytes(include_bytes!("../../../tests/fixtures/elf/rust-app.bin"));
+        let names: Vec<&str> = rust.iter().map(|d| d.name.as_str()).collect();
+        assert_eq!(names, ["serde", "time"]);
     }
 
     #[test]

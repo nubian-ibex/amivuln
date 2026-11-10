@@ -141,6 +141,10 @@ pub struct Sources {
     pub kev: SourceCfg,
     /// FIRST EPSS.
     pub epss: SourceCfg,
+    /// OSV, for Go modules and Rust crates found inside files. Distro hosts
+    /// that already use OSV (Debian, Ubuntu, Rocky, `AlmaLinux`) take their
+    /// endpoint from `sources.distro` instead.
+    pub osv: SourceCfg,
 }
 
 /// The distribution source. It is required by default: without it a result
@@ -218,6 +222,13 @@ impl Default for Config {
                 epss: SourceCfg {
                     enabled: true,
                     required: false,
+                    url: None,
+                },
+                // Required: a language pass that fails leaves those packages
+                // unjudged, which must not read as a clean scan.
+                osv: SourceCfg {
+                    enabled: true,
+                    required: true,
                     url: None,
                 },
             },
@@ -382,6 +393,14 @@ impl Config {
                     self.sources.epss.enabled,
                     self.sources.epss.required,
                     &self.sources.epss.url,
+                ),
+            ),
+            (
+                "osv",
+                (
+                    self.sources.osv.enabled,
+                    self.sources.osv.required,
+                    &self.sources.osv.url,
                 ),
             ),
         ] {
@@ -574,6 +593,12 @@ required = false
 [sources.epss]
 enabled = true
 required = false
+
+# Go modules and Rust crates found inside files are judged by OSV.
+[sources.osv]
+enabled = true
+required = true
+# url = \"https://osv-mirror.example\"
 ";
 
 #[cfg(test)]

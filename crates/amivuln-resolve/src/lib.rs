@@ -18,7 +18,7 @@ mod target;
 mod unit;
 
 pub use build::{from_name_version, from_purl};
-pub use embedded::{Detected, Origin, detect, detect_bytes, package_from_note};
+pub use embedded::{Detected, Origin, detect, detect_bytes, language_packages, package_from_note};
 pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;
 pub use restart::{StaleProcess, StaleScan, scan_stale};

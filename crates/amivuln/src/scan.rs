@@ -15,7 +15,7 @@ use amivuln_core::{
 };
 use amivuln_resolve::{
     PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target, exe_for_unit,
-    from_name_version, from_purl, package_from_note, parse_target,
+    from_name_version, from_purl, language_packages, package_from_note, parse_target,
 };
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
@@ -83,14 +83,7 @@ fn resolve_one(
         // in and must agree with the purl's namespace.
         Target::Purl(p) => from_purl(&p, Some(eco)),
         Target::NameVersion(n, v) => from_name_version(eco, &n, &v),
-        Target::Path(p) => match backend.resolver().owner_of(&p) {
-            // No package owns the file: its own `.note.package` may say what
-            // it was built from (containers, vendored binaries).
-            Err(ResolveError::NotFound(_) | ResolveError::Process(_)) => {
-                package_from_note(eco, Path::new(&p))
-            }
-            other => other,
-        },
+        Target::Path(p) => backend.resolver().owner_of(&p),
         Target::Name(n) => backend.resolver().by_name(&n),
         Target::Unit(u) => {
             let link = |p: &str| std::fs::read_link(p).ok().map(|l| l.display().to_string());
@@ -98,6 +91,35 @@ fn resolve_one(
             backend.resolver().owner_of(&exe.path)
         }
     }
+}
+
+/// Identifies a file: its owning package, else its package note, else the Go
+/// modules or Rust crates it declares. Modules and crates are used only when
+/// nothing else names the file, because a distribution backports fixes into
+/// vendored code without changing versions.
+fn resolve_path(
+    path: &str,
+    eco: Ecosystem,
+    backend: Option<&Backend<'_>>,
+) -> Result<Vec<PackageRef>, ResolveError> {
+    let owner = match backend {
+        Some(b) => b.resolver().owner_of(path),
+        None => Err(ResolveError::NotFound(path.to_owned())),
+    };
+    match owner {
+        Ok(pkg) => return Ok(vec![pkg]),
+        // Not owned (or the package manager is unavailable): look inside.
+        Err(ResolveError::NotFound(_) | ResolveError::Process(_)) => {}
+        Err(other) => return Err(other),
+    }
+    if let Ok(pkg) = package_from_note(eco, Path::new(path)) {
+        return Ok(vec![pkg]);
+    }
+    let modules = language_packages(Path::new(path))?;
+    if modules.is_empty() {
+        return package_from_note(eco, Path::new(path)).map(|pkg| vec![pkg]);
+    }
+    Ok(modules)
 }
 
 /// What a scan produced.
@@ -129,6 +151,46 @@ impl DistroData {
     }
 }
 
+/// Fetches the advisories of every package, parsing each against the OSV
+/// ecosystem that package was asked in, and enforces the fetch limit.
+async fn fetch_all_advisories(
+    f: &Fetcher<'_>,
+    base: &str,
+    ids_by_package: &[Vec<String>],
+    osv_ecos: &[String],
+) -> (Vec<amivuln_sources::osv::OsvEntry>, SourceStatus, Duration) {
+    let mut entries = Vec::new();
+    let mut status = SourceStatus::Ok;
+    let mut age = Duration::ZERO;
+    let distinct: std::collections::BTreeSet<&String> = osv_ecos.iter().collect();
+    let mut total = 0usize;
+    for osv_eco in distinct {
+        let mut mine: Vec<String> = ids_by_package
+            .iter()
+            .zip(osv_ecos)
+            .filter(|(_, e)| *e == osv_eco)
+            .flat_map(|(found, _)| found.iter().cloned())
+            .collect();
+        mine.sort();
+        mine.dedup();
+        total += mine.len();
+        let (mut got, adv_status, adv_age) =
+            fetch_advisories(f, base, osv_eco.as_str(), &mine).await;
+        entries.append(&mut got);
+        status = worse(status, adv_status);
+        age = age.max(adv_age);
+    }
+    if total > MAX_OSV_ADVISORIES {
+        status = worse(
+            status,
+            SourceStatus::Failed(format!(
+                "{total} advisories exceeded the fetch limit of {MAX_OSV_ADVISORIES}"
+            )),
+        );
+    }
+    (entries, status, age)
+}
+
 /// The version string OSV is asked about, or `None` when the version kind does
 /// not belong to the ecosystem (an RPM version for Debian, for example).
 fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<String> {
@@ -139,6 +201,7 @@ fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<
         {
             Some(v.to_string())
         }
+        amivuln_core::Version::Semver(v) if eco.is_language() => Some(v.to_string()),
         _ => None,
     }
 }
@@ -221,11 +284,17 @@ async fn fetch_advisories(
 /// request body, so the same package-version pair is not asked twice.
 async fn load_osv(
     f: &Fetcher<'_>,
-    eco: Ecosystem,
     cfg: &Config,
     packages: &[(String, PackageRef)],
+    own_pass: bool,
 ) -> (Option<DistroData>, SourceReport) {
-    let required = cfg.sources.distro.required;
+    // A language-only pass reads `sources.osv`; a distro pass reads
+    // `sources.distro`, which doubles as the OSV endpoint on OSV distros.
+    let (required, url_override) = if own_pass {
+        (cfg.sources.osv.required, cfg.sources.osv.url.clone())
+    } else {
+        (cfg.sources.distro.required, cfg.sources.distro.url.clone())
+    };
     let fail = |why: String| {
         (
             None,
@@ -237,27 +306,24 @@ async fn load_osv(
             ),
         )
     };
-    let Some(osv_eco) = eco.osv_ecosystem() else {
-        return fail("this ecosystem has no OSV data".into());
-    };
     // The endpoint override is the API base (an internal mirror).
-    let base = cfg
-        .sources
-        .distro
-        .url
-        .clone()
-        .unwrap_or_else(|| OSV_URL.to_owned());
+    let base = url_override.unwrap_or_else(|| OSV_URL.to_owned());
     let base = base.trim_end_matches('/');
     let mut ids_by_package: Vec<Vec<String>> = Vec::new();
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
+    let mut osv_ecos: Vec<String> = Vec::new();
     for (_, pkg) in packages {
-        let Some(version) = osv_query_version(eco, &pkg.version) else {
+        let Some(osv_eco) = pkg.ecosystem.osv_ecosystem() else {
+            return fail(format!("package {} has no OSV data", pkg.name));
+        };
+        let Some(version) = osv_query_version(pkg.ecosystem, &pkg.version) else {
             return fail(format!(
                 "package {} has a version kind OSV cannot match for this distro; check the --distro value",
                 pkg.name
             ));
         };
+        osv_ecos.push(osv_eco.clone());
         let body = match amivuln_sources::osv::batch_request(
             pkg.name.as_str(),
             osv_eco.as_str(),
@@ -297,21 +363,10 @@ async fn load_osv(
             }
         }
     }
-    let mut ids: Vec<String> = ids_by_package.concat();
-    ids.sort();
-    ids.dedup();
-    let (entries, adv_status, adv_age) = fetch_advisories(f, base, osv_eco.as_str(), &ids).await;
+    let (entries, adv_status, adv_age) =
+        fetch_all_advisories(f, base, &ids_by_package, &osv_ecos).await;
     status = worse(status, adv_status);
     age = age.max(adv_age);
-    if ids.len() > MAX_OSV_ADVISORIES {
-        status = worse(
-            status,
-            SourceStatus::Failed(format!(
-                "{} advisories exceeded the fetch limit of {MAX_OSV_ADVISORIES}",
-                ids.len()
-            )),
-        );
-    }
     let per_package = split_per_package(&entries, &ids_by_package);
     (
         Some(DistroData::Osv(per_package)),
@@ -384,9 +439,12 @@ async fn load_distro(
     let required = cfg.sources.distro.required;
     let override_url = cfg.sources.distro.url.clone();
     match eco {
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
-            load_osv(f, eco, cfg, resolved).await
-        }
+        Ecosystem::Debian(_)
+        | Ecosystem::Ubuntu(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Go
+        | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -698,7 +756,7 @@ pub(crate) fn owners(
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
         // Debian and Ubuntu resolvers come with OSV support; ownership is not
         // needed for the restart command yet.
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Go | Ecosystem::Crates => {
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
@@ -737,7 +795,7 @@ pub(crate) fn resolve_all(
         // Debian and Ubuntu read no package database on the host: `--all` is
         // only meaningful with `--packages-from` (an inventory exported from a
         // Debian/Ubuntu host), which resolve_scope adds below.
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => None,
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Go | Ecosystem::Crates => None,
     };
     if all {
         match backend.as_ref().map(|b| b.resolver().list_all()) {
@@ -751,14 +809,22 @@ pub(crate) fn resolve_all(
         }
     }
     for t in targets {
-        // Debian and Ubuntu have no host package database, so a file can only
-        // be identified by its own `.note.package`.
+        // A file is identified by its owner, else its own `.note.package`,
+        // else the modules or crates it declares. Debian and Ubuntu have no
+        // host package database, so they start at the note.
+        if let Target::Path(p) = parse_target(t, |p| Path::new(p).exists()) {
+            match resolve_path(&p, eco, backend.as_ref()) {
+                Ok(list) => resolved.extend(list.into_iter().map(|pkg| (t.clone(), pkg))),
+                Err(e) => unresolved.push(Unresolved {
+                    input: t.clone(),
+                    reason: e.to_string(),
+                }),
+            }
+            continue;
+        }
         let resolved_one = match backend.as_ref() {
             Some(b) => resolve_one(t, eco, b, &runner),
-            None => match parse_target(t, |p| Path::new(p).exists()) {
-                Target::Path(p) => package_from_note(eco, Path::new(&p)),
-                _ => Err(ResolveError::NotFound(t.clone())),
-            },
+            None => Err(ResolveError::NotFound(t.clone())),
         };
         match resolved_one {
             Ok(p) => resolved.push((t.clone(), p)),
@@ -772,6 +838,87 @@ pub(crate) fn resolve_all(
 }
 
 /// Fetches every source and evaluates every resolved package.
+/// The source a host ecosystem's distribution data comes from.
+fn host_source_id(eco: Ecosystem) -> SourceId {
+    match eco {
+        Ecosystem::Arch => SourceId::ArchTracker,
+        Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
+        Ecosystem::Debian(_)
+        | Ecosystem::Ubuntu(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Go
+        | Ecosystem::Crates => SourceId::Osv,
+    }
+}
+
+/// Packages judged by the host's data, packages with their own OSV pass, and
+/// whether such a separate pass exists.
+type LanguageSplit = (Vec<(String, PackageRef)>, Vec<(String, PackageRef)>, bool);
+
+/// Splits the resolved packages into those the host's distribution data judges
+/// and those that get an OSV pass of their own (Go modules and crates on a
+/// host whose own source is not OSV). On OSV hosts everything shares one pass.
+fn split_language(eco: Ecosystem, resolved: &[(String, PackageRef)]) -> LanguageSplit {
+    let osv_host = matches!(
+        eco,
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
+    );
+    let separate = !osv_host && resolved.iter().any(|(_, p)| p.ecosystem.is_language());
+    let pick = |language: bool| -> Vec<(String, PackageRef)> {
+        resolved
+            .iter()
+            .filter(|(_, p)| !separate || p.ecosystem.is_language() == language)
+            .cloned()
+            .collect()
+    };
+    let language = if separate { pick(true) } else { Vec::new() };
+    (pick(false), language, separate)
+}
+
+/// One report per resolved package, each judged by the data that applies to it.
+fn build_reports(
+    resolved: &[(String, PackageRef)],
+    separate_lang: bool,
+    data: Option<&DistroData>,
+    lang_data: Option<&DistroData>,
+    vex: &[VexStatement],
+) -> Vec<TargetReport> {
+    let (mut distro_index, mut lang_index) = (0usize, 0usize);
+    resolved
+        .iter()
+        .map(|(input, pkg)| {
+            let own_pass = separate_lang && pkg.ecosystem.is_language();
+            let findings = if own_pass {
+                let found = match lang_data {
+                    Some(DistroData::Osv(list)) => list
+                        .get(lang_index)
+                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
+                    _ => Vec::new(),
+                };
+                lang_index += 1;
+                found
+            } else {
+                let found = match data {
+                    Some(DistroData::Arch(t)) => arch_findings(pkg, t, vex),
+                    Some(DistroData::Fedora(i)) => fedora_findings(pkg, i, vex),
+                    Some(DistroData::Osv(list)) => list
+                        .get(distro_index)
+                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
+                    None => Vec::new(),
+                };
+                distro_index += 1;
+                found
+            };
+            TargetReport {
+                input: input.clone(),
+                package: pkg.clone(),
+                findings,
+            }
+        })
+        .collect()
+}
+
 async fn gather(
     fetcher: &Fetcher<'_>,
     cfg: &Config,
@@ -788,56 +935,51 @@ async fn gather(
             known: Vec::new(),
         };
     }
-    let (data, rep) = if cfg.sources.distro.enabled {
-        load_distro(fetcher, eco, cfg, resolved).await
+    let (distro_resolved, lang_resolved, separate_lang) = split_language(eco, resolved);
+    let (data, rep) = if distro_resolved.is_empty() {
+        (None, None)
+    } else if cfg.sources.distro.enabled {
+        let (d, r) = load_distro(fetcher, eco, cfg, &distro_resolved).await;
+        (d, Some(r))
     } else {
-        let id = match eco {
-            Ecosystem::Arch => SourceId::ArchTracker,
-            Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
-            Ecosystem::Debian(_)
-            | Ecosystem::Ubuntu(_)
-            | Ecosystem::Rocky(_)
-            | Ecosystem::Alma(_) => SourceId::Osv,
-        };
+        let id = host_source_id(eco);
         (
             None,
-            report_of(
+            Some(report_of(
                 id,
                 false,
                 SourceStatus::Skipped("disabled".into()),
                 Duration::ZERO,
-            ),
+            )),
         )
     };
-    sources.push(rep);
+    sources.extend(rep);
+    let lang_data = if lang_resolved.is_empty() {
+        None
+    } else {
+        let (d, r) = load_osv(fetcher, cfg, &lang_resolved, true).await;
+        sources.push(r);
+        d
+    };
     let known: Vec<String> = data
         .as_ref()
         .map(|d| probe.iter().filter(|c| d.knows(c)).cloned().collect())
         .unwrap_or_default();
 
-    let mut reports: Vec<TargetReport> = resolved
-        .iter()
-        .enumerate()
-        .map(|(index, (input, pkg))| {
-            let findings = match &data {
-                Some(DistroData::Arch(t)) => arch_findings(pkg, t, vex),
-                Some(DistroData::Fedora(i)) => fedora_findings(pkg, i, vex),
-                Some(DistroData::Osv(list)) => list
-                    .get(index)
-                    .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
-                None => Vec::new(),
-            };
-            TargetReport {
-                input: input.clone(),
-                package: pkg.clone(),
-                findings,
-            }
-        })
-        .collect();
+    let mut reports = build_reports(
+        resolved,
+        separate_lang,
+        data.as_ref(),
+        lang_data.as_ref(),
+        vex,
+    );
 
+    // KEV and EPSS know CVE ids only; a language advisory without a CVE alias
+    // keeps its own id and is not looked up there.
     let mut cves: Vec<String> = reports
         .iter()
         .flat_map(|t| t.findings.iter().map(|f| f.id.clone()))
+        .filter(|id| id.starts_with("CVE-"))
         .collect();
     cves.sort_unstable();
     cves.dedup();

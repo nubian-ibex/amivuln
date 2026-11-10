@@ -782,6 +782,9 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{}", v / 100, v % 100)),
         Ecosystem::Rocky(v) => ("rocky".to_owned(), v.to_string()),
         Ecosystem::Alma(v) => ("almalinux".to_owned(), v.to_string()),
+        // A host is never a language ecosystem; kept total for the match.
+        Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),
+        Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
     };
     HostMeta {
         os_id,

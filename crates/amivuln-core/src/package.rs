@@ -5,7 +5,7 @@
 use core::cmp::Ordering;
 use core::fmt;
 
-use amivuln_version::{DebVersion, PacmanVersion, RpmEvr};
+use amivuln_version::{DebVersion, PacmanVersion, RpmEvr, SemverVersion};
 
 /// Package ecosystem, which decides the version-comparison algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,6 +22,10 @@ pub enum Ecosystem {
     Alma(u16),
     /// Ubuntu, an LTS release: 2004 to 9904, where 2404 is 24.04.
     Ubuntu(u16),
+    /// Go modules (OSV ecosystem `Go`), found in binaries by their build info.
+    Go,
+    /// Rust crates (OSV ecosystem `crates.io`), found by cargo-auditable.
+    Crates,
 }
 
 impl Ecosystem {
@@ -34,8 +38,17 @@ impl Ecosystem {
             Self::Alma(v) => Some(format!("AlmaLinux:{v}")),
             // The OSV ecosystem keeps the decimal form (Ubuntu:24.04:LTS).
             Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
+            Self::Go => Some("Go".to_owned()),
+            Self::Crates => Some("crates.io".to_owned()),
             Self::Fedora(_) | Self::Arch => None,
         }
+    }
+
+    /// True for language ecosystems, whose versions are semantic versions and
+    /// whose advisories OSV matches by version range rather than by distro fix.
+    #[must_use]
+    pub fn is_language(&self) -> bool {
+        matches!(self, Self::Go | Self::Crates)
     }
 }
 
@@ -50,6 +63,8 @@ impl Ecosystem {
             Self::Ubuntu(_) => "pkg:deb/ubuntu",
             Self::Rocky(_) => "pkg:rpm/rocky",
             Self::Alma(_) => "pkg:rpm/alma",
+            Self::Go => "pkg:golang",
+            Self::Crates => "pkg:cargo",
         }
     }
 }
@@ -63,6 +78,8 @@ pub enum Provenance {
     UserInput,
     /// Read from the file itself: a `.note.package` entry.
     EmbeddedNote,
+    /// Read from the file itself: Go build information or cargo-auditable data.
+    EmbeddedBuildInfo,
 }
 
 /// A version tagged with its ecosystem; only versions of the same kind compare.
@@ -74,6 +91,8 @@ pub enum Version {
     Pacman(PacmanVersion),
     /// Debian `[epoch:]upstream[-revision]`.
     Deb(DebVersion),
+    /// Semantic version, for Go modules and crates.
+    Semver(SemverVersion),
 }
 
 impl Version {
@@ -84,6 +103,7 @@ impl Version {
             (Self::Rpm(a), Self::Rpm(b)) => Some(a.cmp(b)),
             (Self::Pacman(a), Self::Pacman(b)) => Some(a.cmp(b)),
             (Self::Deb(a), Self::Deb(b)) => Some(a.cmp(b)),
+            (Self::Semver(a), Self::Semver(b)) => Some(a.cmp(b)),
             _ => None,
         }
     }
@@ -95,6 +115,7 @@ impl fmt::Display for Version {
             Self::Rpm(v) => v.fmt(f),
             Self::Pacman(v) => v.fmt(f),
             Self::Deb(v) => v.fmt(f),
+            Self::Semver(v) => v.fmt(f),
         }
     }
 }
