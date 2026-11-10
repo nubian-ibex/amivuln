@@ -50,7 +50,7 @@ jobs:
     container:
       image: ${{ matrix.image }}
     env:
-      HOME: /__w/amivuln/cache-home
+      XDG_CACHE_HOME: /__w/amivuln/cache
     steps:
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
@@ -62,7 +62,7 @@ jobs:
           amivuln --all --distro "${{ matrix.distro }}" -f json > /dev/null
       - name: Export the cache directory
         run: |
-          mkdir -p out && cp -r "$HOME/amivuln" out/
+          mkdir -p out && cp -r /__w/amivuln/cache/amivuln out/amivuln && find out -type f | head
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: amivuln-cache-${{ matrix.id }}
