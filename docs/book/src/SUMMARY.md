@@ -8,6 +8,7 @@
 - [Reference](reference.md)
   - [JSON schema](json-schema.md)
 - [Architecture](architecture.md)
+- [How matching works](matching.md)
 - [Data sources](sources.md)
 - [Support policy](support.md)
 - [Security and privacy](security.md)
