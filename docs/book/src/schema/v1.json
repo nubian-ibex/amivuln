@@ -231,7 +231,13 @@
             "ecosystem": {
               "enum": [
                 "fedora",
-                "arch"
+                "arch",
+                "debian",
+                "ubuntu",
+                "rocky",
+                "alma",
+                "go",
+                "crates"
               ]
             },
             "purl": {
@@ -242,7 +248,8 @@
               "enum": [
                 "package_db",
                 "user_input",
-                "embedded_note"
+                "embedded_note",
+                "embedded_buildinfo"
               ]
             }
           }

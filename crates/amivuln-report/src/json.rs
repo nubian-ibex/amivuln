@@ -168,7 +168,13 @@ fn purl_encode(s: &str) -> String {
 
 fn purl(p: &amivuln_core::PackageRef) -> String {
     let ns = p.ecosystem.purl_namespace();
-    let name = purl_encode(&p.name);
+    // Go module paths keep their slashes: they are namespace segments.
+    let name = p
+        .name
+        .split('/')
+        .map(purl_encode)
+        .collect::<Vec<_>>()
+        .join("/");
     let mut qualifiers = Vec::new();
     if let Some(a) = &p.arch {
         qualifiers.push(format!("arch={}", purl_encode(a)));
@@ -185,6 +191,7 @@ fn purl(p: &amivuln_core::PackageRef) -> String {
         }
         Version::Pacman(v) => v.to_string(),
         Version::Deb(v) => v.to_string(),
+        Version::Semver(v) => v.to_string(),
     };
     let mut out = format!("{ns}/{name}@{}", purl_encode(&version));
     if !qualifiers.is_empty() {
@@ -248,6 +255,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
                 amivuln_core::Provenance::PackageDb => "package_db",
                 amivuln_core::Provenance::UserInput => "user_input",
                 amivuln_core::Provenance::EmbeddedNote => "embedded_note",
+                amivuln_core::Provenance::EmbeddedBuildInfo => "embedded_buildinfo",
             },
         },
         summary: JsonSummary {
@@ -357,6 +365,8 @@ pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
         Ecosystem::Ubuntu(_) => "ubuntu",
         Ecosystem::Rocky(_) => "rocky",
         Ecosystem::Alma(_) => "alma",
+        Ecosystem::Go => "go",
+        Ecosystem::Crates => "crates",
     }
 }
 

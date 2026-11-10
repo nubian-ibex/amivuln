@@ -193,3 +193,19 @@ come from the file, and the report marks the package with the provenance
 note on an RPM host) is refused as unresolved instead of guessed, and the file
 is never executed. On Debian and Ubuntu hosts, which have no package database
 to ask, the note is the only way to identify a file.
+
+## Go and Rust programs nothing owns
+
+When a path target is not owned by a package and has no package note, amivuln
+reads the Go modules (build information) or Rust crates (cargo-auditable data)
+the program declares and asks OSV about each exact version. Findings show the
+lowest fixed version above the installed one, and `update_hint` says the program
+has to be rebuilt, because no package manager can update a statically linked
+dependency. Files that a package owns are deliberately not expanded this way:
+a distribution backports fixes into vendored code without changing versions, so
+the module versions of an owned binary would produce false positives.
+
+The OSV endpoint for this pass is `[sources.osv]` (required by default: a
+failed pass leaves those modules unjudged, which must not look clean).
+Textual severity comes from the advisory when it states one (GitHub advisories
+do; RUSTSEC entries do not and report `unknown`).

@@ -11,10 +11,12 @@
 mod deb;
 mod pacman;
 mod rpm;
+mod semver;
 
 pub use deb::{DebVersion, debvercmp};
 pub use pacman::{PacmanVersion, alpm_vercmp, pacman_vercmp};
 pub use rpm::{RpmEvr, rpmvercmp};
+pub use semver::{SemverError, SemverVersion};
 
 use core::cmp::Ordering;
 
