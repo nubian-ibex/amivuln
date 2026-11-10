@@ -56,6 +56,11 @@ jobs:
           tar --zstd -xf offline-db.tar.zst manifest.json
           minisign -S -s key.sec -m manifest.json -x offline-db.tar.zst.minisig
           rm -f key.sec
+      - name: Verify the signature with the committed public key
+        run: |
+          cargo build --release --locked -p amivuln
+          target/release/amivuln db verify offline-db.tar.zst \
+            --key contrib/offline-db/amivuln.pub --sig offline-db.tar.zst.minisig
       - name: Cosign-sign and attest the artifacts
         env:
           COSIGN_YES: "true"
