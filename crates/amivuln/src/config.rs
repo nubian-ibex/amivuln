@@ -153,6 +153,10 @@ pub struct Sources {
     /// that already use OSV (Debian, Ubuntu, Rocky, `AlmaLinux`) take their
     /// endpoint from `sources.distro` instead.
     pub osv: SourceCfg,
+    /// NVD 2.0 API, for products with no distro data (the string heuristic
+    /// targets). The endpoint is the official API base; a mirror can be set
+    /// with `url`.
+    pub nvd: SourceCfg,
 }
 
 /// The distribution source. It is required by default: without it a result
@@ -247,6 +251,14 @@ impl Default for Config {
                 osv: SourceCfg {
                     enabled: true,
                     required: true,
+                    url: None,
+                    fallback: Vec::new(),
+                },
+                // Optional: the string heuristic targets are a bonus signal,
+                // not the primary answer.
+                nvd: SourceCfg {
+                    enabled: true,
+                    required: false,
                     url: None,
                     fallback: Vec::new(),
                 },
@@ -584,6 +596,13 @@ required = false
 enabled = true
 required = true
 # url = \"https://osv-mirror.example\"
+
+# NVD 2.0, for products with no distro data (string heuristic targets).
+# The optional API key raises the rate limit from 5 to 50 requests per 30 s.
+[sources.nvd]
+enabled = true
+required = false
+# api_key_file = \"/etc/amivuln/nvd-api-key\"
 ";
 
 /// The `[network]` retry, cooldown and rate rules serde cannot express.

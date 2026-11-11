@@ -10,8 +10,8 @@ use std::time::Duration;
 use amivuln_cache::{Cache, Policy as CachePolicy};
 use amivuln_core::VexStatement;
 use amivuln_core::{
-    Ecosystem, ExitCode, PackageRef, SourceId, SourceReport, SourceStatus, TargetReport,
-    Unresolved, sort_findings,
+    Ecosystem, ExitCode, Finding, PackageRef, Severity, SourceId, SourceReport, SourceStatus,
+    TargetReport, Unresolved, Verdict, sort_findings,
 };
 use amivuln_resolve::{
     PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target, exe_for_unit,
@@ -35,6 +35,7 @@ use crate::pipeline::{arch_findings, enrich, fedora_findings, osv_findings};
 const ARCH_URL: &str = "https://security.archlinux.org/issues/all.json";
 const FEDORA_UPDATES: &str = "https://dl.fedoraproject.org/pub/fedora/linux/updates";
 const OSV_URL: &str = "https://api.osv.dev";
+const NVD_URL: &str = "https://services.nvd.nist.gov";
 const KEV_URL: &str =
     "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 const EPSS_URL: &str = "https://api.first.org/data/v1/epss";
@@ -991,6 +992,7 @@ fn build_reports(
     separate_lang: bool,
     data: Option<&DistroData>,
     lang_data: Option<&DistroData>,
+    nvd_data: &std::collections::BTreeMap<String, Vec<amivuln_sources::nvd::NvdEntry2>>,
     vex: &[VexStatement],
 ) -> Vec<TargetReport> {
     let (mut distro_index, mut lang_index) = (0usize, 0usize);
@@ -1019,6 +1021,22 @@ fn build_reports(
                 distro_index += 1;
                 found
             };
+            // NVD fallback: products with no distro data (the string
+            // heuristic targets) get their CVEs from the NVD 2.0 API.
+            let mut findings = findings;
+            if pkg.provenance == amivuln_core::Provenance::StringHeuristic
+                && let Some(entries) = nvd_data.get(&pkg.name)
+            {
+                for entry in entries {
+                    let severity = nvd_severity(entry.severity.as_deref());
+                    findings.push(Finding::new(
+                        entry.id.clone(),
+                        severity,
+                        Verdict::Affected { fixed_in: None },
+                    ));
+                }
+                sort_findings(&mut findings);
+            }
             TargetReport {
                 input: input.clone(),
                 package: pkg.clone(),
@@ -1026,6 +1044,17 @@ fn build_reports(
             }
         })
         .collect()
+}
+
+/// Maps the textual severity of an NVD metric to a [`Severity`].
+fn nvd_severity(text: Option<&str>) -> Severity {
+    match text {
+        Some("CRITICAL") => Severity::Critical,
+        Some("HIGH") => Severity::High,
+        Some("MODERATE" | "MEDIUM") => Severity::Medium,
+        Some("LOW") => Severity::Low,
+        _ => Severity::Unknown,
+    }
 }
 
 async fn gather(
@@ -1093,11 +1122,19 @@ async fn gather(
         .map(|d: &DistroData| probe.iter().filter(|c| d.knows(c)).cloned().collect())
         .unwrap_or_default();
 
+    let mut nvd_data = std::collections::BTreeMap::new();
+    if resolved
+        .iter()
+        .any(|(_, p)| p.provenance == amivuln_core::Provenance::StringHeuristic)
+    {
+        nvd_data = load_and_map_nvd(fetcher, cfg, resolved, &mut sources).await;
+    }
     let mut reports = build_reports(
         resolved,
         separate_lang,
         data.as_ref(),
         lang_data.as_ref(),
+        &nvd_data,
         vex,
     );
 
@@ -1287,4 +1324,116 @@ async fn load_enrichment(
         sources.push(rep);
     }
     (kev, epss, sources)
+}
+
+/// Loads the NVD entries for string heuristic targets, keyed by product name.
+async fn load_and_map_nvd(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    resolved: &[(String, PackageRef)],
+    sources: &mut Vec<SourceReport>,
+) -> std::collections::BTreeMap<String, Vec<amivuln_sources::nvd::NvdEntry2>> {
+    let heuristic: Vec<(String, PackageRef)> = resolved
+        .iter()
+        .filter(|(_, p)| p.provenance == amivuln_core::Provenance::StringHeuristic)
+        .cloned()
+        .collect();
+    let mut nvd_data = std::collections::BTreeMap::new();
+    if heuristic.is_empty() || !cfg.sources.nvd.enabled {
+        return nvd_data;
+    }
+    let (nvd_entries, rep) = load_nvd(fetcher, cfg, &heuristic).await;
+    sources.push(rep);
+    for entry in nvd_entries {
+        nvd_data
+            .entry(entry.cpe_package.clone())
+            .or_default()
+            .push(entry);
+    }
+    nvd_data
+}
+
+/// Loads the NVD 2.0 API entries for a set of string heuristic targets.
+/// The CPE name is built from the curated mapping table; a package the
+/// table does not cover is skipped.
+async fn load_nvd(
+    f: &Fetcher<'_>,
+    cfg: &Config,
+    heuristic: &[(String, PackageRef)],
+) -> (Vec<amivuln_sources::nvd::NvdEntry2>, SourceReport) {
+    use amivuln_sources::nvd::{NvdError, cpe_name};
+    let required = cfg.sources.nvd.required;
+    let fail = |why: String| {
+        (
+            Vec::new(),
+            report_of(
+                SourceId::Nvd,
+                required,
+                SourceStatus::Failed(why),
+                Duration::ZERO,
+            ),
+        )
+    };
+    let base = cfg
+        .sources
+        .nvd
+        .url
+        .clone()
+        .unwrap_or_else(|| NVD_URL.to_owned());
+    let base = base.trim_end_matches('/');
+    let mut entries = Vec::new();
+    let mut status = SourceStatus::Ok;
+    let mut age = Duration::ZERO;
+    for (_, pkg) in heuristic {
+        let Some(cpe) = cpe_name(&pkg.name, &pkg.version.to_string()) else {
+            continue;
+        };
+        let key = format!("nvd:{cpe}");
+        let url = format!("{base}/rest/json/cves/2.0?cpeName={cpe}&resultsPerPage=200");
+        let doc = match fetch_cached_body(
+            &FetchCtx {
+                http: f.http,
+                cache: f.cache,
+                now: f.now,
+                policy: f.policy,
+                offline: f.offline,
+                offline_db: f.offline_db,
+            },
+            &key,
+            &url,
+            None,
+        )
+        .await
+        {
+            Ok(d) => d,
+            Err(e) => return fail(describe(&e)),
+        };
+        match amivuln_sources::nvd::parse_response(&doc.body, &pkg.name) {
+            Ok(mut found) => {
+                status = worse(status, doc.status);
+                age = age.max(doc.age);
+                entries.append(&mut found);
+            }
+            Err(NvdError::Invalid(e)) => {
+                status = worse(status, SourceStatus::Failed(e));
+            }
+            Err(NvdError::TooLarge(n)) => {
+                status = worse(
+                    status,
+                    SourceStatus::Failed(format!("response too large: {n}")),
+                );
+            }
+            Err(NvdError::NoVulnerabilities) => {}
+        }
+    }
+    if entries.len() > MAX_OSV_ADVISORIES {
+        status = worse(
+            status,
+            SourceStatus::Failed(format!(
+                "{} NVD entries exceeded the fetch limit of {MAX_OSV_ADVISORIES}",
+                entries.len()
+            )),
+        );
+    }
+    (entries, report_of(SourceId::Nvd, required, status, age))
 }

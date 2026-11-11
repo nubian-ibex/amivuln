@@ -14,6 +14,7 @@ pub mod fedora;
 pub mod fetch;
 pub mod http;
 pub mod kev;
+pub mod nvd;
 pub mod osv;
 pub mod resilience;
 
