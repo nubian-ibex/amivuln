@@ -19,6 +19,8 @@ pub enum SourceId {
     Kev,
     /// FIRST EPSS.
     Epss,
+    /// NVD 2.0 API, for products with no distro data.
+    Nvd,
 }
 
 impl SourceId {
@@ -32,6 +34,7 @@ impl SourceId {
             Self::Bodhi => "bodhi",
             Self::Kev => "kev",
             Self::Epss => "epss",
+            Self::Nvd => "nvd",
         }
     }
 }

@@ -267,3 +267,23 @@ becomes a target with the upstream version as printed, marked
 This is a **low-confidence** signal: the distribution may have backported
 fixes without changing the embedded banner. The verdict is real, but the
 user should verify it against the distribution's changelog.
+
+## NVD fallback for unowned products
+
+The string heuristic targets (products with no distro data) are also checked
+against the NVD 2.0 API by CPE name. The CPE mapping table is curated
+(`nginx` maps to `f5:nginx`, `curl` to `haxx:curl`); a product the table does
+not cover is skipped. The source is optional (`sources.nvd.required = false`
+by default), so a failure does not make the result incomplete. The optional
+API key raises the rate limit from 5 to 50 requests per 30 seconds.
+
+```toml
+[sources.nvd]
+enabled = true
+required = false
+# api_key_file = "/etc/amivuln/nvd-api-key"
+```
+
+NVD findings carry the CVSS severity from the most recent metric version
+available, and the verdict is `affected` with no fix version: NVD is a CVE
+catalogue, not a distribution fix source.
