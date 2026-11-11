@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 amivuln contributors
-// SPDX-License-Identifier: CC0-1.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 {
   lib,
   rustPlatform,
