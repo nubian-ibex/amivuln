@@ -9,4 +9,4 @@ publish = true
 [[package]]
 name = "amivuln"
 changelog_path = "CHANGELOG.md"
-changelog_include = ["amivuln-core", "amivuln-resolve", "amivuln-version", "amivuln-sources", "amivuln-cache", "amivuln-report"]
+changelog_include = ["amivuln-core", "amivuln-resolve", "amivuln-version", "amivuln-sources", "amivuln-cache", "amivuln-report", "amivuln-sandbox"]

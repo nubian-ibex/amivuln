@@ -28,6 +28,9 @@ audit-as-crates-io = false
 [policy.amivuln-resolve]
 audit-as-crates-io = false
 
+[policy.amivuln-sandbox]
+audit-as-crates-io = false
+
 [policy.amivuln-sources]
 audit-as-crates-io = false
 
