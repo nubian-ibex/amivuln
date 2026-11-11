@@ -28,7 +28,7 @@ pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;
 pub use restart::{StaleProcess, StaleScan, scan_stale};
 pub use rpm::RpmResolver;
-pub use strings::{detect as detect_string_hits, detect_strings};
+pub use strings::{StringHit, detect as detect_string_hits, detect_strings};
 pub use system::SystemRunner;
 pub use target::{Target, parse_target};
 pub use unit::{UnitExe, exe_for_unit, list_running_services};

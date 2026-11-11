@@ -45,6 +45,7 @@ dependencies = [
  "amivuln-core",
  "amivuln-report",
  "amivuln-resolve",
+ "amivuln-sandbox",
  "amivuln-sources",
  "amivuln-version",
  "assert_cmd",
@@ -110,6 +111,14 @@ dependencies = [
  "serde_json",
  "tar",
  "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "amivuln-sandbox"
+version = "0.0.13"
+dependencies = [
+ "libc",
  "thiserror",
 ]
 

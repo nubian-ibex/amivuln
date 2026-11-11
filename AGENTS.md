@@ -21,7 +21,7 @@ amivuln answers: which CVEs apply to this binary, service or package on this hos
 
 ## Code rules
 
-- No `unsafe`; no `unwrap`, `expect` or `panic!` outside tests.
+- No `unsafe` outside the single module of `amivuln-sandbox` (Landlock and seccomp calls, a `SAFETY` comment on every block); no `unwrap`, `expect` or `panic!` outside tests.
 - stdout carries only the result; logs go to stderr via `tracing`.
 - Output is deterministic: sorted findings, stable JSON field order, no `HashMap` in output.
 - Every file read, HTTP response and subprocess has a size or time limit.

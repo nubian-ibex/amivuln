@@ -268,6 +268,26 @@ This is a **low-confidence** signal: the distribution may have backported
 fixes without changing the embedded banner. The verdict is real, but the
 user should verify it against the distribution's changelog.
 
+### The sandboxed version probe
+
+With `exec_version_probe = true` in `[general]`, amivuln also runs
+`<file> --version` for files nothing else identifies and reads the banners
+from what it prints. This is the only place amivuln executes a target, so it
+is off by default and runs in a sandbox that is applied before `exec`:
+
+- no file-system writes (Landlock), and reads limited to the system library
+  directories and the target's own directory;
+- no sockets and no access to other processes (seccomp);
+- `no_new_privs`, a drop to `nobody` when started as root, 2 s of CPU time,
+  no file growth, no core dumps, 64 open files;
+- 2 s of wall-clock time and 64 KiB of output per stream.
+
+When the kernel cannot enforce the sandbox (no Landlock, or an architecture
+other than x86_64 and aarch64) the run reports an error for that file. It
+never runs the target unconfined. The seccomp filter is a deny list, not an
+allow list: targets are arbitrary binaries whose startup syscalls cannot be
+listed, and Landlock already removes the file-system side.
+
 ## NVD fallback for unowned products
 
 The string heuristic targets (products with no distro data) are also checked

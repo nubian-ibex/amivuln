@@ -68,6 +68,9 @@ pub struct General {
     pub stale_max_age: String,
     /// Per-request timeout, for example `10s`.
     pub timeout: String,
+    /// Run `--version` on files no package owns, inside a Landlock and
+    /// seccomp sandbox, and read the banners it prints. Off by default.
+    pub exec_version_probe: bool,
 }
 
 /// `[output]`
@@ -210,6 +213,7 @@ impl Default for Config {
                 cache_ttl: "6h".into(),
                 stale_max_age: "72h".into(),
                 timeout: "10s".into(),
+                exec_version_probe: false,
             },
             output: Output {
                 format: "summary".into(),
@@ -550,6 +554,7 @@ offline = false
 cache_ttl = \"6h\"        # a cached response younger than this is used without asking the network
 stale_max_age = \"72h\"   # when the network fails, a response up to this old is still used (reported as stale)
 timeout = \"10s\"
+exec_version_probe = false  # run `--version` on unowned files in a Landlock + seccomp sandbox
 
 [output]
 format = \"summary\"      # summary, detail, json, sarif, markdown, csv or prometheus

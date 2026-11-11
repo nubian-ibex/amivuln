@@ -87,6 +87,7 @@ offline = false
 cache_ttl = "6h"
 stale_max_age = "72h"
 timeout = "10s"
+exec_version_probe = false
 [output]
 format = "summary"
 color = "auto"
