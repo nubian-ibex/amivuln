@@ -25,3 +25,10 @@ github-release = "announce"
 pr-run-mode = "plan"
 # release.yml is hardened by hand (SHA pins, permissions); do not regenerate it
 allow-dirty = ["ci"]
+
+# The musl builds are static, so the build image does not set a glibc floor.
+# They run on 24.04, the image the reproducible-build job already uses; the
+# gnu builds stay on 22.04 to keep the documented glibc 2.34 baseline.
+[dist.github-custom-runners]
+x86_64-unknown-linux-musl = "ubuntu-24.04"
+aarch64-unknown-linux-musl = "ubuntu-24.04-arm"
