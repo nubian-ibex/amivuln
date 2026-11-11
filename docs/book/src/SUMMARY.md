@@ -12,6 +12,7 @@
 - [Data sources](sources.md)
 - [OpenSSF badging evidence](osp-badging.md)
 - [Support policy](support.md)
+- [Security policies](policies.md)
 - [Security and privacy](security.md)
 - [False positive FAQ](faq.md)
 - [Contributing](contributing.md)
