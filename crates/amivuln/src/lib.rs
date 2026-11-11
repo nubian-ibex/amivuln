@@ -16,3 +16,4 @@ pub mod mcp;
 pub mod notify;
 pub mod pipeline;
 pub mod scan;
+pub mod tui;

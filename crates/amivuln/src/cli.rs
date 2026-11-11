@@ -208,6 +208,8 @@ pub enum Command {
     Restart,
     /// Serve read-only tools to AI agents over the Model Context Protocol on stdio.
     Mcp,
+    /// Interactive terminal UI (feature `tui`). Without the feature, exits 64.
+    Tui,
     /// Build, fetch, verify or inspect the offline advisory database.
     Db {
         /// What to do.

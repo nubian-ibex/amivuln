@@ -223,6 +223,34 @@ _arguments "${_arguments_options[@]}" : \
 '--help[Print help]' \
 && ret=0
 ;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
+'--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
+'--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
+'--config=[Configuration file (skips the default search path)]:FILE:_files' \
+'--color=[Colors\: auto, always or never (\`NO_COLOR\` is honored)]:WHEN:_default' \
+'--distro=[Treat the host as another distro\: \`fedora\:44\` or \`arch\`]:DISTRO:_default' \
+'*--file=[Treat this path as a target (repeatable)]:PATH:_default' \
+'*--package=[Treat this value as an installed package name or \`name@version\` (repeatable)]:NAME[@VERSION]:_default' \
+'*--pid=[Check the executable of this running process (repeatable)]:PID:_default' \
+'*--purl=[Treat this value as a package URL (repeatable)]:PURL:_default' \
+'--baseline=[A previous \`-f json\` report; only new findings violate --fail-on]:FILE:_files' \
+'*--vex=[\`OpenVEX\` documents stating that a product is not affected (repeatable)]:FILE:_files' \
+'--packages-from=[Check the packages listed in FILE (one \`name@version\` per line) instead of the installed ones; for example a list exported from another host]:FILE:_files' \
+'--sbom=[Check the OS packages listed in a \`CycloneDX\` JSON SBOM (rpm, deb and alpm purls). Other components are listed as unresolved, grouped by type]:FILE:_files' \
+'*--container=[Scan a container'\''s installed packages (repeatable)\: the rootfs is exported with podman or docker, nothing inside the container runs. The container'\''s own \`os-release\` decides the ecosystem]:ID:_default' \
+'--strict[Count findings without a distro statement as violations of --fail-on]' \
+'--offline[Never use the network; answer from the cache only]' \
+'--no-cache[Do not keep a cache on disk for this run]' \
+'-q[Only print errors]' \
+'--quiet[Only print errors]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
 (db)
 _arguments "${_arguments_options[@]}" : \
 '-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
@@ -799,6 +827,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
 (db)
 _arguments "${_arguments_options[@]}" : \
 ":: :_amivuln__subcmd__help__subcmd__db_commands" \
@@ -913,6 +945,7 @@ _amivuln_commands() {
 'services:Check every running systemd service. Services that are not packaged are listed, not fatal' \
 'restart:Which running processes still use files an update replaced? Exit 1 when a restart is needed' \
 'mcp:Serve read-only tools to AI agents over the Model Context Protocol on stdio' \
+'tui:Interactive terminal UI (feature \`tui\`). Without the feature, exits 64' \
 'db:Build, fetch, verify or inspect the offline advisory database' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
@@ -1111,6 +1144,7 @@ _amivuln__subcmd__help_commands() {
 'services:Check every running systemd service. Services that are not packaged are listed, not fatal' \
 'restart:Which running processes still use files an update replaced? Exit 1 when a restart is needed' \
 'mcp:Serve read-only tools to AI agents over the Model Context Protocol on stdio' \
+'tui:Interactive terminal UI (feature \`tui\`). Without the feature, exits 64' \
 'db:Build, fetch, verify or inspect the offline advisory database' \
 'config:Show, create or validate the configuration' \
 'cache:Inspect or clear the on-disk cache' \
@@ -1232,6 +1266,11 @@ _amivuln__subcmd__help__subcmd__services_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln help services commands' commands "$@"
 }
+(( $+functions[_amivuln__subcmd__help__subcmd__tui_commands] )) ||
+_amivuln__subcmd__help__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln help tui commands' commands "$@"
+}
 (( $+functions[_amivuln__subcmd__help__subcmd__version_commands] )) ||
 _amivuln__subcmd__help__subcmd__version_commands() {
     local commands; commands=()
@@ -1256,6 +1295,11 @@ _amivuln__subcmd__restart_commands() {
 _amivuln__subcmd__services_commands() {
     local commands; commands=()
     _describe -t commands 'amivuln services commands' commands "$@"
+}
+(( $+functions[_amivuln__subcmd__tui_commands] )) ||
+_amivuln__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'amivuln tui commands' commands "$@"
 }
 (( $+functions[_amivuln__subcmd__version_commands] )) ||
 _amivuln__subcmd__version_commands() {

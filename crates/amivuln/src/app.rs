@@ -322,6 +322,7 @@ fn dispatch(cli: &Cli, env: &Env, stdout: &mut dyn Write, stderr: &mut dyn Write
         Some(Command::Pending) => crate::commands::pending(cli, env, stdout, stderr),
         Some(Command::Services) => crate::commands::services(cli, env, stdout, stderr),
         Some(Command::Mcp) => mcp_cmd(cli, env, stdout),
+        Some(Command::Tui) => crate::tui::run(env, stderr),
         Some(Command::Db { action }) => db_cmd(action, &cli.global, env, stdout, stderr),
         Some(Command::Restart) => crate::commands::restart(cli, env, stdout, stderr),
         None => check(cli, &cli.targets, cli.all, env, stdout, stderr),
