@@ -709,10 +709,11 @@ pub(crate) fn check_with(
         );
     }
 
-    let (resolved, unresolved) = match resolve_scope(cli, &targets, all, eco) {
-        Ok(v) => v,
-        Err(m) => return usage(err, &m),
-    };
+    let (resolved, unresolved) =
+        match resolve_scope(cli, &targets, all, eco, s.config.general.exec_version_probe) {
+            Ok(v) => v,
+            Err(m) => return usage(err, &m),
+        };
     let ev = match evaluate(cli, &s, env, eco, &resolved, &[], err) {
         Ok(v) => v,
         Err(code) => return code,

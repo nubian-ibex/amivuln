@@ -6,6 +6,7 @@
 //! the feature, so the binary stays small with the default feature set.
 
 #[cfg(not(feature = "tui"))]
+/// Reports that the `tui` feature is not compiled in.
 pub fn run(_env: &crate::app::Env, err: &mut dyn std::io::Write) -> amivuln_core::ExitCode {
     let _ = writeln!(
         err,
@@ -32,7 +33,13 @@ pub fn run(env: &crate::app::Env, err: &mut dyn std::io::Write) -> amivuln_core:
         return amivuln_core::ExitCode::Usage;
     };
     let targets = crate::scan::expand_targets(&cli, &[]);
-    let Ok((resolved, unresolved)) = crate::scan::resolve_scope(&cli, &targets, true, eco) else {
+    let Ok((resolved, unresolved)) = crate::scan::resolve_scope(
+        &cli,
+        &targets,
+        true,
+        eco,
+        s.config.general.exec_version_probe,
+    ) else {
         return amivuln_core::ExitCode::Usage;
     };
     let ev = match crate::scan::evaluate(&cli, &s, env, eco, &resolved, &[], err) {

@@ -66,6 +66,7 @@ pub(crate) fn cve(
             && cli.global.sbom.is_none()
             && cli.global.container.is_empty(),
         eco,
+        false,
     ) {
         Ok(v) => v,
         Err(m) => return usage(err, &m),
@@ -132,6 +133,7 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
             && cli.global.sbom.is_none()
             && cli.global.container.is_empty(),
         eco,
+        false,
     ) {
         Ok(v) => v,
         Err(m) => return usage(err, &m),

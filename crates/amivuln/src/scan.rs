@@ -124,6 +124,7 @@ fn resolve_path(
     path: &str,
     eco: Ecosystem,
     backend: Option<&Backend<'_>>,
+    probe: bool,
 ) -> Result<Vec<PackageRef>, ResolveError> {
     // `--pid` leaves the /proc path when the process cannot be followed.
     if path.starts_with("/proc/") && path.ends_with("/exe") {
@@ -152,7 +153,13 @@ fn resolve_path(
     // upstream version is what was compiled in; the distribution may have
     // backported fixes without changing the banner, so every formatter
     // carries the low-confidence mark.
-    let hits = amivuln_resolve::detect_string_hits(Path::new(path)).map_err(ResolveError::Parse)?;
+    let mut hits =
+        amivuln_resolve::detect_string_hits(Path::new(path)).map_err(ResolveError::Parse)?;
+    if probe {
+        hits.extend(version_probe(Path::new(path))?);
+        hits.sort();
+        hits.dedup();
+    }
     let mut out = Vec::new();
     for hit in hits {
         if let Ok(pkg) = from_name_version(eco, &hit.name, &hit.version) {
@@ -165,6 +172,15 @@ fn resolve_path(
         return Ok(out);
     }
     package_from_note(eco, Path::new(path)).map(|pkg| vec![pkg])
+}
+
+/// Runs `path --version` in the sandbox (opt-in `exec_version_probe`) and
+/// reads the banners from what it prints. The user asked for the probe, so a
+/// sandbox that cannot be enforced is an error, never a silent unconfined run.
+fn version_probe(path: &Path) -> Result<Vec<amivuln_resolve::StringHit>, ResolveError> {
+    let out = amivuln_sandbox::probe(path, &["--version"], Duration::from_secs(2))
+        .map_err(|e| ResolveError::Parse(format!("version probe of {}: {e}", path.display())))?;
+    Ok(amivuln_resolve::detect_strings(&out.output))
 }
 
 /// What a scan produced.
@@ -785,8 +801,9 @@ pub(crate) fn resolve_scope(
     targets: &[String],
     all: bool,
     eco: Ecosystem,
+    probe: bool,
 ) -> Result<Scope, String> {
-    let (mut resolved, unresolved) = resolve_all(targets, all, eco);
+    let (mut resolved, unresolved) = resolve_all(targets, all, eco, probe);
     let mut unresolved = unresolved;
     if let Some(path) = &cli.global.packages_from {
         resolved.extend(read_inventory(path, eco)?);
@@ -879,6 +896,7 @@ pub(crate) fn resolve_all(
     targets: &[String],
     all: bool,
     eco: Ecosystem,
+    probe: bool,
 ) -> (Vec<(String, PackageRef)>, Vec<Unresolved>) {
     // Debian and Ubuntu read no package database on the host: `--all` is only
     // meaningful with `--packages-from` (an inventory exported from a
@@ -916,7 +934,7 @@ pub(crate) fn resolve_all(
         // else the modules or crates it declares. Debian and Ubuntu have no
         // host package database, so they start at the note.
         if let Target::Path(p) = parse_target(t, |p| Path::new(p).exists()) {
-            match resolve_path(&p, eco, backend.as_ref()) {
+            match resolve_path(&p, eco, backend.as_ref(), probe) {
                 Ok(list) => resolved.extend(list.into_iter().map(|pkg| (t.clone(), pkg))),
                 Err(e) => unresolved.push(Unresolved {
                     input: t.clone(),
