@@ -15,13 +15,10 @@
 //! The container's `/etc/os-release` decides the ecosystem, so the host
 //! distribution never leaks into the answer.
 
-use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use amivuln_core::{
-    Ecosystem, PackageRef, ProcessError, ProcessRunner, Program, Provenance, Version,
-};
+use amivuln_core::{Ecosystem, PackageRef, ProcessError, ProcessRunner, Program};
 
 /// Why a container could not be read.
 #[derive(Debug, thiserror::Error)]
@@ -333,67 +330,12 @@ pub fn packages(
     }
 }
 
-/// Reads `/var/lib/dpkg/status`. OSV keys Debian and Ubuntu advisories by the
-/// source package, so the `Source:` field (`openssl (1.1.1k-1)`, the version
-/// only when it differs) names the package a binary such as `libssl1.1`
-/// is queried as.
 fn deb_packages(status: &str, eco: Ecosystem) -> Vec<PackageRef> {
-    let mut packages = Vec::new();
-    for stanza in status.split("\n\n") {
-        let mut fields: BTreeMap<&str, &str> = BTreeMap::new();
-        for line in stanza.lines() {
-            // Continuation lines start with a space and belong to the last field.
-            if !line.starts_with([' ', '\t'])
-                && let Some((key, value)) = line.split_once(": ")
-            {
-                fields.insert(key.trim(), value.trim());
-            }
-        }
-        let (Some(name), Some(version)) = (fields.get("Package"), fields.get("Version")) else {
-            continue;
-        };
-        let Ok(mut pkg) = crate::from_name_version(eco, name, version) else {
-            continue;
-        };
-        pkg.source_name = fields
-            .get("Source")
-            .and_then(|s| s.split_whitespace().next())
-            .filter(|source| source != name)
-            .map(str::to_owned);
-        packages.push(pkg);
-    }
-    packages
+    crate::dpkg::parse_status(status, eco)
 }
 
-/// Reads `/lib/apk/db/installed`: stanzas of `K:value` lines separated by a
-/// blank line. `P` is the package, `V` the version, `A` the architecture and
-/// `o` the origin (source) package. OSV keys Alpine advisories by origin, so
-/// a subpackage such as `libcrypto3` is queried as `openssl`.
 fn apk_packages(installed: &str, eco: Ecosystem) -> Vec<PackageRef> {
-    let mut packages = Vec::new();
-    for stanza in installed.split("\n\n") {
-        let mut fields: BTreeMap<&str, &str> = BTreeMap::new();
-        for line in stanza.lines() {
-            if let Some((key, value)) = line.split_once(':') {
-                fields.insert(key.trim(), value.trim());
-            }
-        }
-        let (Some(name), Some(version)) = (fields.get("P"), fields.get("V")) else {
-            continue;
-        };
-        packages.push(PackageRef {
-            ecosystem: eco,
-            name: (*name).to_owned(),
-            source_name: fields
-                .get("o")
-                .filter(|o| *o != name)
-                .map(|o| (*o).to_owned()),
-            version: Version::Apk(version.parse().unwrap_or_else(|never| match never {})),
-            arch: fields.get("A").map(|a| (*a).to_owned()),
-            provenance: Provenance::PackageDb,
-        });
-    }
-    packages
+    crate::apk::parse_installed(installed, eco)
 }
 
 fn rpm_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
@@ -426,7 +368,7 @@ fn pacman_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amivuln_core::ProcessOutput;
+    use amivuln_core::{ProcessOutput, Version};
 
     pub(crate) struct NoRuntime;
     impl ProcessRunner for NoRuntime {

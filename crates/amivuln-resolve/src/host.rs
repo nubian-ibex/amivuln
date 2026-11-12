@@ -40,6 +40,18 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         // RHEL declares VERSION_ID as major.minor (9.4); the major decides.
         "rhel" => Ecosystem::Rhel(version_id?.split('.').next()?.parse().ok()?),
         "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
+        // Alpine writes 3.20.3; an edge or alpha image (3.23.0_alpha...) has no
+        // OSV release.
+        "alpine" => {
+            let vid = version_id?;
+            if vid.contains('_') {
+                return None;
+            }
+            let mut parts = vid.split('.');
+            let major: u16 = parts.next()?.parse().ok()?;
+            let minor: u16 = parts.next()?.parse().ok()?;
+            Ecosystem::Alpine(major * 100 + minor)
+        }
         // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
         // long-lived OSV ecosystem, so amivuln does not claim them.
         "ubuntu" => {

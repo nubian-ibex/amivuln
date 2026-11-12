@@ -129,7 +129,9 @@ advisory data and is refused instead of reported clean. Pass several
 
 ## Many hosts, or a host you cannot install anything on
 
-Export a list from the other host and check it from wherever amivuln runs. One
+On the host itself amivuln reads the installed packages, so none of this is
+needed there. To check a machine from somewhere else, export a list from it and
+check the list from wherever amivuln runs. One
 `name@version` per line; `--distro` says which release the list belongs to.
 
 ```bash

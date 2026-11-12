@@ -208,8 +208,7 @@ container, vendored software) is identified by its own systemd
 come from the file, and the report marks the package with the provenance
 `embedded_note`. A note for another packaging system than the host's (a `deb`
 note on an RPM host) is refused as unresolved instead of guessed, and the file
-is never executed. On Debian and Ubuntu hosts, which have no package database
-to ask, the note is the only way to identify a file.
+is never executed.
 
 ## Go and Rust programs nothing owns
 

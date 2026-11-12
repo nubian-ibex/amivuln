@@ -7,8 +7,10 @@
 
 #![forbid(unsafe_code)]
 
+mod apk;
 mod build;
 pub mod container;
+mod dpkg;
 pub mod embedded;
 mod host;
 mod pacman;
@@ -19,10 +21,12 @@ mod system;
 mod target;
 mod unit;
 
+pub use apk::ApkResolver;
 pub use build::{from_name_version, from_purl};
 pub use container::{
     ContainerError, available_runtime, export as export_container, packages as container_packages,
 };
+pub use dpkg::DpkgResolver;
 pub use embedded::{Detected, Origin, detect, detect_bytes, language_packages, package_from_note};
 pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;
@@ -50,6 +54,9 @@ pub enum ResolveError {
     /// The package manager printed something unexpected.
     #[error("unexpected output from the package manager: {0}")]
     Parse(String),
+    /// The package database file cannot be read.
+    #[error("cannot read the package database: {0}")]
+    Unreadable(String),
 }
 
 /// Looks up installed packages.

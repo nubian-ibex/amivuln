@@ -14,8 +14,9 @@ use amivuln_core::{
     TargetReport, Unresolved, Verdict, sort_findings,
 };
 use amivuln_resolve::{
-    PackageResolver, PacmanResolver, ResolveError, RpmResolver, SystemRunner, Target, exe_for_unit,
-    from_name_version, from_purl, language_packages, package_from_note, parse_target,
+    ApkResolver, DpkgResolver, PackageResolver, PacmanResolver, ResolveError, RpmResolver,
+    SystemRunner, Target, exe_for_unit, from_name_version, from_purl, language_packages,
+    package_from_note, parse_target,
 };
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
@@ -48,6 +49,8 @@ const MAX_OSV_ADVISORIES: usize = 5000;
 enum Backend<'a> {
     Rpm(RpmResolver<'a, SystemRunner>),
     Pacman(PacmanResolver<'a, SystemRunner>),
+    Dpkg(DpkgResolver),
+    Apk(ApkResolver),
 }
 
 impl Backend<'_> {
@@ -55,6 +58,8 @@ impl Backend<'_> {
         match self {
             Self::Rpm(r) => r,
             Self::Pacman(r) => r,
+            Self::Dpkg(r) => r,
+            Self::Apk(r) => r,
         }
     }
 }
@@ -139,7 +144,10 @@ fn resolve_path(
     match owner {
         Ok(pkg) => return Ok(vec![pkg]),
         // Not owned (or the package manager is unavailable): look inside.
-        Err(ResolveError::NotFound(_) | ResolveError::Process(_)) => {}
+        // The package database may not exist here (`--distro` names another
+        // system): look at the file itself.
+        Err(ResolveError::NotFound(_) | ResolveError::Process(_) | ResolveError::Unreadable(_)) => {
+        }
         Err(other) => return Err(other),
     }
     if let Ok(pkg) = package_from_note(eco, Path::new(path)) {
@@ -876,13 +884,9 @@ pub(crate) fn owners(
             Backend::Rpm(RpmResolver::new(&runner, eco))
         }
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
-        // Debian and Ubuntu resolvers come with OSV support; ownership is not
-        // needed for the restart command yet.
-        Ecosystem::Debian(_)
-        | Ecosystem::Ubuntu(_)
-        | Ecosystem::Go
-        | Ecosystem::Crates
-        | Ecosystem::Alpine(_) => {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Backend::Dpkg(DpkgResolver::new(eco)),
+        Ecosystem::Alpine(_) => Backend::Apk(ApkResolver::new(eco)),
+        Ecosystem::Go | Ecosystem::Crates => {
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
@@ -908,9 +912,6 @@ pub(crate) fn resolve_all(
     eco: Ecosystem,
     probe: bool,
 ) -> (Vec<(String, PackageRef)>, Vec<Unresolved>) {
-    // Debian and Ubuntu read no package database on the host: `--all` is only
-    // meaningful with `--packages-from` (an inventory exported from a
-    // Debian/Ubuntu host), which resolve_scope adds below.
     let runner = SystemRunner::default();
     let mut resolved: Vec<(String, PackageRef)> = Vec::new();
     let mut unresolved: Vec<Unresolved> = Vec::new();
@@ -919,14 +920,10 @@ pub(crate) fn resolve_all(
             Some(Backend::Rpm(RpmResolver::new(&runner, eco)))
         }
         Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
-        // Debian and Ubuntu read no package database on the host: `--all` is
-        // only meaningful with `--packages-from` (an inventory exported from a
-        // Debian/Ubuntu host), which resolve_scope adds below.
-        Ecosystem::Debian(_)
-        | Ecosystem::Ubuntu(_)
-        | Ecosystem::Go
-        | Ecosystem::Crates
-        | Ecosystem::Alpine(_) => None,
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Some(Backend::Dpkg(DpkgResolver::new(eco))),
+        Ecosystem::Alpine(_) => Some(Backend::Apk(ApkResolver::new(eco))),
+        // A host is never a language ecosystem.
+        Ecosystem::Go | Ecosystem::Crates => None,
     };
     if all {
         match backend.as_ref().map(|b| b.resolver().list_all()) {
@@ -935,7 +932,7 @@ pub(crate) fn resolve_all(
                 input: "--all".into(),
                 reason: e.to_string(),
             }),
-            // Debian and Ubuntu: the inventory carries the packages.
+            // Language ecosystems have no host database.
             None => {}
         }
     }

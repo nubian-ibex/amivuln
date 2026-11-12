@@ -10,10 +10,6 @@ AlmaLinux, amivuln only sees fixes that were published. A CVE with no update
 yet is not in the data, so a result there is a lower bound. Open a *false
 negative* issue if the data does have the record.
 
-**`amivuln --all` finds no packages on my Debian, Ubuntu or Alpine machine.**
-Those hosts are not read from their package database yet. Export a list and
-check it (`--packages-from`, see the Using page), or scan a container.
-
 **The result says INCOMPLETE.** A required source was unreachable and there
 was no cached copy within `stale_max_age`. Retry, check the network, or use a
 mirror with `sources.distro.url`. The exit code is 2 on purpose.
