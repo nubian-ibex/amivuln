@@ -191,6 +191,7 @@ fn purl(p: &amivuln_core::PackageRef) -> String {
         }
         Version::Pacman(v) => v.to_string(),
         Version::Deb(v) => v.to_string(),
+        Version::Apk(v) => v.to_string(),
         Version::Semver(v) => v.to_string(),
     };
     let mut out = format!("{ns}/{name}@{}", purl_encode(&version));
@@ -368,7 +369,7 @@ pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
         Ecosystem::Alma(_) => "alma",
         Ecosystem::Go => "go",
         Ecosystem::Crates => "crates",
-        Ecosystem::Alpine => "alpine",
+        Ecosystem::Alpine(_) => "alpine",
     }
 }
 

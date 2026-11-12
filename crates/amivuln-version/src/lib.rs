@@ -8,11 +8,13 @@
 
 #![forbid(unsafe_code)]
 
+mod apk;
 mod deb;
 mod pacman;
 mod rpm;
 mod semver;
 
+pub use apk::{ApkVersion, apk_vercmp};
 pub use deb::{DebVersion, debvercmp};
 pub use pacman::{PacmanVersion, alpm_vercmp, pacman_vercmp};
 pub use rpm::{RpmEvr, rpmvercmp};

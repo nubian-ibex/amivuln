@@ -57,7 +57,8 @@ fn package(eco: Ecosystem, case: &Case) -> PackageRef {
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
             Version::Deb(case.version.parse().unwrap_or_else(|n| match n {}))
         }
-        Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => Version::Semver(
+        Ecosystem::Alpine(_) => Version::Apk(case.version.parse().unwrap_or_else(|n| match n {})),
+        Ecosystem::Go | Ecosystem::Crates => Version::Semver(
             amivuln_version::SemverVersion::parse(&case.version).unwrap_or_default(),
         ),
     };

@@ -234,9 +234,25 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
                 )),
             }
         }
+        // Alpine releases are "3.20"; the OSV ecosystem is `Alpine:v3.20`.
+        Some(("alpine", v)) => {
+            let mut parts = v.split('.');
+            match (
+                parts.next().and_then(|m| m.parse::<u16>().ok()),
+                parts.next().and_then(|m| m.parse::<u16>().ok()),
+                parts.next(),
+            ) {
+                (Some(maj), Some(min), None) if maj >= 3 && min < 100 => {
+                    Ok(Ecosystem::Alpine(maj * 100 + min))
+                }
+                _ => Err(format!(
+                    "invalid Alpine release {v:?}; use a form like alpine:3.20"
+                )),
+            }
+        }
         None if s == "arch" => Ok(Ecosystem::Arch),
         _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, rocky:NN or alma:NN"
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, rocky:NN or alma:NN"
         )),
     }
 }
@@ -809,7 +825,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         // A host is never a language ecosystem; kept total for the match.
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),
         Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
-        Ecosystem::Alpine => ("alpine".to_owned(), "rolling".to_owned()),
+        Ecosystem::Alpine(v) => ("alpine".to_owned(), format!("{}.{}", v / 100, v % 100)),
     };
     HostMeta {
         os_id,

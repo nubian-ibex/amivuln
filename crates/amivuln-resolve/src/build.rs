@@ -46,7 +46,10 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         ),
         // Language packages are built by `language_package`, which validates
         // the version; this arm only keeps the match total.
-        Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => {
+        Ecosystem::Alpine(_) => {
+            Version::Apk(version.parse().unwrap_or_else(|never| match never {}))
+        }
+        Ecosystem::Go | Ecosystem::Crates => {
             Version::Semver(amivuln_version::SemverVersion::default())
         }
     };
@@ -139,9 +142,12 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         }
         Some(Ecosystem::Rocky(v)) if (kind, namespace) == ("rpm", "rocky") => Ecosystem::Rocky(v),
         Some(Ecosystem::Alma(v)) if (kind, namespace) == ("rpm", "alma") => Ecosystem::Alma(v),
+        Some(Ecosystem::Alpine(v)) if (kind, namespace) == ("apk", "alpine") => {
+            Ecosystem::Alpine(v)
+        }
         Some(e) => {
             return Err(bad(format!(
-                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu",
+                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine",
                 match e {
                     Ecosystem::Fedora(v) => format!("fedora:{v}"),
                     Ecosystem::Arch => "arch".to_owned(),
@@ -151,9 +157,8 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     }
                     Ecosystem::Rocky(v) => format!("rocky:{v}"),
                     Ecosystem::Alma(v) => format!("alma:{v}"),
-                    Ecosystem::Go | Ecosystem::Crates | Ecosystem::Alpine => {
-                        "a language ecosystem".to_owned()
-                    }
+                    Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
+                    Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
                 }
             )));
         }

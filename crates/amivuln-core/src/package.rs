@@ -5,7 +5,7 @@
 use core::cmp::Ordering;
 use core::fmt;
 
-use amivuln_version::{DebVersion, PacmanVersion, RpmEvr, SemverVersion};
+use amivuln_version::{ApkVersion, DebVersion, PacmanVersion, RpmEvr, SemverVersion};
 
 /// Package ecosystem, which decides the version-comparison algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -26,8 +26,8 @@ pub enum Ecosystem {
     Go,
     /// Rust crates (OSV ecosystem `crates.io`), found by cargo-auditable.
     Crates,
-    /// Alpine Linux (rolling), read from an exported container rootfs.
-    Alpine,
+    /// Alpine Linux, with the release as `major * 100 + minor` (320 is 3.20).
+    Alpine(u16),
 }
 
 impl Ecosystem {
@@ -42,9 +42,9 @@ impl Ecosystem {
             Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
             Self::Go => Some("Go".to_owned()),
             Self::Crates => Some("crates.io".to_owned()),
-            // Alpine has no OSV ecosystem amivuln can query today; container
-            // scans still read its package database for completeness.
-            Self::Fedora(_) | Self::Arch | Self::Alpine => None,
+            // OSV names Alpine releases `Alpine:v3.20`, with no zero padding.
+            Self::Alpine(v) => Some(format!("Alpine:v{}.{}", v / 100, v % 100)),
+            Self::Fedora(_) | Self::Arch => None,
         }
     }
 
@@ -67,7 +67,7 @@ impl Ecosystem {
             Self::Ubuntu(_) => "pkg:deb/ubuntu",
             Self::Rocky(_) => "pkg:rpm/rocky",
             Self::Alma(_) => "pkg:rpm/alma",
-            Self::Alpine => "pkg:apk/alpine",
+            Self::Alpine(_) => "pkg:apk/alpine",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
         }
@@ -99,6 +99,8 @@ pub enum Version {
     Pacman(PacmanVersion),
     /// Debian `[epoch:]upstream[-revision]`.
     Deb(DebVersion),
+    /// Alpine `apk` version.
+    Apk(ApkVersion),
     /// Semantic version, for Go modules and crates.
     Semver(SemverVersion),
 }
@@ -111,6 +113,7 @@ impl Version {
             (Self::Rpm(a), Self::Rpm(b)) => Some(a.cmp(b)),
             (Self::Pacman(a), Self::Pacman(b)) => Some(a.cmp(b)),
             (Self::Deb(a), Self::Deb(b)) => Some(a.cmp(b)),
+            (Self::Apk(a), Self::Apk(b)) => Some(a.cmp(b)),
             (Self::Semver(a), Self::Semver(b)) => Some(a.cmp(b)),
             _ => None,
         }
@@ -123,6 +126,7 @@ impl fmt::Display for Version {
             Self::Rpm(v) => v.fmt(f),
             Self::Pacman(v) => v.fmt(f),
             Self::Deb(v) => v.fmt(f),
+            Self::Apk(v) => v.fmt(f),
             Self::Semver(v) => v.fmt(f),
         }
     }
@@ -185,5 +189,14 @@ mod tests {
         );
         assert_eq!(Ecosystem::Fedora(41).osv_ecosystem(), None);
         assert_eq!(Ecosystem::Arch.osv_ecosystem(), None);
+        assert_eq!(
+            Ecosystem::Alpine(320).osv_ecosystem().as_deref(),
+            Some("Alpine:v3.20")
+        );
+        assert_eq!(
+            Ecosystem::Alpine(309).osv_ecosystem().as_deref(),
+            Some("Alpine:v3.9")
+        );
+        assert_eq!(Ecosystem::Alpine(320).purl_namespace(), "pkg:apk/alpine");
     }
 }

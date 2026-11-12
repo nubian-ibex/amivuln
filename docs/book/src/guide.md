@@ -252,9 +252,11 @@ container id, for example `web:nginx`.
 amivuln --container web --container db --fail-on high
 ```
 
-Alpine containers are read for completeness but have no OSV ecosystem in
-amivuln yet: the run reports the source as failed and the result as
-incomplete.
+Alpine containers are judged by OSV (`Alpine:v3.20` for release 3.20). The
+installed database names each subpackage's origin, and OSV keys Alpine
+advisories by origin, so `libcrypto3` is asked about as `openssl`. Edge and
+alpha images have no OSV release and are refused. Versions follow the
+`apk` ordering (`1.0_rc1` before `1.0`, `-r1` after `-r0`).
 
 ## Version banners in binaries
 

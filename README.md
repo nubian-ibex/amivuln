@@ -30,7 +30,7 @@ source epss               ok  age 0s
 result: complete
 ```
 
-**Status:** pre-alpha. Fedora, Arch Linux, Rocky Linux and AlmaLinux are supported; Alpine and RHEL come later.
+**Status:** pre-alpha. Fedora, Arch Linux, Debian, Ubuntu, Alpine, Rocky Linux and AlmaLinux are supported; RHEL comes later.
 
 ## Highlights
 
