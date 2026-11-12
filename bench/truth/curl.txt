@@ -1,3 +1,0 @@
-# Ground truth for /usr/bin/curl: fill from the distribution tracker.
-# Source: <tracker URL and package version>
-# Date: <YYYY-MM-DD>

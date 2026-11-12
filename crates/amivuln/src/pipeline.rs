@@ -146,8 +146,9 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]
 /// Findings for a Debian or Ubuntu package from OSV.
 ///
 /// OSV states the version that fixed each issue. A fix newer than the
-/// installed build means the build is affected. Advisory ids never covered by
-/// a fix keep the CVE unverified.
+/// installed build means the build is affected. An advisory that matched this
+/// version but records no fix at all is an open issue: affected, with no
+/// version to move to.
 #[must_use]
 pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Vec<Finding> {
     if let Version::Semver(installed) = &pkg.version {
@@ -175,10 +176,13 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
                     .iter()
                     .min_by(|a, b| a.compare(b).unwrap_or(Ordering::Equal))
             });
-        let Some(fix_version) = chosen.cloned() else {
-            continue;
+        // `querybatch` already matched this exact version against the
+        // advisory's ranges, so a record that offers no fix at all is an
+        // open issue: affected, with nothing to upgrade to.
+        let mut verdict = match chosen.cloned() {
+            Some(fix_version) => classify(&pkg.version, &DistroStatus::Fixed(fix_version)),
+            None => Verdict::Affected { fixed_in: None },
         };
-        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(fix_version));
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }
