@@ -100,6 +100,29 @@ mod terminal {
         fn total(&self) -> usize {
             self.visible().len()
         }
+
+        /// Keeps the selection inside the list after a filter shrank it.
+        fn clamp(&mut self) {
+            self.selected = self.selected.min(self.total().saturating_sub(1));
+        }
+
+        /// Applies one key press; true means quit.
+        fn handle_key(&mut self, code: KeyCode) -> bool {
+            match code {
+                KeyCode::Char('q') | KeyCode::Esc => return true,
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.selected = self.selected.saturating_add(1);
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.selected = self.selected.saturating_sub(1);
+                }
+                KeyCode::Char('K') => self.kev_only = !self.kev_only,
+                KeyCode::Char('H') => self.high_only = !self.high_only,
+                _ => {}
+            }
+            self.clamp();
+            false
+        }
     }
 
     /// Runs the TUI loop: renders, polls keys, quits on `q` or `Esc`.
@@ -131,19 +154,8 @@ mod terminal {
             if key.kind != KeyEventKind::Press {
                 continue;
             }
-            match key.code {
-                KeyCode::Char('q') | KeyCode::Esc => break,
-                KeyCode::Down | KeyCode::Char('j') => {
-                    if app.total() > 0 {
-                        app.selected = (app.selected + 1).min(app.total() - 1);
-                    }
-                }
-                KeyCode::Up => {
-                    app.selected = app.selected.saturating_sub(1);
-                }
-                KeyCode::Char('K') => app.kev_only = !app.kev_only,
-                KeyCode::Char('H') => app.high_only = !app.high_only,
-                _ => {}
+            if app.handle_key(key.code) {
+                break;
             }
         }
 
@@ -215,7 +227,7 @@ mod terminal {
         )
         .header(Row::new(["Target", "Findings", "Max severity"]).bold())
         .block(Block::default().borders(Borders::ALL).title(format!(
-            "Targets{filter} (up/down, K: KEV, H: HIGH, q: quit)"
+            "Targets{filter} (up/down or j/k, K: KEV, H: HIGH, q: quit)"
         )))
         .highlight_symbol("> ");
         f.render_stateful_widget(
@@ -316,6 +328,127 @@ mod terminal {
             Severity::Medium => Color::Yellow,
             Severity::Low => Color::Blue,
             Severity::Unknown => Color::DarkGray,
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use amivuln_core::{
+            Ecosystem, EpssInfo, Finding, HostMeta, KevInfo, TargetReport, Verdict,
+        };
+        use ratatui::backend::TestBackend;
+
+        fn target(name: &str, findings: Vec<Finding>) -> TargetReport {
+            let package =
+                amivuln_resolve::from_name_version(Ecosystem::Fedora(44), name, "1.0-1.fc44")
+                    .unwrap();
+            TargetReport {
+                input: name.to_owned(),
+                package,
+                findings,
+            }
+        }
+
+        fn affected(id: &str, severity: Severity) -> Finding {
+            Finding::new(id, severity, Verdict::Affected { fixed_in: None })
+        }
+
+        fn app() -> App {
+            let mut kev = affected("CVE-2024-0002", Severity::Medium);
+            kev.kev = Some(KevInfo {
+                added: "2024-05-01".to_owned(),
+                ransomware: false,
+            });
+            kev.epss = Some(EpssInfo {
+                score: 0.5,
+                percentile: 0.9,
+                date: "2024-05-02".to_owned(),
+            });
+            App {
+                report: RunReport {
+                    tool_version: "0".to_owned(),
+                    generated_at: "1970-01-01T00:00:00Z".to_owned(),
+                    host: HostMeta {
+                        os_id: "fedora".to_owned(),
+                        os_version: "44".to_owned(),
+                        arch: "x86_64".to_owned(),
+                    },
+                    complete: true,
+                    sources: Vec::new(),
+                    targets: vec![
+                        target("alpha", vec![affected("CVE-2024-0001", Severity::High)]),
+                        target("bravo", vec![kev]),
+                        target("charlie", vec![affected("CVE-2024-0003", Severity::Low)]),
+                    ],
+                    suppressed: std::collections::BTreeMap::new(),
+                    unresolved: Vec::new(),
+                },
+                selected: 0,
+                kev_only: false,
+                high_only: false,
+            }
+        }
+
+        fn screen(app: &App) -> String {
+            let mut terminal = Terminal::new(TestBackend::new(140, 12)).unwrap();
+            terminal.draw(|f| draw(f, app)).unwrap();
+            let buf = terminal.backend().buffer().clone();
+            buf.content()
+                .iter()
+                .map(ratatui::buffer::Cell::symbol)
+                .collect::<String>()
+        }
+
+        #[test]
+        fn selection_stays_inside_the_list() {
+            let mut a = app();
+            for _ in 0..10 {
+                a.handle_key(KeyCode::Down);
+            }
+            assert_eq!(a.selected, 2);
+            for _ in 0..10 {
+                a.handle_key(KeyCode::Char('k'));
+            }
+            assert_eq!(a.selected, 0);
+        }
+
+        #[test]
+        fn quit_keys_end_the_loop() {
+            assert!(app().handle_key(KeyCode::Char('q')));
+            assert!(app().handle_key(KeyCode::Esc));
+            assert!(!app().handle_key(KeyCode::Char('x')));
+        }
+
+        #[test]
+        fn filters_narrow_the_targets_and_clamp_the_selection() {
+            let mut a = app();
+            a.selected = 2;
+            a.handle_key(KeyCode::Char('K'));
+            assert_eq!(a.total(), 1);
+            assert_eq!(a.selected, 0, "selection must follow the shrunken list");
+            a.handle_key(KeyCode::Char('K'));
+            a.handle_key(KeyCode::Char('H'));
+            assert_eq!(a.total(), 1);
+            a.handle_key(KeyCode::Char('K'));
+            assert_eq!(a.total(), 0);
+            assert_eq!(a.selected, 0);
+            // An empty list must not panic when drawn.
+            let _ = screen(&a);
+        }
+
+        #[test]
+        fn the_screen_shows_targets_findings_and_detail() {
+            let mut a = app();
+            let text = screen(&a);
+            assert!(text.contains("alpha") && text.contains("charlie"));
+            assert!(text.contains("CVE-2024-0001"));
+            assert!(!text.contains("CVE-2024-0003"), "only the selected target");
+            a.handle_key(KeyCode::Down);
+            let text = screen(&a);
+            assert!(text.contains("CVE-2024-0002"));
+            assert!(text.contains("KEV: added 2024-05-01"));
+            assert!(text.contains("EPSS: 0.500"));
         }
     }
 }
