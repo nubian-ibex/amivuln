@@ -5,9 +5,14 @@ overrides version comparison, so this should not happen. Open a
 *false positive* issue with the output of `amivuln PACKAGE -f json` and the
 link to the advisory or changelog that shows the fix.
 
-**amivuln reports nothing but I know of a CVE.** On Fedora, amivuln only sees
-fixes that Fedora has published. A CVE with no update yet is not in the data.
-Open a *false negative* issue.
+**amivuln reports nothing but I know of a CVE.** On Fedora, Red Hat, Rocky and
+AlmaLinux, amivuln only sees fixes that were published. A CVE with no update
+yet is not in the data, so a result there is a lower bound. Open a *false
+negative* issue if the data does have the record.
+
+**`amivuln --all` finds no packages on my Debian, Ubuntu or Alpine machine.**
+Those hosts are not read from their package database yet. Export a list and
+check it (`--packages-from`, see the Using page), or scan a container.
 
 **The result says INCOMPLETE.** A required source was unreachable and there
 was no cached copy within `stale_max_age`. Retry, check the network, or use a

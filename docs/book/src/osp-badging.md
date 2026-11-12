@@ -15,10 +15,10 @@ and link back to the file or workflow.
 | B-03 | Documented build instructions | README quickstart, `docs/book/src/installation.md` | "README and install guide include `cargo install` and signature verification." |
 | DC-01 | Documents what it does | README overview + docs book |
 | DC-02 | README names basic commands | `amivuln <pkg>`; JSON output; exit codes | "README quickstart." |
-| DC-03 | Project website | `amibuln.dev` (pending; domain decision is maintainer-owned) | |
+| DC-03 | Project website | <https://ibexwall.com/amivuln/> (also at nubian-ibex.github.io/amivuln) | "Documentation site built from docs/book by CI." |
 | DC-04 | Contribution instructions | CONTRIBUTING.md | "CONTRIBUTING.md covers setup, just targets, and conventional commit sign-off." |
 | DP-01 | Source and binary distributions covered | docs/security.md + release guide | "SECURITY.md holds the reporting channel, SLAs and verification steps." |
-| O-01 | Maintainers documented | MAINTAINERS.md (pending as file) | |
+| O-01 | Maintainers documented | MAINTAINERS.md and GOVERNANCE.md | "The maintainer and the governance model are documented." |
 | O-02 | Licensing | REUSE.toml + SPDX headers + `reuse lint` gate | "REUSE enforces SPDX headers on every file and disallows worsening licenses." |
 | Q-01 | CI performs style checks and clippy | clippy `-D warnings` blocking on `lint` | "CI blocks the release patch on clippy `-D warnings`." |
 | Q-02 | CI blocks code compile | Empty required checks on `build-a`/`build-b`, `test` | "CI gates develop branches on nextest runs (build+test jobs)." |
@@ -33,6 +33,6 @@ and link back to the file or workflow.
 | D-01 | System invokes defenses | `sources` block in all output, `complete` flag and exit 2 | "Every run states exactly what answered, its age, and whether the result was complete." |
 | T-01 | Unit tests on package versions | proptest ground truth and `amivuln-version` test | "Comparators get property-tested against `rpmvercmp`, and are cross-checked with the reference tools." |
 
-Trailing rows follow the badge form; some criteria are never fully automatic
-(`DC-03` website, `O-01` maintainers file) and are as of yet pending. Future
-regs are tracked in `docs/ROADMAP.md`, §8.
+The rows follow the badge form. The criteria that need people, a second
+maintainer and an independent security review, are on the
+[roadmap](roadmap.md).

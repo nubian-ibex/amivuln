@@ -8,7 +8,10 @@ domain rules perform no I/O.
 1. **Target.** What the user asked about: a package name, a file path, a
    `.service` unit, `name@version` or a purl (`amivuln-resolve`).
 2. **Identity.** The installed package, read from the package manager
-   (`rpm`, `pacman`) through an allowlisted, bounded subprocess runner.
+   (`rpm`, `pacman`) through an allowlisted, bounded subprocess runner, from
+   a container's exported package database (dpkg, apk or rpm), from a list or
+   an SBOM, or from a file's own metadata (package note, Go build
+   information, `cargo-auditable`).
 3. **Distro data.** The distribution's own advisory data, fetched through a
    cache-aware HTTP client (`amivuln-sources`, `amivuln-cache`).
 4. **Matching.** The distribution status decides, never an upstream version
@@ -17,7 +20,7 @@ domain rules perform no I/O.
 5. **Enrichment.** CISA KEV and FIRST EPSS.
 6. **Policy.** `--fail-on`, `--fail-on-epss`, `--strict`, and the exit code
    precedence 70, 64, 2, 3, 1, 0.
-7. **Report.** `summary`, `detail` and JSON (`amivuln-report`).
+7. **Report.** `summary`, `detail`, JSON, SARIF, Markdown, CSV and Prometheus (`amivuln-report`).
 
 ## Crates
 
@@ -25,10 +28,13 @@ domain rules perform no I/O.
 - `amivuln-core`: domain types, matching rules, policy, exit codes and the
   traits for the outside world.
 - `amivuln-resolve`: target resolution and the system process runner.
-- `amivuln-version`: RPM and pacman version comparison, verified against
-  `rpm` and `vercmp` on thousands of generated pairs.
+- `amivuln-version`: RPM, pacman, Debian, apk and semantic version
+  comparison, verified against `rpm`, `vercmp`, `dpkg` and `apk version -t`.
+- `amivuln-sandbox`: the Landlock and seccomp sandbox of the optional
+  version probe, the only crate with `unsafe` code.
 - `amivuln-sources`: parsers for the Arch Security Tracker, Fedora
-  `updateinfo`, CISA KEV and FIRST EPSS, and the bounded HTTP client.
+  `updateinfo`, OSV, NVD, CISA KEV and FIRST EPSS, and the bounded HTTP
+  client.
 - `amivuln-cache`: SQLite HTTP cache with ETag revalidation and
   fresh/stale/expired classification.
 - `amivuln-report`: output formatters.

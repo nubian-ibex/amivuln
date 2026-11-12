@@ -43,12 +43,14 @@ result: complete
 
 ## Status
 
-Pre-alpha. Fedora and Arch Linux are supported, as are Rocky Linux and
-AlmaLinux 8 and 9 through OSV (`--distro rocky:9`, `--distro alma:9`). Alpine
-3.x releases are covered through OSV too (`--distro alpine:3.20`, and
-`--container` on an Alpine image), and so is Red Hat Enterprise Linux 8, 9 and
-10 (`--distro rhel:9`, UBI containers) through OSV's Red Hat ecosystem, with
-the blind spot described in [Data sources](sources.md). See [Data sources](sources.md) for exactly what each
-distribution report covers and where the blind spots are.
+Beta (0.x). The JSON output (schema version 1) and the exit codes are the
+contract. Flags and configuration keys may still change in a minor release
+before 1.0, and the changelog names each change.
+
+Supported: Fedora, Arch Linux, Red Hat Enterprise Linux, Rocky Linux and
+AlmaLinux (read from the installed packages of the host), and Debian, Ubuntu
+and Alpine (containers, package lists, SBOMs and `name@version`). The page
+[Data sources](sources.md#supported-distributions) says exactly what each
+distribution gives you and where its blind spots are.
 
 Start with [Installation](installation.md), the [Quick start](quickstart.md) and [Using amivuln](using.md), which has recipes for laptops, servers, CI, containers and air-gapped hosts. Installation, Quick start and Using are also available in Portuguese, Spanish, German and French; the other pages are English only.
