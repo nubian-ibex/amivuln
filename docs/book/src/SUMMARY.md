@@ -4,6 +4,7 @@
 
 - [Installation](installation.md)
 - [Quick start](quickstart.md)
+- [Using amivuln](using.md)
 - [User guide](guide.md)
 - [Reference](reference.md)
   - [JSON schema](json-schema.md)
