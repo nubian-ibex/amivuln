@@ -557,4 +557,25 @@ mod tests {
         assert!(osv_findings(&rhel_pkg("openssl-libs", "1:3.0.7-26.el9_3"), &osv, &[]).is_empty());
         assert!(osv_findings(&rhel_pkg("openssl-libs", "1:3.0.7-28.el9_4"), &osv, &[]).is_empty());
     }
+
+    /// Regression: OSV answers a querybatch with records that have an
+    /// introduced event and no fixed event. They were dropped for lack of a
+    /// fix; they are open issues, affected with nothing to upgrade to.
+    #[test]
+    fn an_advisory_without_any_fix_is_affected_with_no_version() {
+        let osv = OsvData::from_entries(vec![amivuln_sources::osv::OsvEntry {
+            advisory: "DEBIAN-CVE-2023-4806".into(),
+            cves: vec!["CVE-2023-4806".into()],
+            fixed: None,
+            fixes: Vec::new(),
+            severity: None,
+        }]);
+        let found = osv_findings(&rhel_pkg("glibc", "2.36-9"), &osv, &[]);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].id, "CVE-2023-4806");
+        assert!(matches!(
+            found[0].verdict,
+            Verdict::Affected { fixed_in: None }
+        ));
+    }
 }

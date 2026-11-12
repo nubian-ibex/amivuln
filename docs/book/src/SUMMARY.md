@@ -12,6 +12,7 @@
 - [How matching works](matching.md)
 - [Data sources](sources.md)
 - [OpenSSF badging evidence](osp-badging.md)
+- [Roadmap](roadmap.md)
 - [Support policy](support.md)
 - [Security policies](policies.md)
 - [Security and privacy](security.md)

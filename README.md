@@ -7,6 +7,8 @@
   <a href="https://crates.io/crates/amivuln"><img src="https://img.shields.io/crates/v/amivuln.svg" alt="crates.io"></a>
   <a href="https://nubian-ibex.github.io/amivuln/"><img src="https://img.shields.io/badge/docs-amivuln-4de6b8" alt="Documentation"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue" alt="License: MIT OR Apache-2.0">
+  <a href="https://www.bestpractices.dev/projects/16540"><img src="https://www.bestpractices.dev/projects/16540/badge" alt="OpenSSF Best Practices"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/nubian-ibex/amivuln"><img src="https://api.scorecard.dev/projects/github.com/nubian-ibex/amivuln/badge" alt="OpenSSF Scorecard"></a>
 </p>
 
 # amivuln
