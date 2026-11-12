@@ -76,7 +76,14 @@ jobs:
         # we specify bash to get pipefail; it guards against the `curl` command
         # failing. otherwise `sh` won't catch that `curl` returned non-0
         shell: bash
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.34.0/cargo-dist-installer.sh | sh"
+        # The installer is checked against a pinned SHA-256 (the digest GitHub
+        # lists for the v0.34.0 asset) before it runs, instead of piped to sh.
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -LsSf -o cargo-dist-installer.sh \
+            https://github.com/axodotdev/cargo-dist/releases/download/v0.34.0/cargo-dist-installer.sh
+          echo "abb014a8486f08a3c2d9dd8bbf2c646c62fab61b1f1c9ff5bf2811ab305d17b1  cargo-dist-installer.sh" | sha256sum -c -
+          sh cargo-dist-installer.sh
       - name: Cache dist
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -142,13 +149,8 @@ jobs:
         with:
           persist-credentials: false
           submodules: recursive
-      - name: Install Rust non-interactively if not already installed
-        if: ${{ matrix.container }}
-        run: |
-          if ! command -v cargo > /dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          fi
+      # dist's template installs rustup here for container builds. None of our
+      # targets uses a container and the step piped a script to sh, so it is gone.
       - name: Install dist
         run: ${{ matrix.install_dist.run }}
       # Get the dist-manifest
@@ -303,6 +305,7 @@ jobs:
           sha256sum -- * > SHA256SUMS
           cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
       - name: Attest packages
+        id: attest
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
@@ -311,6 +314,12 @@ jobs:
             out/*.apk
             out/*.pkg.tar.zst
             out/*.cdx.json
+      # Scorecard looks for a *.intoto.jsonl release asset as the provenance of
+      # the release; the attestation bundle is that statement.
+      - name: Keep the provenance with the release
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" out/amivuln-packages.intoto.jsonl
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -323,6 +332,7 @@ jobs:
             out/*.cdx.json
             out/SHA256SUMS
             out/SHA256SUMS.sigstore.json
+            out/amivuln-packages.intoto.jsonl
 
   # Determines if we should publish/announce
   host:
