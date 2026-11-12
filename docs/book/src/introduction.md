@@ -47,9 +47,9 @@ Beta (0.x). The JSON output (schema version 1) and the exit codes are the
 contract. Flags and configuration keys may still change in a minor release
 before 1.0, and the changelog names each change.
 
-Supported: Fedora, Arch Linux, Red Hat Enterprise Linux, Rocky Linux and
-AlmaLinux (read from the installed packages of the host), and Debian, Ubuntu
-and Alpine (containers, package lists, SBOMs and `name@version`). The page
+Supported, read from the installed packages of the host and from containers,
+lists and SBOMs: Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat
+Enterprise Linux, Rocky Linux and AlmaLinux. The page
 [Data sources](sources.md#supported-distributions) says exactly what each
 distribution gives you and where its blind spots are.
 

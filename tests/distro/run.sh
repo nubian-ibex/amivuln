@@ -120,15 +120,21 @@ host)
         want_rc "0 1"
         jq_is pending '.kind == "pending" and .complete'
         ;;
-    debian | ubuntu)
-        # No host package database is read for Debian: the inventory comes
-        # from dpkg, the way a user exports it from the machine.
-        dpkg-query -W -f '${source:Package}@${Version}\n' bash >"$work/inv.txt"
-        [ -s "$work/inv.txt" ] || fail "dpkg-query produced no inventory"
-        run check amivuln check --packages-from "$work/inv.txt" --format json
+    debian | ubuntu | alpine)
+        # The package database is read from the files of the running system.
+        pkg=bash
+        [ "$id" = alpine ] && pkg=busybox
+        run check amivuln check "$pkg" --format json
         want_rc "0 1"
-        jq_is check '.targets | length > 0'
+        jq_is check '.targets[0].package.name == "'"$pkg"'"'
         jq_is check '.host.os_id == "'"$id"'"'
+        # A file is traced to its package (merged /usr on Debian and Ubuntu).
+        run owner amivuln "$(command -v "$pkg")" --format json
+        want_rc "0 1"
+        jq_is owner '.targets[0].package.name == "'"$pkg"'"'
+        run all amivuln --all --format json
+        want_rc "0 1"
+        jq_is all '(.targets | length) > 10 and .complete'
         ;;
     *) fail "no host checks for $id" ;;
     esac

@@ -69,6 +69,8 @@ jobs:
           - { image: "fedora:44", setup: "dnf install -y -q jq ca-certificates" }
           - { image: "archlinux:base", setup: "pacman -Sy --noconfirm jq ca-certificates" }
           - { image: "registry.access.redhat.com/ubi9/ubi:9.6", setup: "dnf install -y -q jq ca-certificates" }
+          - { image: "alpine:3.20", setup: "apk add --no-cache jq ca-certificates" }
+          - { image: "ubuntu:24.04", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
           - { image: "debian:stable", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
     container:
       image: ${{ matrix.image }}

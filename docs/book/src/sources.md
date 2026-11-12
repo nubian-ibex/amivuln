@@ -59,12 +59,9 @@ How a target is identified, and what the data can and cannot show:
 - **Arch Linux.** The host is read through `pacman`. Data: the Arch Security Tracker, which also lists vulnerable packages with no fix.
 - **Red Hat Enterprise Linux 8, 9 and 10.** The host is read through `rpm`; UBI containers work. Data: OSV's Red Hat ecosystem, a lower bound (see below).
 - **Rocky Linux and AlmaLinux 8 and 9.** The host is read through `rpm`. Data: OSV; only CVEs that shipped a fix are visible.
-- **Debian and Ubuntu (LTS).** Containers, `--packages-from` lists, SBOMs and `name@version`. The installed packages of the machine itself are not read yet. Data: OSV, which also lists open issues (reported as affected with no fix version).
-- **Alpine 3.x.** The same inputs as Debian and Ubuntu. Edge and alpha images have no advisory data and are refused. Data: OSV, keyed by the origin package; only CVEs that shipped a fix are visible.
+- **Debian and Ubuntu (LTS).** The host is read from `/var/lib/dpkg` (nothing is run); containers, `--packages-from` lists, SBOMs and `name@version` work too. Data: OSV, which also lists open issues (reported as affected with no fix version).
+- **Alpine 3.x.** The host is read from `/lib/apk/db/installed`; the same other inputs as Debian and Ubuntu. Edge and alpha images have no advisory data and are refused. Data: OSV, keyed by the origin package; only CVEs that shipped a fix are visible.
 - **Go modules and Rust crates** found in binaries, through OSV.
-
-The roadmap lists reading the installed packages on Debian, Ubuntu and Alpine
-hosts as the first distribution work.
 
 ## Planned
 
