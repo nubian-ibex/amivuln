@@ -1,6 +1,6 @@
 # ADR-0012: Red Hat Enterprise Linux data source
 
-- Status: Proposed
+- Status: Accepted, amended 2026-11-12
 - Date: 2026-11-09
 
 ## Context
@@ -33,3 +33,11 @@ Proposed: option 2, after the offline database format exists, and option 3 until
 
 - No false confidence: until this is implemented, `--distro rhel:N` stays unsupported and says so.
 - The ground-truth corpus needs RHEL cases with recorded fixtures before any implementation lands.
+
+## Amendment (2026-11-12)
+
+OSV now has a `Red Hat` ecosystem. Its advisories are RHSA and RHBA records filed under `Red Hat:enterprise_linux:N::baseos|appstream|crb|...` with the fixed NEVRA per package, a `upstream` list of CVEs and a link to the severity classification. The `Red Hat Enterprise Linux N` spelling from the Context section is still rejected, but this one is not.
+
+Decision: RHEL is implemented through OSV, the same path as Rocky and AlmaLinux, with option 2 (the CSAF bulk index) deferred. amivuln asks the `baseos`, `appstream` and `crb` ecosystems, merges the advisories, and applies the Fedora merge rule per package name. Advisories only exist for fixed issues, so the `package_state` cases (`Affected`, `Fix deferred`, `Will not fix`, `Out of support scope`) are **not visible**. The documentation says RHEL results are a lower bound.
+
+Still open: the CSAF index for those cases, EUS and E4S stream handling beyond comparing against the lowest fix, and licensing of a derived Red Hat index.

@@ -44,8 +44,9 @@ result: complete
 Pre-alpha. Fedora and Arch Linux are supported, as are Rocky Linux and
 AlmaLinux 8 and 9 through OSV (`--distro rocky:9`, `--distro alma:9`). Alpine
 3.x releases are covered through OSV too (`--distro alpine:3.20`, and
-`--container` on an Alpine image). Red Hat Enterprise Linux comes later (OSV
-has no RHEL data). See [Data sources](sources.md) for exactly what each
+`--container` on an Alpine image), and so is Red Hat Enterprise Linux 8, 9 and
+10 (`--distro rhel:9`, UBI containers) through OSV's Red Hat ecosystem, with
+the blind spot described in [Data sources](sources.md). See [Data sources](sources.md) for exactly what each
 distribution report covers and where the blind spots are.
 
 Start with [Installation](installation.md) and the [Quick start](quickstart.md).

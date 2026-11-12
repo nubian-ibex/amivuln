@@ -217,20 +217,18 @@ impl DistroData {
 async fn fetch_all_advisories(
     f: &Fetcher<'_>,
     base: &str,
-    ids_by_package: &[Vec<String>],
-    osv_ecos: &[String],
+    asked: &[(String, Vec<String>)],
 ) -> (Vec<amivuln_sources::osv::OsvEntry>, SourceStatus, Duration) {
     let mut entries = Vec::new();
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
-    let distinct: std::collections::BTreeSet<&String> = osv_ecos.iter().collect();
+    let distinct: std::collections::BTreeSet<&String> = asked.iter().map(|(eco, _)| eco).collect();
     let mut total = 0usize;
     for osv_eco in distinct {
-        let mut mine: Vec<String> = ids_by_package
+        let mut mine: Vec<String> = asked
             .iter()
-            .zip(osv_ecos)
-            .filter(|(_, e)| *e == osv_eco)
-            .flat_map(|(found, _)| found.iter().cloned())
+            .filter(|(e, _)| e == osv_eco)
+            .flat_map(|(_, found)| found.iter().cloned())
             .collect();
         mine.sort();
         mine.dedup();
@@ -258,7 +256,10 @@ fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<
     match version {
         amivuln_core::Version::Deb(v) => Some(v.to_string()),
         amivuln_core::Version::Rpm(v)
-            if matches!(eco, Ecosystem::Rocky(_) | Ecosystem::Alma(_)) =>
+            if matches!(
+                eco,
+                Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_)
+            ) =>
         {
             Some(v.to_string())
         }
@@ -374,18 +375,20 @@ async fn load_osv(
     let mut ids_by_package: Vec<Vec<String>> = Vec::new();
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
-    let mut osv_ecos: Vec<String> = Vec::new();
+    // One entry per (OSV ecosystem, advisory ids found there). Red Hat files a
+    // package under several repositories, so a package may add more than one.
+    let mut asked: Vec<(String, Vec<String>)> = Vec::new();
     for (_, pkg) in packages {
-        let Some(osv_eco) = pkg.ecosystem.osv_ecosystem() else {
+        let osv_ecosystems = pkg.ecosystem.osv_ecosystems();
+        if osv_ecosystems.is_empty() {
             return fail(format!("package {} has no OSV data", pkg.name));
-        };
+        }
         let Some(version) = osv_query_version(pkg.ecosystem, &pkg.version) else {
             return fail(format!(
                 "package {} has a version kind OSV cannot match for this distro; check the --distro value",
                 pkg.name
             ));
         };
-        osv_ecos.push(osv_eco.clone());
         // OSV keys Alpine, Debian and Ubuntu advisories by the source package,
         // so a binary such as `libcrypto3` or `libssl1.1` is asked about as
         // `openssl`.
@@ -395,45 +398,53 @@ async fn load_osv(
             }
             _ => pkg.name.as_str(),
         };
-        let body =
-            match amivuln_sources::osv::batch_request(osv_name, osv_eco.as_str(), version.as_str())
-            {
+        let mut found_for_package: Vec<String> = Vec::new();
+        for osv_eco in osv_ecosystems {
+            let body = match amivuln_sources::osv::batch_request(
+                osv_name,
+                osv_eco.as_str(),
+                version.as_str(),
+            ) {
                 Ok(b) => b,
                 Err(e) => return fail(e.to_string()),
             };
-        let key = format!("osv:{body}");
-        let batch = match fetch_cached_body(
-            &FetchCtx {
-                http: f.http,
-                cache: f.cache,
-                now: f.now,
-                policy: f.policy,
-                offline: f.offline,
-                offline_db: f.offline_db,
-            },
-            &key,
-            &format!("{base}/v1/querybatch"),
-            Some(body.as_str()),
-        )
-        .await
-        {
-            Ok(d) => d,
-            Err(e) => return fail(describe(&e)),
-        };
-        match amivuln_sources::osv::parse_batch(&batch.body) {
-            Ok(found) => {
-                status = worse(status, batch.status);
-                age = age.max(batch.age);
-                ids_by_package.push(found);
-            }
-            Err(e) => {
-                status = worse(status, SourceStatus::Failed(e.to_string()));
-                ids_by_package.push(Vec::new());
+            let key = format!("osv:{body}");
+            let batch = match fetch_cached_body(
+                &FetchCtx {
+                    http: f.http,
+                    cache: f.cache,
+                    now: f.now,
+                    policy: f.policy,
+                    offline: f.offline,
+                    offline_db: f.offline_db,
+                },
+                &key,
+                &format!("{base}/v1/querybatch"),
+                Some(body.as_str()),
+            )
+            .await
+            {
+                Ok(d) => d,
+                Err(e) => return fail(describe(&e)),
+            };
+            match amivuln_sources::osv::parse_batch(&batch.body) {
+                Ok(found) => {
+                    status = worse(status, batch.status);
+                    age = age.max(batch.age);
+                    found_for_package.extend(found.iter().cloned());
+                    asked.push((osv_eco, found));
+                }
+                Err(e) => {
+                    status = worse(status, SourceStatus::Failed(e.to_string()));
+                    asked.push((osv_eco, Vec::new()));
+                }
             }
         }
+        found_for_package.sort();
+        found_for_package.dedup();
+        ids_by_package.push(found_for_package);
     }
-    let (entries, adv_status, adv_age) =
-        fetch_all_advisories(f, base, &ids_by_package, &osv_ecos).await;
+    let (entries, adv_status, adv_age) = fetch_all_advisories(f, base, &asked).await;
     status = worse(status, adv_status);
     age = age.max(adv_age);
     let per_package = split_per_package(&entries, &ids_by_package);
@@ -512,6 +523,7 @@ async fn load_distro(
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Rocky(_)
         | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_)
         | Ecosystem::Alpine(_)
         | Ecosystem::Go
         | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
@@ -860,7 +872,7 @@ pub(crate) fn owners(
 ) -> std::collections::BTreeMap<String, Option<String>> {
     let runner = SystemRunner::default();
     let backend = match eco {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
             Backend::Rpm(RpmResolver::new(&runner, eco))
         }
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
@@ -903,7 +915,7 @@ pub(crate) fn resolve_all(
     let mut resolved: Vec<(String, PackageRef)> = Vec::new();
     let mut unresolved: Vec<Unresolved> = Vec::new();
     let backend = match eco {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
             Some(Backend::Rpm(RpmResolver::new(&runner, eco)))
         }
         Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
@@ -966,6 +978,7 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Rocky(_)
         | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_)
         | Ecosystem::Go
         | Ecosystem::Crates
         | Ecosystem::Alpine(_) => SourceId::Osv,

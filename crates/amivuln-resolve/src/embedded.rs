@@ -79,7 +79,9 @@ pub fn package_from_note(
         .find(|d| d.origin == Origin::PackageNote)
         .ok_or_else(|| missing("no package owns it and it carries no .note.package"))?;
     let host_kind = match eco {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => "rpm",
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
+            "rpm"
+        }
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => "deb",
         Ecosystem::Arch => "alpm",
         // A host is never a language ecosystem; no note can match it.

@@ -46,6 +46,7 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Ubuntu(v) => format!("Ubuntu {}.{}", v / 100, v % 100),
         Ecosystem::Rocky(v) => format!("Rocky Linux {v}"),
         Ecosystem::Alma(v) => format!("AlmaLinux {v}"),
+        Ecosystem::Rhel(v) => format!("Red Hat Enterprise Linux {v}"),
         Ecosystem::Go => "Go module".to_owned(),
         Ecosystem::Crates => "Rust crate".to_owned(),
         Ecosystem::Alpine(v) => format!("Alpine {}.{}", v / 100, v % 100),
@@ -59,7 +60,7 @@ fn update_hint(target: &TargetReport) -> String {
         Ecosystem::Fedora(_) => format!("dnf upgrade {name}"),
         Ecosystem::Arch => "pacman -Syu".to_owned(),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => "apt-get upgrade".to_owned(),
-        Ecosystem::Rocky(_) | Ecosystem::Alma(_) => "dnf upgrade".to_owned(),
+        Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => "dnf upgrade".to_owned(),
         // Nothing on the host's package manager updates a statically linked
         // dependency: the program has to be rebuilt or replaced.
         Ecosystem::Alpine(_) => format!("apk upgrade {name}"),

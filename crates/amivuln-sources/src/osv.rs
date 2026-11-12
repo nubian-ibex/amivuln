@@ -80,7 +80,8 @@ pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
 
 /// Accepts `DEBIAN-CVE-...`/`UBUNTU-CVE-...`/`ALPINE-CVE-...`, the Debian and
 /// Ubuntu advisory ids `DSA-N-N`, `DLA-N-N` and `USN-N-N`, and the Rocky/Alma
-/// errata ids `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`; anything else is dropped so an id
+/// errata ids `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`, and the Red Hat ids
+/// `RHSA-YYYY:NNNN` and `RHBA-YYYY:NNNN`; anything else is dropped so an id
 /// from the response never reaches a URL unchecked.
 fn is_advisory_id(id: &str) -> bool {
     is_language_advisory_id(id) || is_distro_advisory_id(id)
@@ -106,7 +107,7 @@ fn is_language_advisory_id(id: &str) -> bool {
 
 fn is_distro_advisory_id(id: &str) -> bool {
     if let Some((prefix, rest)) = id.split_once('-') {
-        if matches!(prefix, "RLSA" | "ALSA") {
+        if matches!(prefix, "RLSA" | "ALSA" | "RHSA" | "RHBA") {
             return rest.split_once(':').is_some_and(|(y, n)| {
                 !y.is_empty()
                     && !n.is_empty()
@@ -142,6 +143,26 @@ struct RawVuln {
     aliases: Vec<String>,
     #[serde(default)]
     database_specific: Option<RawDatabaseSpecific>,
+    #[serde(default)]
+    references: Vec<RawReference>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawReference {
+    #[serde(default)]
+    url: String,
+}
+
+/// Red Hat does not put a severity in the record; it links the classification
+/// page of the advisory's rating (`.../classification/#important`).
+fn severity_from_references(references: &[RawReference]) -> Option<String> {
+    references.iter().find_map(|r| {
+        let rating = r
+            .url
+            .strip_prefix("https://access.redhat.com/security/updates/classification/#")?;
+        matches!(rating, "low" | "moderate" | "important" | "critical")
+            .then(|| rating.to_ascii_uppercase())
+    })
 }
 
 /// The vendor block; only the textual severity GitHub advisories carry.
@@ -268,7 +289,8 @@ impl OsvData {
             severity: raw
                 .database_specific
                 .and_then(|d| d.severity)
-                .map(|v| v.to_ascii_uppercase()),
+                .map(|v| v.to_ascii_uppercase())
+                .or_else(|| severity_from_references(&raw.references)),
         }]))
     }
 
@@ -500,6 +522,8 @@ mod tests {
             "DLA-3942-2",
             "USN-6000-1",
             "RLSA-2024:1234",
+            "RHSA-2024:0310",
+            "RHBA-2025:6314",
         ] {
             assert!(is_advisory_id(ok), "{ok} should be accepted");
         }
@@ -511,9 +535,41 @@ mod tests {
             "USN-1/../x-1",
             "FOO-5169-1",
             "ALPINE-notacve",
+            "RHSA-2024",
+            "RHSA-x:1",
         ] {
             assert!(!is_advisory_id(bad), "{bad} should be dropped");
         }
+    }
+
+    #[test]
+    fn red_hat_severity_comes_from_the_classification_link() {
+        let json = br#"{
+            "id": "RHSA-2024:0310",
+            "upstream": ["CVE-2023-5363"],
+            "references": [
+                {"type": "ADVISORY", "url": "https://access.redhat.com/errata/RHSA-2024:0310"},
+                {"type": "ARTICLE", "url": "https://access.redhat.com/security/updates/classification/#important"}
+            ],
+            "affected": [{
+                "package": {"name": "openssl", "ecosystem": "Red Hat:enterprise_linux:9::baseos"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "1:3.0.7-25.el9_3"}]}]
+            }]
+        }"#;
+        let d = OsvData::parse_advisory(json, "Red Hat:enterprise_linux:9::baseos").unwrap();
+        assert_eq!(d.severity_for("CVE-2023-5363"), Some("IMPORTANT"));
+        assert_eq!(
+            d.fixes_for("CVE-2023-5363"),
+            [("openssl".to_owned(), "1:3.0.7-25.el9_3".to_owned())]
+        );
+        // An unknown rating is not invented.
+        let other = json.to_vec();
+        let other = String::from_utf8(other)
+            .unwrap()
+            .replace("#important", "#bogus");
+        let d = OsvData::parse_advisory(other.as_bytes(), "Red Hat:enterprise_linux:9::baseos")
+            .unwrap();
+        assert_eq!(d.severity_for("CVE-2023-5363"), None);
     }
 
     #[test]

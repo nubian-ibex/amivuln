@@ -129,7 +129,9 @@ pub fn export(
             name,
             "os-release" | "status" | "installed" | "Packages" | "pacman"
         ) || path.starts_with("var/lib/rpm");
-        if !wanted {
+        // A directory entry under var/lib/rpm matches the prefix but holds no
+        // data; writing it as a file would block the database files inside.
+        if !wanted || entry.header().entry_type().is_dir() {
             continue;
         }
         // Debian's /etc/os-release is a symlink into usr/lib: record the
@@ -259,12 +261,16 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
             .ok()
             .zip(minor.parse::<u16>().ok())
             .map(|(maj, min)| maj * 100 + min)
+    } else if id == "rhel" {
+        // `9.4` is release 9.
+        raw.split('.').next().and_then(|m| m.parse::<u16>().ok())
     } else {
         raw.parse::<u16>().ok()
     };
     match (id.as_str(), version) {
         ("fedora", Some(v)) => Some(Ecosystem::Fedora(v)),
         ("rocky", Some(v)) => Some(Ecosystem::Rocky(v)),
+        ("rhel", Some(v)) => Some(Ecosystem::Rhel(v)),
         ("almalinux", Some(v)) => Some(Ecosystem::Alma(v)),
         ("debian", Some(v)) => Some(Ecosystem::Debian(v)),
         ("ubuntu", Some(v)) if matches!(v % 100, 4 | 10) => Some(Ecosystem::Ubuntu(v)),
@@ -295,7 +301,7 @@ pub fn packages(
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
             Ok(apk_packages(&installed, eco))
         }
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
             let db = root.join("root/var/lib/rpm");
             let out = runner
                 .run(

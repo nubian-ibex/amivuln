@@ -30,7 +30,7 @@ source epss               ok  age 0s
 result: complete
 ```
 
-**Status:** pre-alpha. Fedora, Arch Linux, Debian, Ubuntu, Alpine, Rocky Linux and AlmaLinux are supported; RHEL comes later.
+**Status:** pre-alpha. Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat Enterprise Linux, Rocky Linux and AlmaLinux are supported. RHEL results miss the CVEs Red Hat has not fixed yet (see Data sources).
 
 ## Highlights
 

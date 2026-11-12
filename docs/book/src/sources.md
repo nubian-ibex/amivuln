@@ -2,7 +2,7 @@
 
 - **Arch Security Tracker**: CVE status and fixed version on Arch (`https://security.archlinux.org/issues/all.json`)
 - **Fedora `updateinfo`**: security updates and the CVEs they fix on Fedora (`https://dl.fedoraproject.org/pub/fedora/linux/updates/<release>/Everything/<arch>/repodata/`)
-- **OSV**: Debian, Ubuntu, Rocky Linux, `AlmaLinux`, Go modules and `crates.io` (`https://api.osv.dev/v1/querybatch`, one advisory document per id). Advisories that also exist in the distro trackers carry the same meaning; for Go and crates exact versions are what decide.
+- **OSV**: Debian, Ubuntu, Alpine, Red Hat Enterprise Linux, Rocky Linux, `AlmaLinux`, Go modules and `crates.io` (`https://api.osv.dev/v1/querybatch`, one advisory document per id). Advisories that also exist in the distro trackers carry the same meaning; for Go and crates exact versions are what decide.
 - **CISA KEV**: actively exploited CVEs (`https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`)
 - **FIRST EPSS**: probability of exploitation (`https://api.first.org/data/v1/epss`)
 
@@ -26,6 +26,25 @@ the fix for CVE-X" would otherwise mark CVE-X as fixed. A security update that
 names no CVE is reported under its update id. A CVE without a published fix is
 not visible in this data.
 
+## Red Hat Enterprise Linux
+
+RHEL is judged from OSV's `Red Hat` ecosystem, which republishes Red Hat
+security advisories (RHSA and RHBA). OSV files a package under the repository
+it ships in (`Red Hat:enterprise_linux:9::baseos`, `::appstream`, `::crb`) and
+the rpm database does not record which, so amivuln asks all three and merges
+the answers. One CVE usually has several fixes, one per minor stream (GA, EUS,
+E4S). amivuln follows the Fedora rule: an installed version at or above any
+published fix is patched, and an older one is reported against the lowest fix.
+A host that is not on the lowest stream can therefore see a fix it cannot
+install; the finding names the version so the stream can be checked.
+
+**Blind spot.** OSV carries advisories that shipped a fix. A CVE that Red Hat
+has not fixed (`Affected`, `Fix deferred`, `Will not fix`, `Out of support
+scope`) has no advisory and is **not visible** in this data, so a RHEL result
+is a lower bound. Red Hat's CSAF VEX data would close the gap; see ADR-0012.
+Severity comes from the rating Red Hat links in each advisory (Important maps
+to high).
+
 ## Where the data lives offline
 
 `amivuln db build` packs everything consulted into a `tar.zst` that another
@@ -35,8 +54,9 @@ input comes from documents you supply with `--vex`.
 ## Planned
 
 The Fedora Bodhi API as a cross-check, NVD by CPE as a fallback, and
-endoflife.date. RHEL itself stays out until its data licensing is settled
-(ADR-0012).
+endoflife.date. Red Hat's own CSAF VEX archive would add the CVEs Red Hat
+has not fixed (see below); it needs a bulk index and is not planned before
+there is demand (ADR-0012).
 
 ## Arch specifics
 

@@ -35,7 +35,7 @@ fn valid_deb_version(s: &str) -> bool {
 
 fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -> PackageRef {
     let parsed = match ecosystem {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
+        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
             Version::Rpm(version.parse().unwrap_or_else(|never| match never {}))
         }
         Ecosystem::Arch => Version::Pacman(version.parse().unwrap_or_else(|never| match never {})),
@@ -142,12 +142,13 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         }
         Some(Ecosystem::Rocky(v)) if (kind, namespace) == ("rpm", "rocky") => Ecosystem::Rocky(v),
         Some(Ecosystem::Alma(v)) if (kind, namespace) == ("rpm", "alma") => Ecosystem::Alma(v),
+        Some(Ecosystem::Rhel(v)) if (kind, namespace) == ("rpm", "redhat") => Ecosystem::Rhel(v),
         Some(Ecosystem::Alpine(v)) if (kind, namespace) == ("apk", "alpine") => {
             Ecosystem::Alpine(v)
         }
         Some(e) => {
             return Err(bad(format!(
-                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine",
+                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine, pkg:rpm/redhat",
                 match e {
                     Ecosystem::Fedora(v) => format!("fedora:{v}"),
                     Ecosystem::Arch => "arch".to_owned(),
@@ -157,6 +158,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     }
                     Ecosystem::Rocky(v) => format!("rocky:{v}"),
                     Ecosystem::Alma(v) => format!("alma:{v}"),
+                    Ecosystem::Rhel(v) => format!("rhel:{v}"),
                     Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
                     Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
                 }
@@ -191,9 +193,11 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         return Err(bad(format!("invalid package name {name:?}")));
     }
     let ok = match ecosystem {
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
-            valid_deb_version(&version)
-        }
+        Ecosystem::Debian(_)
+        | Ecosystem::Ubuntu(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_) => valid_deb_version(&version),
         _ => valid_version(&version),
     };
     if !ok {
