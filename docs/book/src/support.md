@@ -30,4 +30,5 @@ never in a patch release, and every raise is named in the changelog.
 ## Platforms
 
 Linux on x86_64 and aarch64 (static `musl` and `glibc` builds). macOS and
-Windows are not supported.
+Windows are not supported. Which distributions are judged, and how, is in
+[Data sources](sources.md#supported-distributions).

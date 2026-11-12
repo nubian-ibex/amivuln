@@ -34,9 +34,14 @@ verdict.
   visible in this data.
 - **Arch.** The tracker records a build; the same upstream version is
   vulnerable, a rebuild of it too, and a newer one *unverified*.
-- **Debian, Ubuntu, Rocky, `AlmaLinux`, Go modules and Rust crates.** OSV
-  serialises advisories per ecosystem; the fixed versions that name the
-  package decide. For language packages OSV answers per exact version, so
+- **Debian, Ubuntu, Alpine, Red Hat, Rocky, `AlmaLinux`, Go modules and Rust
+  crates.** OSV serialises advisories per ecosystem; the fixed versions that
+  name the package decide. When several advisories fix one CVE (Red Hat
+  issues one per minor stream), installed at or above any of them is patched.
+  A record OSV matched to the installed version but that lists no fix at all
+  is an open issue: affected, with no version to move to (Debian and Ubuntu
+  have such records; Alpine and Red Hat only list advisories that shipped a
+  fix). Alpine, Debian and Ubuntu are asked by source package. For language packages OSV answers per exact version, so
   every advisory returned affects the queried version and the fix reported is
   the lowest one above it. A language advisory without a CVE alias is
   reported under its own id (GHSA, GO, RUSTSEC) instead of vanishing.

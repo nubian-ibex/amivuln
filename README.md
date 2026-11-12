@@ -32,7 +32,7 @@ source epss               ok  age 0s
 result: complete
 ```
 
-**Status:** pre-alpha. Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat Enterprise Linux, Rocky Linux and AlmaLinux are supported. RHEL results miss the CVEs Red Hat has not fixed yet (see Data sources).
+**Status:** beta (0.x). The JSON output (schema version 1) and the exit codes are the contract and are tested against golden documents. Flags and configuration keys may still change in a minor release before 1.0; the changelog names every such change. See [Supported distributions](https://nubian-ibex.github.io/amivuln/sources.html#supported-distributions) for exactly what each distribution gives you.
 
 ## Highlights
 
@@ -75,7 +75,9 @@ amivuln --all --fail-on high           # every installed package; exit 1 on HIGH
 amivuln --all -f json > report.json    # machine-readable, schema version 1
 ```
 
-Formats: `summary` (default), `detail` and `json`. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete, `3` target not resolved, `64` usage error, `70` internal error. See `man amivuln` and `amivuln --help`.
+More ways to ask: `amivuln cve CVE-2024-6387` (is this host affected?), `amivuln pending` (which updates close the most risk), `amivuln restart` (processes still running replaced files), `amivuln --container ID` (a podman or docker container), `amivuln --packages-from list.txt` (a list exported from another host), `amivuln --sbom FILE`, `amivuln --pid PID`, `amivuln tui` (full-screen view, built with `--features tui`), `amivuln mcp` (a read-only server for AI assistants) and `amivuln db` (an offline database for hosts without internet).
+
+Formats: `summary` (default), `detail`, `json`, `sarif`, `markdown`, `csv` and `prometheus`. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete, `3` target not resolved, `64` usage error, `70` internal error. See `man amivuln` and `amivuln --help`.
 
 In a CI pipeline, `amivuln --all --fail-on high` fails the job when an installed package has a pending high-severity security fix. To check a version for a distribution other than the runner's, use `name@version --distro fedora:44` or `--distro arch`.
 
@@ -87,15 +89,15 @@ The full documentation is at **[nubian-ibex.github.io/amivuln](https://nubian-ib
 
 ## How it works
 
-Target, then package identity (read from `rpm` or `pacman`), then the distribution's advisory data, then matching by distribution status, then KEV and EPSS enrichment, then policy and report. The workspace crates (`amivuln-core`, `-resolve`, `-version`, `-sources`, `-cache`, `-report`) are published because the binary depends on them; they carry no API stability promise before 1.0.
+Target, then package identity (read from `rpm` or `pacman` on the host, from a container's package database, or from a list you provide), then the distribution's advisory data, then matching by distribution status, then KEV and EPSS enrichment, then policy and report. The workspace crates (`amivuln-core`, `-resolve`, `-version`, `-sources`, `-cache`, `-report`, `-sandbox`) are published because the binary depends on them; they carry no API stability promise before 1.0.
 
 ## Limitations
 
-- Fedora and Arch Linux only for now.
-- On Fedora the data is the repository `updateinfo`: amivuln reports security fixes that Fedora has published and that are newer than what is installed. A vulnerability with no published Fedora fix is not visible there. Security updates that name no CVE are reported under their update id (for example `FEDORA-2026-...`).
+- **A host is read from its package database on rpm and pacman systems only** (Fedora, RHEL, Rocky, AlmaLinux and Arch). On Debian, Ubuntu and Alpine, amivuln judges containers (`--container`), package lists (`--packages-from`, with commands to export one in the [Using](https://nubian-ibex.github.io/amivuln/using.html) page), SBOMs and `name@version` pairs, but does not yet read the installed packages of the machine it runs on.
+- **The data decides what is visible.** Fedora's `updateinfo`, and the Alpine, Red Hat, Rocky and AlmaLinux advisories in OSV, only describe CVEs that shipped a fix: a CVE with no fix yet is not visible there. The Debian and Ubuntu records in OSV also include open issues, which are reported as affected with no fix version. Arch's tracker lists vulnerable packages without a fix. A result for RHEL is a lower bound.
 - On Arch, a tracker entry marked *Vulnerable* with no fix is reported as affected only for the same upstream version as the recorded build; newer versions are listed as unverified.
-- Targets are packages, files owned by a package, systemd services, versions and purls. PIDs, SBOMs and binaries that no package owns (vendored libraries, language dependencies) are not supported yet; use a lockfile scanner such as osv-scanner for those.
-- Kernel CVEs and container image scanning are out of scope until after 1.0.
+- Binaries that no package owns are identified by their package note, Go build information or Rust `cargo-auditable` data, or (low confidence, marked as such) by the version banners of a short list of C products. Dependencies in a lockfile are out of scope: use a scanner such as osv-scanner for those.
+- Kernel CVEs are out of scope until after 1.0. Windows and macOS hosts are not supported.
 
 ## Comparison
 

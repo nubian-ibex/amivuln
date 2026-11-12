@@ -12,6 +12,7 @@
 - `amivuln cache info | clear`
 - `amivuln completions bash|zsh|fish|elvish|powershell`
 - `amivuln db build|pull|verify|info`: the offline advisory database (see the user guide)
+- `amivuln tui`: a full-screen view with filters (build with `--features tui`)
 - `amivuln mcp`: a read-only Model Context Protocol server on stdio (see the user guide)
 - `amivuln version [--json]`
 
@@ -29,8 +30,9 @@
 - `--distro fedora:NN|arch|debian:NN|ubuntu:NN.NN|alpine:N.NN|rhel:N|rocky:N|alma:N`: treat the host as this distribution
 - `--baseline FILE`: a previous `-f json` report; only findings absent from it violate `--fail-on`
 - `--pid PID`: check the executable of a running process (repeatable); a process that is gone, unreadable or whose executable was replaced on disk is reported as unresolved
-- `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb and alpm purls); other components are listed as unresolved, one entry per purl type
+- `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb, apk and alpm purls); other components are listed as unresolved, one entry per purl type
 - `--vex FILE`: an `OpenVEX` document; a `not_affected` statement overrides the verdict and shows the author and justification
+- `--container ID`: check the packages of a podman or docker container (repeatable); Alpine, Debian, Ubuntu, Fedora, Rocky, AlmaLinux and Red Hat (UBI) images are read from an exported root file system and nothing runs inside
 - `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones
 - `ignore_file` (configuration): accepted findings; expired entries are errors
 - `-q, --quiet`: only errors
@@ -54,7 +56,7 @@ When several apply, the precedence is 70, 64, 2, 3, 1, 0.
 ```json
 {
   "schema_version": 1,
-  "tool": {"name": "amivuln", "version": "0.0.3"},
+  "tool": {"name": "amivuln", "version": "0.1.0"},
   "generated_at": "2026-11-08T12:00:00Z",
   "host": {"os_id": "fedora", "os_version": "44", "arch": "x86_64"},
   "complete": true,
