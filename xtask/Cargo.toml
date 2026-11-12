@@ -11,7 +11,7 @@ publish = false
 
 [dependencies]
 minisign = "0.10.0"
-amivuln = { path = "../crates/amivuln", version = "0.0.14" }
+amivuln = { path = "../crates/amivuln", version = "0.0.15" }
 clap = "4.6.7"
 clap_complete = "4.6.11"
 clap_mangen = "0.3.3"
