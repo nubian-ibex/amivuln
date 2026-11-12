@@ -1667,6 +1667,22 @@ async fn optional_sources_failing_alone_stay_complete() {
     );
 }
 
+/// Writes the ELF sample `name` to `dest`. The samples are stored as hex text
+/// under `tests/fixtures/elf` so the repository holds no binary blobs.
+fn write_elf_fixture(name: &str, dest: &std::path::Path) {
+    let path = format!(
+        "{}/../../tests/fixtures/elf/{name}.hex",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let hex = std::fs::read_to_string(path).unwrap();
+    let digits: Vec<u8> = hex.bytes().filter(u8::is_ascii_hexdigit).collect();
+    let bytes: Vec<u8> = digits
+        .chunks(2)
+        .map(|pair| u8::from_str_radix(&String::from_utf8_lossy(pair), 16).unwrap())
+        .collect();
+    std::fs::write(dest, bytes).unwrap();
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn a_file_no_package_owns_is_identified_by_its_package_note() {
     let server = MockServer::start().await;
@@ -1674,14 +1690,7 @@ async fn a_file_no_package_owns_is_identified_by_its_package_note() {
     mount_enrichment(&server).await;
     let sb = Sandbox::new(&server.uri(), "/updates");
     let elf = sb.path().join("multipart-tool");
-    std::fs::copy(
-        concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../tests/fixtures/elf/with-package-note.elf"
-        ),
-        &elf,
-    )
-    .unwrap();
+    write_elf_fixture("with-package-note.elf", &elf);
     let elf_arg: &'static str = Box::leak(elf.display().to_string().into_boxed_str());
     let out = run(
         sb.cmd(),
@@ -1783,14 +1792,7 @@ async fn unowned_binaries_are_judged_by_their_embedded_go_and_rust_dependencies(
         ("rust-app.bin", "time", "CVE-2020-26235", "0.2.0", "unknown"),
     ] {
         let bin = sb.path().join(file);
-        std::fs::copy(
-            format!(
-                "{}/../../tests/fixtures/elf/{file}",
-                env!("CARGO_MANIFEST_DIR")
-            ),
-            &bin,
-        )
-        .unwrap();
+        write_elf_fixture(file, &bin);
         let bin_arg: &'static str = Box::leak(bin.display().to_string().into_boxed_str());
         let out = run(
             sb.cmd_opts(false),
