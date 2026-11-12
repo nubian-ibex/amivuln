@@ -11,11 +11,49 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+amivuln-core = { path = "../crates/amivuln-core" }
 amivuln-resolve = { path = "../crates/amivuln-resolve" }
+amivuln-sources = { path = "../crates/amivuln-sources" }
+amivuln-version = { path = "../crates/amivuln-version" }
 
 [[bin]]
 name = "embedded_detect"
 path = "fuzz_targets/embedded_detect.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "strings"
+path = "fuzz_targets/strings.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "version_cmp"
+path = "fuzz_targets/version_cmp.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vex"
+path = "fuzz_targets/vex.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "osv"
+path = "fuzz_targets/osv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "feeds"
+path = "fuzz_targets/feeds.rs"
 test = false
 doc = false
 bench = false
