@@ -1,0 +1,191 @@
+# Ground truth: glibc 2.36-9 (Debian 12.0 libc6) against the Debian security tracker.
+# Source: https://security-tracker.debian.org/tracker/data/json, source package glibc, release bookworm.
+# Date: 2026-11-12. Installed version: 2.36-9. Columns: CVE, class, fixed_version, urgency.
+# Classes: affected-open (tracker status open), affected-fixed-later (resolved in a version newer than 2.36-9,
+# compared with dpkg --compare-versions in debian:12.0), fixed-before, not-affected.
+# Truth for the benchmark = the two affected-* classes (46 CVEs).
+CVE-1999-0199	fixed-before	2.2-1	not yet assigned
+CVE-2002-0391	fixed-before	2.2.5-13	not yet assigned
+CVE-2002-0651	fixed-before	2.2.5-8	not yet assigned
+CVE-2002-0684	fixed-before	2.2.5-8	not yet assigned
+CVE-2002-1146	fixed-before	2.3	not yet assigned
+CVE-2003-0028	fixed-before	2.3.1-16	not yet assigned
+CVE-2003-0689	fixed-before	2.2.5	not yet assigned
+CVE-2004-0968	fixed-before	2.3.2.ds1-19	not yet assigned
+CVE-2004-1382	fixed-before	2.3.2.ds1-19	not yet assigned
+CVE-2004-1453	fixed-before	2.3.5	unimportant
+CVE-2005-0403	not-affected	0	unimportant
+CVE-2005-3590	fixed-before	2.3.5-3	not yet assigned
+CVE-2006-7254	fixed-before	2.5-1	not yet assigned
+CVE-2007-3508	fixed-before	2.6-2	unimportant
+CVE-2007-4840	fixed-before	2.7-1	unimportant
+CVE-2008-0122	fixed-before	2.2-1	not yet assigned
+CVE-2008-1367	fixed-before	2.7-8	not yet assigned
+CVE-2008-1391	fixed-before	2.11-1	low
+CVE-2009-0537	not-affected	0	unimportant
+CVE-2009-4880	fixed-before	2.11.1-1	unimportant
+CVE-2009-4881	fixed-before	2.11.1-1	unimportant
+CVE-2009-5029	fixed-before	2.13-24	not yet assigned
+CVE-2009-5064	fixed-before	2.10.1-7	not yet assigned
+CVE-2009-5155	fixed-before	2.28-1	not yet assigned
+CVE-2010-0015	fixed-before	2.10.2-4	medium
+CVE-2010-0296	fixed-before	2.11-1	not yet assigned
+CVE-2010-0830	fixed-before	2.11-1	not yet assigned
+CVE-2010-3847	fixed-before	2.11.2-8	not yet assigned
+CVE-2010-3856	fixed-before	2.11.2-8	not yet assigned
+CVE-2010-4051	fixed-before	2.19-4	unimportant
+CVE-2010-4052	fixed-before	2.19-4	unimportant
+CVE-2010-4756	affected-open	unimportant	
+CVE-2011-0536	not-affected	0	unimportant
+CVE-2011-1071	fixed-before	2.11.2-12	not yet assigned
+CVE-2011-1089	fixed-before	2.13-8	not yet assigned
+CVE-2011-1095	fixed-before	2.13-16	not yet assigned
+CVE-2011-1659	fixed-before	2.13-8	not yet assigned
+CVE-2011-2702	not-affected	0	unimportant
+CVE-2011-5320	fixed-before	2.15	not yet assigned
+CVE-2012-3404	fixed-before	2.13-35	low
+CVE-2012-3405	fixed-before	2.13-35	low
+CVE-2012-3406	fixed-before	2.19-14	low
+CVE-2012-3480	fixed-before	2.13-36	not yet assigned
+CVE-2012-4412	fixed-before	2.17-94	low
+CVE-2012-4424	fixed-before	2.17-94	low
+CVE-2012-6656	fixed-before	2.17-1	not yet assigned
+CVE-2013-0242	fixed-before	2.17-2	low
+CVE-2013-1914	fixed-before	2.17-2	low
+CVE-2013-2207	fixed-before	2.21-1	low
+CVE-2013-4237	fixed-before	2.17-94	not yet assigned
+CVE-2013-4332	fixed-before	2.17-93	not yet assigned
+CVE-2013-4458	fixed-before	2.18-1	low
+CVE-2013-4788	fixed-before	2.17-94	low
+CVE-2013-7423	fixed-before	2.19-1	not yet assigned
+CVE-2013-7424	fixed-before	2.15-1	not yet assigned
+CVE-2014-0475	fixed-before	2.19-6	not yet assigned
+CVE-2014-4043	fixed-before	2.19-2	low
+CVE-2014-5119	fixed-before	2.19-10	medium
+CVE-2014-6040	fixed-before	2.19-12	not yet assigned
+CVE-2014-7817	fixed-before	2.19-14	not yet assigned
+CVE-2014-8121	fixed-before	2.21-1	low
+CVE-2014-9402	fixed-before	2.19-14	not yet assigned
+CVE-2014-9761	fixed-before	2.23-1	not yet assigned
+CVE-2014-9984	fixed-before	2.19-14	not yet assigned
+CVE-2015-0235	fixed-before	2.18-1	high
+CVE-2015-1472	fixed-before	2.19-15	not yet assigned
+CVE-2015-1473	fixed-before	2.19-15	not yet assigned
+CVE-2015-1781	fixed-before	2.19-20	not yet assigned
+CVE-2015-20109	fixed-before	2.22-1	not yet assigned
+CVE-2015-5180	fixed-before	2.24-9	low
+CVE-2015-5229	not-affected	0	unimportant
+CVE-2015-5277	fixed-before	2.21-1	not yet assigned
+CVE-2015-7547	fixed-before	2.21-8	not yet assigned
+CVE-2015-8776	fixed-before	2.21-7	not yet assigned
+CVE-2015-8777	fixed-before	2.21-1	not yet assigned
+CVE-2015-8778	fixed-before	2.21-8	not yet assigned
+CVE-2015-8779	fixed-before	2.21-7	not yet assigned
+CVE-2015-8982	fixed-before	2.21-1	not yet assigned
+CVE-2015-8983	fixed-before	2.21-1	not yet assigned
+CVE-2015-8984	fixed-before	2.21-1	not yet assigned
+CVE-2015-8985	fixed-before	2.28-1	unimportant
+CVE-2016-10228	fixed-before	2.31-3	low
+CVE-2016-10739	fixed-before	2.28-6	not yet assigned
+CVE-2016-1234	fixed-before	2.22-8	not yet assigned
+CVE-2016-2856	fixed-before	2.21-1	low
+CVE-2016-3075	fixed-before	2.22-6	not yet assigned
+CVE-2016-3706	fixed-before	2.22-8	not yet assigned
+CVE-2016-4429	fixed-before	2.22-10	not yet assigned
+CVE-2016-5417	fixed-before	2.22-4	not yet assigned
+CVE-2016-6323	fixed-before	2.24-1	not yet assigned
+CVE-2017-1000366	fixed-before	2.24-12	not yet assigned
+CVE-2017-1000408	fixed-before	2.25-5	not yet assigned
+CVE-2017-1000409	fixed-before	2.25-5	not yet assigned
+CVE-2017-12132	fixed-before	2.25-1	not yet assigned
+CVE-2017-12133	fixed-before	2.24-15	not yet assigned
+CVE-2017-15670	fixed-before	2.25-3	low
+CVE-2017-15671	fixed-before	2.25-3	low
+CVE-2017-15804	fixed-before	2.25-3	low
+CVE-2017-16997	fixed-before	2.25-6	not yet assigned
+CVE-2017-17426	not-affected	0	unimportant
+CVE-2017-18269	fixed-before	2.27-3	not yet assigned
+CVE-2018-1000001	fixed-before	2.26-4	not yet assigned
+CVE-2018-11236	fixed-before	2.27-4	low
+CVE-2018-11237	fixed-before	2.27-4	low
+CVE-2018-19591	fixed-before	2.28-1	not yet assigned
+CVE-2018-20796	affected-open	unimportant	
+CVE-2018-6485	fixed-before	2.27-1	not yet assigned
+CVE-2018-6551	fixed-before	2.27-1	not yet assigned
+CVE-2019-1010022	affected-open	unimportant	
+CVE-2019-1010023	affected-open	unimportant	
+CVE-2019-1010024	affected-open	unimportant	
+CVE-2019-1010025	affected-open	unimportant	
+CVE-2019-19126	fixed-before	2.29-8	not yet assigned
+CVE-2019-25013	fixed-before	2.31-9	not yet assigned
+CVE-2019-6488	fixed-before	2.28-6	unimportant
+CVE-2019-7309	fixed-before	2.28-6	unimportant
+CVE-2019-9169	fixed-before	2.28-9	not yet assigned
+CVE-2019-9192	affected-open	unimportant	
+CVE-2020-10029	fixed-before	2.30-1	not yet assigned
+CVE-2020-1751	fixed-before	2.30-3	not yet assigned
+CVE-2020-1752	fixed-before	2.30-3	not yet assigned
+CVE-2020-27618	fixed-before	2.31-5	not yet assigned
+CVE-2020-29562	fixed-before	2.31-7	not yet assigned
+CVE-2020-29573	fixed-before	2.23-1	not yet assigned
+CVE-2020-6096	fixed-before	2.31-2	low
+CVE-2021-27645	fixed-before	2.31-10	not yet assigned
+CVE-2021-3326	fixed-before	2.31-10	not yet assigned
+CVE-2021-33574	fixed-before	2.32-1	not yet assigned
+CVE-2021-35942	fixed-before	2.31-13	not yet assigned
+CVE-2021-38604	not-affected	0	unimportant
+CVE-2021-3998	fixed-before	2.33-4	not yet assigned
+CVE-2021-3999	fixed-before	2.33-4	not yet assigned
+CVE-2021-43396	fixed-before	2.32-5	unimportant
+CVE-2022-23218	fixed-before	2.33-3	not yet assigned
+CVE-2022-23219	fixed-before	2.33-3	not yet assigned
+CVE-2022-39046	not-affected	0	unimportant
+CVE-2023-25139	not-affected	0	unimportant
+CVE-2023-4527	affected-fixed-later	2.36-9+deb12u3	not yet assigned
+CVE-2023-4806	affected-fixed-later	2.36-9+deb12u3	not yet assigned
+CVE-2023-4813	fixed-before	2.36-3	not yet assigned
+CVE-2023-4911	affected-fixed-later	2.36-9+deb12u3	not yet assigned
+CVE-2023-5156	not-affected	0	unimportant
+CVE-2023-6246	affected-fixed-later	2.36-9+deb12u4	not yet assigned
+CVE-2023-6779	affected-fixed-later	2.36-9+deb12u4	not yet assigned
+CVE-2023-6780	affected-fixed-later	2.36-9+deb12u4	not yet assigned
+CVE-2024-12455	not-affected	0	unimportant
+CVE-2024-2961	affected-fixed-later	2.36-9+deb12u6	not yet assigned
+CVE-2024-33599	affected-fixed-later	2.36-9+deb12u7	not yet assigned
+CVE-2024-33600	affected-fixed-later	2.36-9+deb12u7	not yet assigned
+CVE-2024-33601	affected-fixed-later	2.36-9+deb12u7	not yet assigned
+CVE-2024-33602	affected-fixed-later	2.36-9+deb12u7	not yet assigned
+CVE-2025-0395	affected-fixed-later	2.36-9+deb12u10	not yet assigned
+CVE-2025-0577	not-affected	0	unimportant
+CVE-2025-15281	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2025-4802	affected-fixed-later	2.36-9+deb12u11	not yet assigned
+CVE-2025-5702	not-affected	0	unimportant
+CVE-2025-5745	not-affected	0	unimportant
+CVE-2025-8058	affected-fixed-later	2.36-9+deb12u13	not yet assigned
+CVE-2026-0861	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2026-0915	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2026-100290	affected-open	not yet assigned	
+CVE-2026-115819	affected-open	not yet assigned	
+CVE-2026-122054	fixed-before	2.32-1	not yet assigned
+CVE-2026-18374	affected-open	not yet assigned	
+CVE-2026-19499	affected-open	not yet assigned	
+CVE-2026-19542	affected-open	not yet assigned	
+CVE-2026-3904	fixed-before	2.36-9	not yet assigned
+CVE-2026-4046	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2026-4437	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2026-4438	affected-fixed-later	2.36-9+deb12u14	not yet assigned
+CVE-2026-5435	affected-open	not yet assigned	
+CVE-2026-5450	affected-open	not yet assigned	
+CVE-2026-5928	affected-open	not yet assigned	
+CVE-2026-6238	affected-open	not yet assigned	
+CVE-2026-6368	affected-open	not yet assigned	
+CVE-2026-6791	affected-open	not yet assigned	
+CVE-2026-77117	affected-open	not yet assigned	
+CVE-2026-80489	affected-open	not yet assigned	
+CVE-2026-84243	affected-open	not yet assigned	
+CVE-2026-8674	affected-open	not yet assigned	
+CVE-2026-86805	affected-open	not yet assigned	
+CVE-2026-89092	affected-open	not yet assigned	
+CVE-2026-95818	affected-open	not yet assigned	
+CVE-2026-97399	affected-open	not yet assigned	
+TEMP-0552518-ADA4BA	fixed-before	2.10.1-7	unimportant
