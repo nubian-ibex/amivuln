@@ -244,7 +244,7 @@ The runtime (podman, then docker) is invoked only to export the rootfs,
 which never executes anything inside the container. The container's own
 `os-release` decides the ecosystem, so the host distribution never leaks
 into the answer, and the packages are judged by the matching source (OSV
-for Debian, Ubuntu, Rocky, `AlmaLinux`; the rpm database through the host
+for Debian, Ubuntu, Rocky, `AlmaLinux`, Red Hat Enterprise Linux (UBI included); the rpm database through the host
 `rpm` for Fedora-family containers). Findings are labeled with the
 container id, for example `web:nginx`.
 

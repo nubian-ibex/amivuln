@@ -216,6 +216,13 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
             .filter(|n| (8..=9).contains(n))
             .map(Ecosystem::Alma)
             .ok_or_else(|| format!("invalid AlmaLinux release {v:?} in --distro (use 8 or 9)")),
+        Some(("rhel", v)) => v
+            .split('.')
+            .next()
+            .and_then(|m| m.parse::<u16>().ok())
+            .filter(|n| (8..=10).contains(n))
+            .map(Ecosystem::Rhel)
+            .ok_or_else(|| format!("invalid RHEL release {v:?} in --distro (use 8, 9 or 10)")),
         Some(("debian", v)) => v
             .parse()
             .map(Ecosystem::Debian)
@@ -252,7 +259,7 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
         }
         None if s == "arch" => Ok(Ecosystem::Arch),
         _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, rocky:NN or alma:NN"
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, rhel:N, rocky:NN or alma:NN"
         )),
     }
 }
@@ -821,6 +828,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Debian(v) => ("debian".to_owned(), v.to_string()),
         Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{}", v / 100, v % 100)),
         Ecosystem::Rocky(v) => ("rocky".to_owned(), v.to_string()),
+        Ecosystem::Rhel(v) => ("rhel".to_owned(), v.to_string()),
         Ecosystem::Alma(v) => ("almalinux".to_owned(), v.to_string()),
         // A host is never a language ecosystem; kept total for the match.
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),

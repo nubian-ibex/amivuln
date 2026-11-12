@@ -37,6 +37,8 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
         // Rocky and AlmaLinux declare VERSION_ID as the major release.
         "rocky" => Ecosystem::Rocky(version_id?.parse().ok()?),
+        // RHEL declares VERSION_ID as major.minor (9.4); the major decides.
+        "rhel" => Ecosystem::Rhel(version_id?.split('.').next()?.parse().ok()?),
         "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
         // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
         // long-lived OSV ecosystem, so amivuln does not claim them.

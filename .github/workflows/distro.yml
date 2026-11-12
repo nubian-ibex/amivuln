@@ -27,11 +27,15 @@ jobs:
         with: { persist-credentials: false }
       - run: rustup show
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo build --release --locked -p amivuln
+      # A static binary: the UBI 9 image has an older glibc than the runner.
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq -y musl-tools
+          cargo build --release --locked -p amivuln --target x86_64-unknown-linux-musl
       - name: Collect the binary and the test script
         run: |
           mkdir -p out
-          cp target/release/amivuln tests/distro/run.sh out/
+          cp target/x86_64-unknown-linux-musl/release/amivuln tests/distro/run.sh out/
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: distro-test
@@ -64,6 +68,7 @@ jobs:
         include:
           - { image: "fedora:44", setup: "dnf install -y -q jq ca-certificates" }
           - { image: "archlinux:base", setup: "pacman -Sy --noconfirm jq ca-certificates" }
+          - { image: "registry.access.redhat.com/ubi9/ubi:9.6", setup: "dnf install -y -q jq ca-certificates" }
           - { image: "debian:stable", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
     container:
       image: ${{ matrix.image }}

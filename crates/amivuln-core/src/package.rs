@@ -20,6 +20,8 @@ pub enum Ecosystem {
     Rocky(u16),
     /// `AlmaLinux`, release 8 or 9.
     Alma(u16),
+    /// Red Hat Enterprise Linux, major release 8, 9 or 10.
+    Rhel(u16),
     /// Ubuntu, an LTS release: 2004 to 9904, where 2404 is 24.04.
     Ubuntu(u16),
     /// Go modules (OSV ecosystem `Go`), found in binaries by their build info.
@@ -38,6 +40,9 @@ impl Ecosystem {
             Self::Debian(v) => Some(format!("Debian:{v}")),
             Self::Rocky(v) => Some(format!("Rocky Linux:{v}")),
             Self::Alma(v) => Some(format!("AlmaLinux:{v}")),
+            // Red Hat splits a release by repository; the BaseOS stream is the
+            // primary one, `osv_ecosystems` lists the rest.
+            Self::Rhel(v) => Some(format!("Red Hat:enterprise_linux:{v}::baseos")),
             // The OSV ecosystem keeps the decimal form (Ubuntu:24.04:LTS).
             Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
             Self::Go => Some("Go".to_owned()),
@@ -45,6 +50,22 @@ impl Ecosystem {
             // OSV names Alpine releases `Alpine:v3.20`, with no zero padding.
             Self::Alpine(v) => Some(format!("Alpine:v{}.{}", v / 100, v % 100)),
             Self::Fedora(_) | Self::Arch => None,
+        }
+    }
+
+    /// Every OSV ecosystem a package of this release can be filed under.
+    ///
+    /// Red Hat files an advisory under the repository a package ships in
+    /// (`baseos`, `appstream`, `crb`) and the rpm database does not record
+    /// which one, so each is asked. Every other ecosystem has exactly one.
+    #[must_use]
+    pub fn osv_ecosystems(&self) -> Vec<String> {
+        match self {
+            Self::Rhel(v) => ["baseos", "appstream", "crb"]
+                .iter()
+                .map(|repo| format!("Red Hat:enterprise_linux:{v}::{repo}"))
+                .collect(),
+            other => other.osv_ecosystem().into_iter().collect(),
         }
     }
 
@@ -67,6 +88,7 @@ impl Ecosystem {
             Self::Ubuntu(_) => "pkg:deb/ubuntu",
             Self::Rocky(_) => "pkg:rpm/rocky",
             Self::Alma(_) => "pkg:rpm/alma",
+            Self::Rhel(_) => "pkg:rpm/redhat",
             Self::Alpine(_) => "pkg:apk/alpine",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
@@ -198,5 +220,20 @@ mod tests {
             Some("Alpine:v3.9")
         );
         assert_eq!(Ecosystem::Alpine(320).purl_namespace(), "pkg:apk/alpine");
+        assert_eq!(
+            Ecosystem::Rhel(9).osv_ecosystem().as_deref(),
+            Some("Red Hat:enterprise_linux:9::baseos")
+        );
+        assert_eq!(
+            Ecosystem::Rhel(9).osv_ecosystems(),
+            [
+                "Red Hat:enterprise_linux:9::baseos",
+                "Red Hat:enterprise_linux:9::appstream",
+                "Red Hat:enterprise_linux:9::crb"
+            ]
+        );
+        assert_eq!(Ecosystem::Debian(12).osv_ecosystems(), ["Debian:12"]);
+        assert!(Ecosystem::Fedora(44).osv_ecosystems().is_empty());
+        assert_eq!(Ecosystem::Rhel(9).purl_namespace(), "pkg:rpm/redhat");
     }
 }

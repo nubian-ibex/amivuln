@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Turning distro data into findings. Pure functions: no I/O, no clock.
 
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use amivuln_core::{
@@ -157,16 +158,27 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
     cves.sort_unstable();
     cves.dedup();
     for cve in cves {
-        let Some(fix) = osv.fix_for(&cve) else {
+        let candidates = fixes_for_package(pkg, osv, &cve);
+        // Several advisories can fix one CVE (Red Hat issues one per minor
+        // stream): at or above any published fix is patched, otherwise the
+        // lowest fix is the one to move to.
+        let chosen = candidates
+            .iter()
+            .find(|f| {
+                matches!(
+                    pkg.version.compare(f),
+                    Some(Ordering::Greater | Ordering::Equal)
+                )
+            })
+            .or_else(|| {
+                candidates
+                    .iter()
+                    .min_by(|a, b| a.compare(b).unwrap_or(Ordering::Equal))
+            });
+        let Some(fix_version) = chosen.cloned() else {
             continue;
         };
-        // The fix is compared in the installed package's own version scheme.
-        let fixed = match &pkg.version {
-            Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
-            Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
-            _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
-        };
-        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(fixed));
+        let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(fix_version));
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }
@@ -182,11 +194,37 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
     out
 }
 
+/// Every fix OSV records for `cve` that applies to this package, in the
+/// package's own version scheme.
+///
+/// An advisory lists a fix per binary package, so the entries are matched on
+/// the installed name and the source name. When none name the package (an
+/// older record shape) the advisory's lowest fix is used instead.
+fn fixes_for_package(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Vec<Version> {
+    let parse = |fix: &str| match &pkg.version {
+        Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
+        Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
+        _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
+    };
+    let named: Vec<Version> = osv
+        .fixes_for(cve)
+        .iter()
+        .filter(|(name, _)| *name == pkg.name || Some(name) == pkg.source_name.as_ref())
+        .map(|(_, fix)| parse(fix))
+        .collect();
+    if named.is_empty() {
+        osv.fix_for(cve).map(parse).into_iter().collect()
+    } else {
+        named
+    }
+}
+
 /// Maps the textual severity of an advisory database to a [`Severity`].
 fn osv_severity(text: Option<&str>) -> Severity {
     match text {
         Some("CRITICAL") => Severity::Critical,
-        Some("HIGH") => Severity::High,
+        // Red Hat's "Important" is its second level.
+        Some("HIGH" | "IMPORTANT") => Severity::High,
         Some("MODERATE" | "MEDIUM") => Severity::Medium,
         Some("LOW") => Severity::Low,
         _ => Severity::Unknown,
@@ -460,5 +498,59 @@ mod tests {
         )];
         enrich(&mut g, None, None);
         assert!(g[0].kev.is_none());
+    }
+
+    fn rhel_pkg(name: &str, version: &str) -> PackageRef {
+        PackageRef {
+            ecosystem: Ecosystem::Rhel(9),
+            name: name.into(),
+            source_name: None,
+            version: Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
+            arch: None,
+            provenance: Provenance::PackageDb,
+        }
+    }
+
+    /// Two RHSAs for one CVE (a GA and a z-stream fix), one of them also
+    /// listing another package with a lower fix.
+    fn rhsa_data() -> OsvData {
+        let entry = |id: &str, fixes: &[(&str, &str)]| amivuln_sources::osv::OsvEntry {
+            advisory: id.into(),
+            cves: vec!["CVE-2023-5363".into()],
+            fixed: fixes.first().map(|(_, f)| (*f).to_owned()),
+            fixes: fixes
+                .iter()
+                .map(|(n, f)| ((*n).to_owned(), (*f).to_owned()))
+                .collect(),
+            severity: Some("IMPORTANT".into()),
+        };
+        OsvData::from_entries(vec![
+            entry(
+                "RHSA-2024:0310",
+                &[
+                    ("openssl-libs", "1:3.0.7-25.el9_3"),
+                    ("openssl", "1:3.0.1-1.el9"),
+                ],
+            ),
+            entry("RHSA-2024:2447", &[("openssl-libs", "1:3.0.7-28.el9_4")]),
+        ])
+    }
+
+    #[test]
+    fn rhel_at_or_above_any_fix_is_patched() {
+        let osv = rhsa_data();
+        // Below every fix: affected, pointing at the lowest fix of this package
+        // (the other package's lower fix must not leak in).
+        let below = osv_findings(&rhel_pkg("openssl-libs", "1:3.0.7-24.el9"), &osv, &[]);
+        assert_eq!(below.len(), 1);
+        assert_eq!(below[0].severity, Severity::High);
+        let fixed = match &below[0].verdict {
+            Verdict::Affected { fixed_in } => fixed_in.as_ref().map(ToString::to_string),
+            _ => None,
+        };
+        assert_eq!(fixed.as_deref(), Some("1:3.0.7-25.el9_3"));
+        // Between the two fixes: the lower one already covers it.
+        assert!(osv_findings(&rhel_pkg("openssl-libs", "1:3.0.7-26.el9_3"), &osv, &[]).is_empty());
+        assert!(osv_findings(&rhel_pkg("openssl-libs", "1:3.0.7-28.el9_4"), &osv, &[]).is_empty());
     }
 }
