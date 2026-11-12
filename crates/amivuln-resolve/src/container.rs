@@ -242,7 +242,17 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         .trim_matches('"');
     // Ubuntu writes "24.04": the OSV ecosystem wants 2404. Other distros use
     // the major release alone.
-    let version = if id == "ubuntu" {
+    let version = if id == "alpine" {
+        // `3.20.3` is release 3.20 (320). An edge or alpha image
+        // (`3.23.0_alpha20250108`) has no release OSV knows: refuse it.
+        let mut parts = raw.split('.');
+        parts
+            .next()
+            .filter(|_| !raw.contains('_'))
+            .and_then(|m| m.parse::<u16>().ok())
+            .zip(parts.next().and_then(|m| m.parse::<u16>().ok()))
+            .map(|(maj, min)| maj * 100 + min)
+    } else if id == "ubuntu" {
         let (major, minor) = raw.split_once('.').unwrap_or((raw, "0"));
         major
             .parse::<u16>()
@@ -259,7 +269,7 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         ("debian", Some(v)) => Some(Ecosystem::Debian(v)),
         ("ubuntu", Some(v)) if matches!(v % 100, 4 | 10) => Some(Ecosystem::Ubuntu(v)),
         ("arch", _) => Some(Ecosystem::Arch),
-        ("alpine", _) => Some(Ecosystem::Alpine),
+        ("alpine", Some(v)) => Some(Ecosystem::Alpine(v)),
         _ => None,
     }
 }
@@ -280,10 +290,10 @@ pub fn packages(
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
             Ok(deb_packages(&status, eco))
         }
-        Ecosystem::Alpine => {
+        Ecosystem::Alpine(_) => {
             let installed = std::fs::read_to_string(root.join("root/lib/apk/db/installed"))
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
-            Ok(apk_packages(&installed))
+            Ok(apk_packages(&installed, eco))
         }
         Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) => {
             let db = root.join("root/var/lib/rpm");
@@ -317,71 +327,65 @@ pub fn packages(
     }
 }
 
+/// Reads `/var/lib/dpkg/status`. OSV keys Debian and Ubuntu advisories by the
+/// source package, so the `Source:` field (`openssl (1.1.1k-1)`, the version
+/// only when it differs) names the package a binary such as `libssl1.1`
+/// is queried as.
 fn deb_packages(status: &str, eco: Ecosystem) -> Vec<PackageRef> {
     let mut packages = Vec::new();
-    let mut fields: BTreeMap<String, String> = BTreeMap::new();
-    for line in status.lines() {
-        if line.is_empty() {
-            if let (Some(name), Some(version)) = (fields.get("Package"), fields.get("Version"))
-                && let Ok(pkg) = crate::from_name_version(eco, name, version)
+    for stanza in status.split("\n\n") {
+        let mut fields: BTreeMap<&str, &str> = BTreeMap::new();
+        for line in stanza.lines() {
+            // Continuation lines start with a space and belong to the last field.
+            if !line.starts_with([' ', '\t'])
+                && let Some((key, value)) = line.split_once(": ")
             {
-                packages.push(pkg);
+                fields.insert(key.trim(), value.trim());
             }
-            fields.clear();
+        }
+        let (Some(name), Some(version)) = (fields.get("Package"), fields.get("Version")) else {
             continue;
-        }
-        if let Some((key, value)) = line.split_once(": ") {
-            fields.insert(key.trim().to_owned(), value.trim().to_owned());
-        }
-    }
-    // The file may end without a blank line.
-    if let (Some(name), Some(version)) = (fields.get("Package"), fields.get("Version"))
-        && let Ok(pkg) = crate::from_name_version(eco, name, version)
-    {
+        };
+        let Ok(mut pkg) = crate::from_name_version(eco, name, version) else {
+            continue;
+        };
+        pkg.source_name = fields
+            .get("Source")
+            .and_then(|s| s.split_whitespace().next())
+            .filter(|source| source != name)
+            .map(str::to_owned);
         packages.push(pkg);
     }
     packages
 }
 
-fn apk_packages(installed: &str) -> Vec<PackageRef> {
+/// Reads `/lib/apk/db/installed`: stanzas of `K:value` lines separated by a
+/// blank line. `P` is the package, `V` the version, `A` the architecture and
+/// `o` the origin (source) package. OSV keys Alpine advisories by origin, so
+/// a subpackage such as `libcrypto3` is queried as `openssl`.
+fn apk_packages(installed: &str, eco: Ecosystem) -> Vec<PackageRef> {
     let mut packages = Vec::new();
-    let mut fields: BTreeMap<String, String> = BTreeMap::new();
-    for line in installed.lines() {
-        if line.is_empty() {
-            if let (Some(name), Some(version)) = (fields.get("P"), fields.get("V")) {
-                let mut pkg = amivuln_core::PackageRef {
-                    ecosystem: Ecosystem::Alpine,
-                    name: name.clone(),
-                    source_name: None,
-                    version: Version::Semver(amivuln_version::SemverVersion::default()),
-                    arch: None,
-                    provenance: Provenance::PackageDb,
-                };
-                if let Ok(v) = amivuln_version::SemverVersion::parse(version) {
-                    pkg.version = Version::Semver(v);
-                }
-                packages.push(pkg);
+    for stanza in installed.split("\n\n") {
+        let mut fields: BTreeMap<&str, &str> = BTreeMap::new();
+        for line in stanza.lines() {
+            if let Some((key, value)) = line.split_once(':') {
+                fields.insert(key.trim(), value.trim());
             }
-            fields.clear();
+        }
+        let (Some(name), Some(version)) = (fields.get("P"), fields.get("V")) else {
             continue;
-        }
-        if let Some((key, value)) = line.split_once(':') {
-            fields.insert(key.trim().to_owned(), value.trim().to_owned());
-        }
-    }
-    if let (Some(name), Some(version)) = (fields.get("P"), fields.get("V")) {
-        let mut pkg = amivuln_core::PackageRef {
-            ecosystem: Ecosystem::Alpine,
-            name: name.clone(),
-            source_name: None,
-            version: Version::Semver(amivuln_version::SemverVersion::default()),
-            arch: None,
-            provenance: Provenance::PackageDb,
         };
-        if let Ok(v) = amivuln_version::SemverVersion::parse(version) {
-            pkg.version = Version::Semver(v);
-        }
-        packages.push(pkg);
+        packages.push(PackageRef {
+            ecosystem: eco,
+            name: (*name).to_owned(),
+            source_name: fields
+                .get("o")
+                .filter(|o| *o != name)
+                .map(|o| (*o).to_owned()),
+            version: Version::Apk(version.parse().unwrap_or_else(|never| match never {})),
+            arch: fields.get("A").map(|a| (*a).to_owned()),
+            provenance: Provenance::PackageDb,
+        });
     }
     packages
 }
@@ -459,8 +463,14 @@ mod tests {
             ecosystem_from_os_release(interim),
             Some(Ecosystem::Ubuntu(2410))
         );
-        let alpine = "ID=alpine\n";
-        assert_eq!(ecosystem_from_os_release(alpine), Some(Ecosystem::Alpine));
+        let alpine = "ID=alpine\nVERSION_ID=3.20.3\n";
+        assert_eq!(
+            ecosystem_from_os_release(alpine),
+            Some(Ecosystem::Alpine(320))
+        );
+        // Edge and alpha images have no OSV release.
+        let edge = "ID=alpine\nVERSION_ID=3.23.0_alpha20250108\n";
+        assert_eq!(ecosystem_from_os_release(edge), None);
         let unknown = "ID=gentoo\n";
         assert!(matches!(
             ecosystem_from_os_release(unknown),
@@ -470,20 +480,28 @@ mod tests {
 
     #[test]
     fn deb_status_is_parsed() {
-        let status = "Package: nginx\nVersion: 1.22.1-9\nArchitecture: amd64\n\nPackage: curl\nVersion: 7.88.1-10+deb12u5\n\n";
+        let status = "Package: nginx\nVersion: 1.22.1-9\nArchitecture: amd64\nDescription: web\n server\n\nPackage: curl\nVersion: 7.88.1-10+deb12u5\n\nPackage: libssl3\nSource: openssl (3.0.11-1)\nVersion: 3.0.11-1~deb12u1\n\n";
         let found = deb_packages(status, Ecosystem::Debian(12));
         let names: Vec<&str> = found.iter().map(|p| p.name.as_str()).collect();
-        assert_eq!(names, ["nginx", "curl"]);
+        assert_eq!(names, ["nginx", "curl", "libssl3"]);
+        assert_eq!(found[0].source_name, None);
+        assert_eq!(found[2].source_name.as_deref(), Some("openssl"));
         assert!(matches!(found[0].version, Version::Deb(_)));
     }
 
     #[test]
     fn apk_installed_is_parsed() {
-        let installed = "P:busybox\nV:1.36.1-r5\n\nP:libc6\nV:2.38-r0\n\n";
-        let found = apk_packages(installed);
+        let installed = "P:busybox\nV:1.36.1-r5\no:busybox\nA:x86_64\n\nP:libcrypto3\nV:3.1.4-r0\no:openssl\nA:x86_64\n\n";
+        let found = apk_packages(installed, Ecosystem::Alpine(319));
         assert_eq!(found.len(), 2);
         assert_eq!(found[0].name, "busybox");
+        assert_eq!(found[0].source_name, None);
         assert_eq!(found[0].version.to_string(), "1.36.1-r5");
+        assert!(matches!(found[0].version, Version::Apk(_)));
+        // A subpackage is advisory-keyed by its origin.
+        assert_eq!(found[1].name, "libcrypto3");
+        assert_eq!(found[1].source_name.as_deref(), Some("openssl"));
+        assert_eq!(found[1].ecosystem, Ecosystem::Alpine(319));
     }
 
     #[test]

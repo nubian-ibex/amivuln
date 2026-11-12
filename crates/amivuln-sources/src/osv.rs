@@ -78,8 +78,9 @@ pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
         .collect())
 }
 
-/// Accepts `DEBIAN-CVE-...`/`UBUNTU-CVE-...` and the Rocky/Alma errata ids
-/// `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`; anything else is dropped so an id
+/// Accepts `DEBIAN-CVE-...`/`UBUNTU-CVE-...`/`ALPINE-CVE-...`, the Debian and
+/// Ubuntu advisory ids `DSA-N-N`, `DLA-N-N` and `USN-N-N`, and the Rocky/Alma
+/// errata ids `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`; anything else is dropped so an id
 /// from the response never reaches a URL unchecked.
 fn is_advisory_id(id: &str) -> bool {
     is_language_advisory_id(id) || is_distro_advisory_id(id)
@@ -111,6 +112,17 @@ fn is_distro_advisory_id(id: &str) -> bool {
                     && !n.is_empty()
                     && y.bytes().all(|b| b.is_ascii_digit())
                     && n.bytes().all(|b| b.is_ascii_digit())
+            });
+        }
+        // Debian and Ubuntu security advisories (`DSA-5169-1`, `DLA-3942-1`,
+        // `USN-6000-1`): OSV answers with these alone for releases whose
+        // per-CVE records stopped, such as Debian 11.
+        if matches!(prefix, "DSA" | "DLA" | "USN") {
+            return rest.split_once('-').is_some_and(|(n, rev)| {
+                !n.is_empty()
+                    && !rev.is_empty()
+                    && n.bytes().all(|b| b.is_ascii_digit())
+                    && rev.bytes().all(|b| b.is_ascii_digit())
             });
         }
         return crate::is_cve_id(rest);
@@ -477,6 +489,32 @@ mod tests {
     /// Fixture recorded from the real API on 2026-11-08.
     const ADVISORY: &[u8] =
         include_bytes!("../../../tests/fixtures/http/osv/2026-11-08/DEBIAN-CVE-2023-5363.json");
+
+    #[test]
+    fn distro_advisory_ids_are_validated() {
+        for ok in [
+            "DEBIAN-CVE-2024-6387",
+            "UBUNTU-CVE-2024-6387",
+            "ALPINE-CVE-2023-5678",
+            "DSA-5169-1",
+            "DLA-3942-2",
+            "USN-6000-1",
+            "RLSA-2024:1234",
+        ] {
+            assert!(is_advisory_id(ok), "{ok} should be accepted");
+        }
+        for bad in [
+            "DSA-",
+            "DSA-x-1",
+            "DSA-5169",
+            "DSA-5169-x",
+            "USN-1/../x-1",
+            "FOO-5169-1",
+            "ALPINE-notacve",
+        ] {
+            assert!(!is_advisory_id(bad), "{bad} should be dropped");
+        }
+    }
 
     #[test]
     fn recorded_debian_advisory() {

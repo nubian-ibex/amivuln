@@ -163,6 +163,7 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
         // The fix is compared in the installed package's own version scheme.
         let fixed = match &pkg.version {
             Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
+            Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
             _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
         };
         let mut verdict = classify(&pkg.version, &DistroStatus::Fixed(fixed));

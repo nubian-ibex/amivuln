@@ -73,6 +73,20 @@ inventory)
     want_rc "0 1"
     jq_is pending '.kind == "pending"'
     jq_is pending '[.updates[]?, .pending[]?] | any(.closes | index("CVE-2024-6387"))'
+
+    # Alpine 3.18 openssl before and after the fix for CVE-2023-2650, in the
+    # apk version order (`-r` revisions and a patch level that changes).
+    echo 'openssl@3.1.0-r4' >"$work/alpine-before.txt"
+    echo 'openssl@3.1.1-r0' >"$work/alpine-after.txt"
+    # shellcheck disable=SC2086
+    run alpine-before amivuln check --packages-from "$work/alpine-before.txt" --distro alpine:3.18 --format json
+    want_rc "0 1"
+    jq_is alpine-before '.complete'
+    jq_is alpine-before '.targets[0].findings | any(.id == "CVE-2023-2650" and .distro_status.state == "affected" and .distro_status.fixed_in == "3.1.1-r0")'
+    # shellcheck disable=SC2086
+    run alpine-after amivuln check --packages-from "$work/alpine-after.txt" --distro alpine:3.18 --format json
+    want_rc "0 1"
+    jq_is alpine-after '.targets[0].findings | all(.id != "CVE-2023-2650")'
     ;;
 host)
     # shellcheck disable=SC1091

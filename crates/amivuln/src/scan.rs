@@ -262,6 +262,7 @@ fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version) -> Option<
         {
             Some(v.to_string())
         }
+        amivuln_core::Version::Apk(v) if matches!(eco, Ecosystem::Alpine(_)) => Some(v.to_string()),
         amivuln_core::Version::Semver(v) if eco.is_language() => Some(v.to_string()),
         _ => None,
     }
@@ -385,14 +386,21 @@ async fn load_osv(
             ));
         };
         osv_ecos.push(osv_eco.clone());
-        let body = match amivuln_sources::osv::batch_request(
-            pkg.name.as_str(),
-            osv_eco.as_str(),
-            version.as_str(),
-        ) {
-            Ok(b) => b,
-            Err(e) => return fail(e.to_string()),
+        // OSV keys Alpine, Debian and Ubuntu advisories by the source package,
+        // so a binary such as `libcrypto3` or `libssl1.1` is asked about as
+        // `openssl`.
+        let osv_name = match pkg.ecosystem {
+            Ecosystem::Alpine(_) | Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
+                pkg.source_name.as_deref().unwrap_or(&pkg.name)
+            }
+            _ => pkg.name.as_str(),
         };
+        let body =
+            match amivuln_sources::osv::batch_request(osv_name, osv_eco.as_str(), version.as_str())
+            {
+                Ok(b) => b,
+                Err(e) => return fail(e.to_string()),
+            };
         let key = format!("osv:{body}");
         let batch = match fetch_cached_body(
             &FetchCtx {
@@ -504,19 +512,9 @@ async fn load_distro(
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Rocky(_)
         | Ecosystem::Alma(_)
+        | Ecosystem::Alpine(_)
         | Ecosystem::Go
         | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
-        // Alpine has no OSV ecosystem in amivuln yet: the honest answer is a
-        // failed required source, never a silent clean scan.
-        Ecosystem::Alpine => (
-            None,
-            report_of(
-                SourceId::Osv,
-                required,
-                SourceStatus::Failed("alpine has no OSV ecosystem in amivuln yet".to_owned()),
-                Duration::ZERO,
-            ),
-        ),
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -872,7 +870,7 @@ pub(crate) fn owners(
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Go
         | Ecosystem::Crates
-        | Ecosystem::Alpine => {
+        | Ecosystem::Alpine(_) => {
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
@@ -916,7 +914,7 @@ pub(crate) fn resolve_all(
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Go
         | Ecosystem::Crates
-        | Ecosystem::Alpine => None,
+        | Ecosystem::Alpine(_) => None,
     };
     if all {
         match backend.as_ref().map(|b| b.resolver().list_all()) {
@@ -970,7 +968,7 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
         | Ecosystem::Alma(_)
         | Ecosystem::Go
         | Ecosystem::Crates
-        | Ecosystem::Alpine => SourceId::Osv,
+        | Ecosystem::Alpine(_) => SourceId::Osv,
     }
 }
 
@@ -1008,6 +1006,7 @@ fn split_language(eco: Ecosystem, resolved: &[(String, PackageRef)]) -> Language
 fn build_reports(
     resolved: &[(String, PackageRef)],
     separate_lang: bool,
+    host_source: SourceId,
     data: Option<&DistroData>,
     lang_data: Option<&DistroData>,
     nvd_data: &std::collections::BTreeMap<String, Vec<amivuln_sources::nvd::NvdEntry2>>,
@@ -1017,7 +1016,10 @@ fn build_reports(
     resolved
         .iter()
         .map(|(input, pkg)| {
-            let own_pass = separate_lang && pkg.ecosystem.is_language();
+            // The same rule as `split_language`: language packages and packages
+            // whose source is not the host's were fetched in the own pass.
+            let own_pass = separate_lang
+                && (pkg.ecosystem.is_language() || host_source_id(pkg.ecosystem) != host_source);
             let findings = if own_pass {
                 let found = match lang_data {
                     Some(DistroData::Osv(list)) => list
@@ -1150,6 +1152,7 @@ async fn gather(
     let mut reports = build_reports(
         resolved,
         separate_lang,
+        host_source_id(eco),
         data.as_ref(),
         lang_data.as_ref(),
         &nvd_data,
