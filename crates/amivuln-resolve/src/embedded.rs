@@ -566,10 +566,25 @@ mod tests {
         out
     }
 
+    /// Decodes a hex fixture. The ELF samples are stored as text so the
+    /// repository holds no binary blobs.
+    fn fixture(hex: &str) -> Vec<u8> {
+        let digits: Vec<u8> = hex.bytes().filter(u8::is_ascii_hexdigit).collect();
+        digits
+            .chunks(2)
+            .map(|pair| {
+                let text = String::from_utf8_lossy(pair);
+                u8::from_str_radix(&text, 16).unwrap_or(0)
+            })
+            .collect()
+    }
+
     #[test]
     fn the_recorded_fixture_is_detected() {
-        let bytes = include_bytes!("../../../tests/fixtures/elf/with-package-note.elf");
-        let found = detect_bytes(bytes);
+        let bytes = fixture(include_str!(
+            "../../../tests/fixtures/elf/with-package-note.elf.hex"
+        ));
+        let found = detect_bytes(&bytes);
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].name, "python3-multipart");
         assert_eq!(found[0].version, "0:1.3.0-1.fc43");
@@ -578,7 +593,9 @@ mod tests {
 
     #[test]
     fn recorded_go_and_rust_fixtures_are_detected() {
-        let go = detect_bytes(include_bytes!("../../../tests/fixtures/elf/go-app.bin"));
+        let go = detect_bytes(&fixture(include_str!(
+            "../../../tests/fixtures/elf/go-app.bin.hex"
+        )));
         let names: Vec<(&str, &str)> = go
             .iter()
             .map(|d| (d.name.as_str(), d.version.as_str()))
@@ -590,7 +607,9 @@ mod tests {
                 ("golang.org/x/net", "v0.7.0")
             ]
         );
-        let rust = detect_bytes(include_bytes!("../../../tests/fixtures/elf/rust-app.bin"));
+        let rust = detect_bytes(&fixture(include_str!(
+            "../../../tests/fixtures/elf/rust-app.bin.hex"
+        )));
         let names: Vec<&str> = rust.iter().map(|d| d.name.as_str()).collect();
         assert_eq!(names, ["serde", "time"]);
     }
@@ -743,14 +762,16 @@ mod tests {
             state ^= state << 17;
             state
         };
-        let seeds: [&[u8]; 3] = [
-            include_bytes!("../../../tests/fixtures/elf/with-package-note.elf"),
-            include_bytes!("../../../tests/fixtures/elf/go-app.bin"),
-            include_bytes!("../../../tests/fixtures/elf/rust-app.bin"),
+        let seeds: [Vec<u8>; 3] = [
+            fixture(include_str!(
+                "../../../tests/fixtures/elf/with-package-note.elf.hex"
+            )),
+            fixture(include_str!("../../../tests/fixtures/elf/go-app.bin.hex")),
+            fixture(include_str!("../../../tests/fixtures/elf/rust-app.bin.hex")),
         ];
-        for seed in seeds {
+        for seed in &seeds {
             for _ in 0..3000 {
-                let mut bytes = seed.to_vec();
+                let mut bytes = seed.clone();
                 let flips = 1 + next() % 8;
                 for _ in 0..flips {
                     let at = usize::try_from(next() % bytes.len() as u64).unwrap_or(0);

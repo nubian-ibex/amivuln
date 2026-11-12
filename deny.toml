@@ -9,9 +9,7 @@ all-features = true
 version = 2
 yanked = "deny"
 # Every ignore entry needs a reason and a review date.
-ignore = [
-  { id = "RUSTSEC-2024-0436", reason = "the paste crate is pulled transitively by ratatui; the unmaintained status is tracked in the ratatui issue tracker" },
-]
+ignore = []
 
 [licenses]
 version = 2
