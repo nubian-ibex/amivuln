@@ -662,4 +662,50 @@ mod extraction_tests {
         let err = export(&runtime, "web", &dir.path().join("export")).unwrap_err();
         assert!(err.to_string().contains("too large"), "{err}");
     }
+
+    /// Appends one member with an explicit entry type to a tar under test.
+    fn add_member(
+        tar: &mut tar::Builder<&mut Vec<u8>>,
+        name: &str,
+        kind: tar::EntryType,
+        data: &[u8],
+    ) {
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(kind);
+        header.set_size(data.len() as u64);
+        header.set_cksum();
+        tar.append_data(&mut header, name, data).unwrap();
+    }
+
+    /// Regression: the `var/lib/rpm/` directory entry matched the wanted
+    /// prefix and was written as an empty file, so the database inside it
+    /// could not be extracted and every UBI container failed.
+    #[test]
+    fn a_rpm_directory_entry_does_not_block_the_database() {
+        let mut bytes = Vec::new();
+        {
+            let mut tar = tar::Builder::new(&mut bytes);
+            add_member(
+                &mut tar,
+                "etc/os-release",
+                tar::EntryType::Regular,
+                b"ID=rhel\nVERSION_ID=\"9.4\"\n",
+            );
+            add_member(&mut tar, "var/lib/rpm/", tar::EntryType::Directory, b"");
+            add_member(
+                &mut tar,
+                "var/lib/rpm/rpmdb.sqlite",
+                tar::EntryType::Regular,
+                b"db",
+            );
+            tar.finish().unwrap();
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("fixture.tar");
+        std::fs::write(&tar_path, &bytes).unwrap();
+        let runtime = ScriptedRuntime { tar_path };
+        let dest = dir.path().join("export");
+        assert_eq!(export(&runtime, "ubi", &dest).unwrap(), Ecosystem::Rhel(9));
+        assert!(dest.join("root/var/lib/rpm/rpmdb.sqlite").is_file());
+    }
 }
