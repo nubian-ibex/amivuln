@@ -32,11 +32,11 @@ Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete (a r
 
 Only the ecosystem, package name and version leave the host. There is no telemetry.
 
-Full documentation: <https://nubian-ibex.github.io/amivuln/>.
+Full documentation: <https://ibexwall.com/amivuln/>.
 
 ## Project
 
-Source, issues and releases: <https://github.com/nubian-ibex/amivuln>. Architecture: <https://nubian-ibex.github.io/amivuln/architecture.html>.
+Source, issues and releases: <https://github.com/nubian-ibex/amivuln>. Architecture: <https://ibexwall.com/amivuln/architecture.html>.
 
 ## License
 

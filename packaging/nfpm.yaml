@@ -13,7 +13,7 @@ priority: optional
 maintainer: amivuln contributors <security@ibexwall.com>
 description: |
   Backport-aware CVE check for binaries, services and packages on this host.
-homepage: https://amivuln.dev
+homepage: https://ibexwall.com/amivuln/
 license: MIT OR Apache-2.0
 contents:
   - src: ${BIN}

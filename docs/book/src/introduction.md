@@ -1,6 +1,6 @@
 # amivuln
 
-Languages: **English** · [Português](https://nubian-ibex.github.io/amivuln/pt/) · [Español](https://nubian-ibex.github.io/amivuln/es/) · [Deutsch](https://nubian-ibex.github.io/amivuln/de/) · [Français](https://nubian-ibex.github.io/amivuln/fr/)
+Languages: **English** · [Português](https://ibexwall.com/amivuln/pt/) · [Español](https://ibexwall.com/amivuln/es/) · [Deutsch](https://ibexwall.com/amivuln/de/) · [Français](https://ibexwall.com/amivuln/fr/)
 
 ![amivuln: Am I vulnerable? Backport-aware CVE checks for Linux](images/banner.jpg)
 

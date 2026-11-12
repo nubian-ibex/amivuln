@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://amivuln.dev/schema/restart-v1.json",
+  "$id": "https://ibexwall.com/amivuln/schema/restart-v1.json",
   "title": "amivuln restart report, schema version 1",
   "type": "object",
   "additionalProperties": false,

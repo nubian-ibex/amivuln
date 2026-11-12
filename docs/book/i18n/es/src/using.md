@@ -2,9 +2,9 @@
 
 Recetas para los lugares donde amivuln suele ejecutarse. Cada una está lo
 bastante completa como para copiarla; la
-[guía del usuario](https://nubian-ibex.github.io/amivuln/guide.html) explica
+[guía del usuario](https://ibexwall.com/amivuln/guide.html) explica
 las opciones en profundidad y la
-[referencia](https://nubian-ibex.github.io/amivuln/reference.html) las lista
+[referencia](https://ibexwall.com/amivuln/reference.html) las lista
 todas.
 
 Dos cosas valen en todas partes. Lea `complete` y las líneas `source` antes de

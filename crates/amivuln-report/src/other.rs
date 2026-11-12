@@ -87,7 +87,7 @@ pub fn render_sarif(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
                 driver: SarifDriver {
                     name: "amivuln",
                     version: &r.tool_version,
-                    information_uri: "https://nubian-ibex.github.io/amivuln/",
+                    information_uri: "https://ibexwall.com/amivuln/",
                 },
             },
             results: r

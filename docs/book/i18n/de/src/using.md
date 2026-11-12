@@ -2,9 +2,9 @@
 
 Rezepte für die Orte, an denen amivuln üblicherweise läuft. Jedes ist
 vollständig genug zum Kopieren; das
-[Benutzerhandbuch](https://nubian-ibex.github.io/amivuln/guide.html) erklärt die
+[Benutzerhandbuch](https://ibexwall.com/amivuln/guide.html) erklärt die
 Optionen im Detail, die
-[Referenz](https://nubian-ibex.github.io/amivuln/reference.html) listet alle auf.
+[Referenz](https://ibexwall.com/amivuln/reference.html) listet alle auf.
 
 Zwei Dinge gelten überall. Lesen Sie `complete` und die `source`-Zeilen, bevor
 Sie einem leeren Ergebnis trauen: Exit-Code `2` bedeutet, dass eine

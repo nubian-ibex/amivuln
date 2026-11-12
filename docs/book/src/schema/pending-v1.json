@@ -245,7 +245,7 @@
       ]
     }
   },
-  "$id": "https://amivuln.dev/schema/pending-v1.json",
+  "$id": "https://ibexwall.com/amivuln/schema/pending-v1.json",
   "title": "amivuln pending report, schema version 1",
   "required": [
     "schema_version",
