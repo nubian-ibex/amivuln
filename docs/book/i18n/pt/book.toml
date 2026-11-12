@@ -1,0 +1,14 @@
+[book]
+title = "amivuln"
+description = "Estou vulnerável? Verificação de CVEs que considera backports, para os pacotes de um host Linux."
+authors = ["amivuln contributors"]
+language = "pt"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/nubian-ibex/amivuln"
+edit-url-template = "https://github.com/nubian-ibex/amivuln/edit/main/docs/book/i18n/pt/{path}"
+site-url = "/amivuln/pt/"
+default-theme = "navy"
+preferred-dark-theme = "navy"
+additional-css = ["../../theme/amivuln.css"]

@@ -1,5 +1,7 @@
 # amivuln
 
+Languages: **English** · [Português](https://nubian-ibex.github.io/amivuln/pt/) · [Español](https://nubian-ibex.github.io/amivuln/es/) · [Deutsch](https://nubian-ibex.github.io/amivuln/de/) · [Français](https://nubian-ibex.github.io/amivuln/fr/)
+
 ![amivuln: Am I vulnerable? Backport-aware CVE checks for Linux](images/banner.jpg)
 
 **amivuln** answers one question: *which CVEs apply to this package, file or
@@ -49,4 +51,4 @@ AlmaLinux 8 and 9 through OSV (`--distro rocky:9`, `--distro alma:9`). Alpine
 the blind spot described in [Data sources](sources.md). See [Data sources](sources.md) for exactly what each
 distribution report covers and where the blind spots are.
 
-Start with [Installation](installation.md) and the [Quick start](quickstart.md).
+Start with [Installation](installation.md), the [Quick start](quickstart.md) and [Using amivuln](using.md), which has recipes for laptops, servers, CI, containers and air-gapped hosts. Installation, Quick start and Using are also available in Portuguese, Spanish, German and French; the other pages are English only.

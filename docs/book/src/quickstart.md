@@ -75,4 +75,4 @@ The same steps by hand:
   run: ./amivuln --all --fail-on high
 ```
 
-Next: the [User guide](guide.md) and the [Reference](reference.md).
+Next: [Using amivuln](using.md) for recipes by environment, the [User guide](guide.md) and the [Reference](reference.md).

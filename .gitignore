@@ -89,3 +89,4 @@ CLAUDE.local.md
 
 # --- Generated SBOMs ---
 *.cdx.json
+/site/
