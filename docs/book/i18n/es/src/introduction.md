@@ -1,8 +1,8 @@
 # amivuln
 
-Idiomas: [English](https://nubian-ibex.github.io/amivuln/) · [Português](https://nubian-ibex.github.io/amivuln/pt/) · **Español** · [Deutsch](https://nubian-ibex.github.io/amivuln/de/) · [Français](https://nubian-ibex.github.io/amivuln/fr/)
+Idiomas: [English](https://ibexwall.com/amivuln/) · [Português](https://ibexwall.com/amivuln/pt/) · **Español** · [Deutsch](https://ibexwall.com/amivuln/de/) · [Français](https://ibexwall.com/amivuln/fr/)
 
-![amivuln: ¿Soy vulnerable? Comprobación de CVE para Linux que tiene en cuenta los backports](https://nubian-ibex.github.io/amivuln/images/banner.jpg)
+![amivuln: ¿Soy vulnerable? Comprobación de CVE para Linux que tiene en cuenta los backports](https://ibexwall.com/amivuln/images/banner.jpg)
 
 **amivuln** responde a una pregunta: *¿qué CVE afectan a este paquete, archivo
 o versión en este host, teniendo en cuenta los parches que mi distribución ya
@@ -40,7 +40,7 @@ result: complete
 - **Nada que identifique el host sale de la máquina.** Solo se envían el
   ecosistema, el nombre del paquete y la versión. Sin telemetría.
 - **La salida es un contrato.** JSON con un
-  [esquema](https://nubian-ibex.github.io/amivuln/json-schema.html) versionado.
+  [esquema](https://ibexwall.com/amivuln/json-schema.html) versionado.
 - **Versiones verificables.** Sumas de comprobación, atestaciones de compilación
   de GitHub, una firma cosign y un SBOM acompañan cada versión.
 
@@ -49,7 +49,7 @@ result: complete
 Se admiten Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat Enterprise
 Linux, Rocky Linux y AlmaLinux. Los resultados de RHEL no incluyen las CVE que
 Red Hat aún no ha corregido; los límites de cada distribución están en
-[Data sources](https://nubian-ibex.github.io/amivuln/sources.html).
+[Data sources](https://ibexwall.com/amivuln/sources.html).
 
 Empiece por [Instalación](installation.md), [Inicio rápido](quickstart.md) y
 [Usar amivuln](using.md).
@@ -57,11 +57,11 @@ Empiece por [Instalación](installation.md), [Inicio rápido](quickstart.md) y
 ## Solo en inglés
 
 Estas páginas aún no están traducidas: la
-[guía del usuario](https://nubian-ibex.github.io/amivuln/guide.html), la
-[referencia](https://nubian-ibex.github.io/amivuln/reference.html), la
-[arquitectura](https://nubian-ibex.github.io/amivuln/architecture.html), el
-[funcionamiento del matching](https://nubian-ibex.github.io/amivuln/matching.html),
-las [fuentes de datos](https://nubian-ibex.github.io/amivuln/sources.html), las
-[políticas de seguridad](https://nubian-ibex.github.io/amivuln/policies.html) y
-las [preguntas sobre falsos positivos](https://nubian-ibex.github.io/amivuln/faq.html).
+[guía del usuario](https://ibexwall.com/amivuln/guide.html), la
+[referencia](https://ibexwall.com/amivuln/reference.html), la
+[arquitectura](https://ibexwall.com/amivuln/architecture.html), el
+[funcionamiento del matching](https://ibexwall.com/amivuln/matching.html),
+las [fuentes de datos](https://ibexwall.com/amivuln/sources.html), las
+[políticas de seguridad](https://ibexwall.com/amivuln/policies.html) y
+las [preguntas sobre falsos positivos](https://ibexwall.com/amivuln/faq.html).
 Si hay discrepancias, prevalece la versión en inglés.

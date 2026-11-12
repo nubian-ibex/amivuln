@@ -17,7 +17,7 @@ Logic is tested with a scripted fake runner; a few tests also run the host tools
 
 ## Part of amivuln
 
-[amivuln](https://github.com/nubian-ibex/amivuln) reports which CVEs apply to the packages on a Linux host, taking the patches the distribution already shipped into account. Documentation: <https://nubian-ibex.github.io/amivuln/>. Architecture: <https://nubian-ibex.github.io/amivuln/architecture.html>.
+[amivuln](https://github.com/nubian-ibex/amivuln) reports which CVEs apply to the packages on a Linux host, taking the patches the distribution already shipped into account. Documentation: <https://ibexwall.com/amivuln/>. Architecture: <https://ibexwall.com/amivuln/architecture.html>.
 
 ## License
 

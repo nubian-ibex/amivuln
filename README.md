@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/nubian-ibex/amivuln/actions/workflows/ci.yml"><img src="https://github.com/nubian-ibex/amivuln/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://crates.io/crates/amivuln"><img src="https://img.shields.io/crates/v/amivuln.svg" alt="crates.io"></a>
-  <a href="https://nubian-ibex.github.io/amivuln/"><img src="https://img.shields.io/badge/docs-amivuln-4de6b8" alt="Documentation"></a>
+  <a href="https://ibexwall.com/amivuln/"><img src="https://img.shields.io/badge/docs-amivuln-4de6b8" alt="Documentation"></a>
   <img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue" alt="License: MIT OR Apache-2.0">
   <a href="https://www.bestpractices.dev/projects/16540"><img src="https://www.bestpractices.dev/projects/16540/badge" alt="OpenSSF Best Practices"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/nubian-ibex/amivuln"><img src="https://api.scorecard.dev/projects/github.com/nubian-ibex/amivuln/badge" alt="OpenSSF Scorecard"></a>
@@ -32,7 +32,7 @@ source epss               ok  age 0s
 result: complete
 ```
 
-**Status:** beta (0.x). The JSON output (schema version 1) and the exit codes are the contract and are tested against golden documents. Flags and configuration keys may still change in a minor release before 1.0; the changelog names every such change. See [Supported distributions](https://nubian-ibex.github.io/amivuln/sources.html#supported-distributions) for exactly what each distribution gives you.
+**Status:** beta (0.x). The JSON output (schema version 1) and the exit codes are the contract and are tested against golden documents. Flags and configuration keys may still change in a minor release before 1.0; the changelog names every such change. See [Supported distributions](https://ibexwall.com/amivuln/sources.html#supported-distributions) for exactly what each distribution gives you.
 
 ## Highlights
 
@@ -85,7 +85,7 @@ Configuration is optional: `amivuln config init` writes a commented file. Search
 
 ## Documentation
 
-The full documentation is at **[nubian-ibex.github.io/amivuln](https://nubian-ibex.github.io/amivuln/)**: installation, quick start, user guide, reference, the JSON schema, architecture, data sources, and a false-positive FAQ.
+The full documentation is at **[ibexwall.com/amivuln](https://ibexwall.com/amivuln/)**: installation, quick start, user guide, reference, the JSON schema, architecture, data sources, and a false-positive FAQ.
 
 ## How it works
 

@@ -1,8 +1,8 @@
 # amivuln
 
-Sprachen: [English](https://nubian-ibex.github.io/amivuln/) · [Português](https://nubian-ibex.github.io/amivuln/pt/) · [Español](https://nubian-ibex.github.io/amivuln/es/) · **Deutsch** · [Français](https://nubian-ibex.github.io/amivuln/fr/)
+Sprachen: [English](https://ibexwall.com/amivuln/) · [Português](https://ibexwall.com/amivuln/pt/) · [Español](https://ibexwall.com/amivuln/es/) · **Deutsch** · [Français](https://ibexwall.com/amivuln/fr/)
 
-![amivuln: Bin ich verwundbar? CVE-Prüfung für Linux mit Backport-Erkennung](https://nubian-ibex.github.io/amivuln/images/banner.jpg)
+![amivuln: Bin ich verwundbar? CVE-Prüfung für Linux mit Backport-Erkennung](https://ibexwall.com/amivuln/images/banner.jpg)
 
 **amivuln** beantwortet eine Frage: *Welche CVEs betreffen dieses Paket, diese
 Datei oder diese Version auf diesem Host, wenn man die Patches berücksichtigt,
@@ -40,7 +40,7 @@ result: complete
 - **Nichts, was den Host identifiziert, verlässt den Rechner.** Gesendet werden
   nur Ökosystem, Paketname und Version. Keine Telemetrie.
 - **Die Ausgabe ist ein Vertrag.** JSON mit versioniertem
-  [Schema](https://nubian-ibex.github.io/amivuln/json-schema.html).
+  [Schema](https://ibexwall.com/amivuln/json-schema.html).
 - **Überprüfbare Releases.** Prüfsummen, GitHub-Build-Attestierungen, eine
   cosign-Signatur und ein SBOM begleiten jedes Release.
 
@@ -49,7 +49,7 @@ result: complete
 Unterstützt werden Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat
 Enterprise Linux, Rocky Linux und AlmaLinux. RHEL-Ergebnisse enthalten die
 CVEs nicht, die Red Hat noch nicht behoben hat; die Grenzen jeder Distribution
-stehen unter [Data sources](https://nubian-ibex.github.io/amivuln/sources.html).
+stehen unter [Data sources](https://ibexwall.com/amivuln/sources.html).
 
 Beginnen Sie mit [Installation](installation.md), [Schnellstart](quickstart.md)
 und [amivuln verwenden](using.md).
@@ -57,11 +57,11 @@ und [amivuln verwenden](using.md).
 ## Nur auf Englisch
 
 Diese Seiten sind noch nicht übersetzt: das
-[Benutzerhandbuch](https://nubian-ibex.github.io/amivuln/guide.html), die
-[Referenz](https://nubian-ibex.github.io/amivuln/reference.html), die
-[Architektur](https://nubian-ibex.github.io/amivuln/architecture.html), die
-[Funktionsweise des Matchings](https://nubian-ibex.github.io/amivuln/matching.html),
-die [Datenquellen](https://nubian-ibex.github.io/amivuln/sources.html), die
-[Sicherheitsrichtlinien](https://nubian-ibex.github.io/amivuln/policies.html) und
-die [FAQ zu Fehlalarmen](https://nubian-ibex.github.io/amivuln/faq.html).
+[Benutzerhandbuch](https://ibexwall.com/amivuln/guide.html), die
+[Referenz](https://ibexwall.com/amivuln/reference.html), die
+[Architektur](https://ibexwall.com/amivuln/architecture.html), die
+[Funktionsweise des Matchings](https://ibexwall.com/amivuln/matching.html),
+die [Datenquellen](https://ibexwall.com/amivuln/sources.html), die
+[Sicherheitsrichtlinien](https://ibexwall.com/amivuln/policies.html) und
+die [FAQ zu Fehlalarmen](https://ibexwall.com/amivuln/faq.html).
 Bei Abweichungen gilt die englische Fassung.

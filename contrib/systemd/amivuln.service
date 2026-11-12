@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 [Unit]
 Description=amivuln host scan (Prometheus textfile metrics)
-Documentation=https://nubian-ibex.github.io/amivuln/
+Documentation=https://ibexwall.com/amivuln/
 After=network-online.target
 Wants=network-online.target
 

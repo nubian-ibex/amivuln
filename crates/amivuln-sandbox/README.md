@@ -19,7 +19,7 @@ This is the only crate in the workspace that contains `unsafe` code. It lives in
 
 ## Part of amivuln
 
-[amivuln](https://github.com/nubian-ibex/amivuln) reports which CVEs apply to the packages on a Linux host, taking the patches the distribution already shipped into account. Documentation: <https://nubian-ibex.github.io/amivuln/>.
+[amivuln](https://github.com/nubian-ibex/amivuln) reports which CVEs apply to the packages on a Linux host, taking the patches the distribution already shipped into account. Documentation: <https://ibexwall.com/amivuln/>.
 
 ## License
 
