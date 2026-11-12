@@ -1,0 +1,82 @@
+name: distro
+# Integration checks against real distributions and real advisory data. They
+# need the network, so they are informational (not a required check) and also
+# run daily to catch upstream data or format changes.
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.*"
+      - "tests/distro/**"
+      - ".github/workflows/distro.yml"
+  schedule:
+    - cron: "11 7 * * *"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: rustup show
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - run: cargo build --release --locked -p amivuln
+      - name: Collect the binary and the test script
+        run: |
+          mkdir -p out
+          cp target/release/amivuln tests/distro/run.sh out/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: distro-test
+          path: out
+          if-no-files-found: error
+
+  inventory:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: distro-test
+          path: out
+      - name: Deterministic CVE answers from a fixed inventory
+        run: |
+          chmod +x out/amivuln
+          PATH="$PWD/out:$PATH" sh out/run.sh inventory
+
+  host:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: "fedora:44", setup: "dnf install -y -q jq ca-certificates" }
+          - { image: "archlinux:base", setup: "pacman -Sy --noconfirm jq ca-certificates" }
+          - { image: "debian:stable", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: distro-test
+          path: /opt/distro-test
+      - name: Install jq and the trust bundle
+        env:
+          SETUP: ${{ matrix.setup }}
+        run: sh -c "$SETUP"
+      - name: Resolvers and commands against this distribution
+        run: |
+          chmod +x /opt/distro-test/amivuln
+          PATH="/opt/distro-test:$PATH" sh /opt/distro-test/run.sh host
