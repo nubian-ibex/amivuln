@@ -61,6 +61,22 @@ and `amivuln cache clear` manage the cache; `--no-cache` skips the disk cache.
 prints the effective configuration and `amivuln config validate` checks it.
 Unknown keys are rejected so typos do not pass silently.
 
+## Language
+
+The text a person reads (the summary and detail output, `pending`, `cve`,
+`restart`, and the usual errors and warnings) follows the locale: the first of
+`LC_ALL`, `LC_MESSAGES` and `LANG` that is set, as for any command line tool.
+English and Brazilian Portuguese (`pt`) exist; anything else, including `C`,
+is English. For one run: `LC_ALL=pt_BR.UTF-8 amivuln --all`.
+
+The JSON, SARIF, CSV, Markdown, Prometheus, CycloneDX and OpenVEX output stay
+in English whatever the locale, because other programs read them, and so do
+the `--help` text, the configuration errors and the messages of the libraries
+the tool is built from. Severity names, `KEV` and `EPSS` are not translated.
+The translation was written by the project's assistant and has not been
+reviewed by a native speaker; a correction is a pull request on one text file
+(see CONTRIBUTING).
+
 ## SBOM and VEX
 
 `amivuln --all -f cyclonedx` writes a CycloneDX 1.6 document: every installed

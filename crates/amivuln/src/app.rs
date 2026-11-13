@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use amivuln_cache::Cache;
+use amivuln_core::i18n::tr_args;
 use amivuln_core::{
     Condition, Ecosystem, ExitCode, FailOn, Finding, HostMeta, Policy, RunReport, exit_code,
     is_complete,
@@ -101,7 +102,7 @@ pub(crate) struct Settings {
 }
 
 pub(crate) fn usage(stderr: &mut dyn Write, msg: &str) -> ExitCode {
-    let _ = writeln!(stderr, "error: {msg}");
+    let _ = writeln!(stderr, "{}", tr_args("error.line", &[("message", &msg)]));
     ExitCode::Usage
 }
 
@@ -566,19 +567,24 @@ fn db_cmd(
 fn print_manifest(out: &mut dyn Write, manifest: &amivuln_cache::offline::Manifest, path: &Path) {
     let _ = writeln!(
         out,
-        "database:  {}\ncreated:   {}\ntool:      {}\nentries:   {}\nbytes:     {}\nsha256:    {}",
-        path.display(),
-        manifest.created_at,
-        manifest.tool_version,
-        manifest.entries,
-        manifest.bytes,
-        manifest.db_sha256
+        "{}",
+        tr_args(
+            "info.manifest",
+            &[
+                ("path", &path.display()),
+                ("created", &manifest.created_at),
+                ("tool", &manifest.tool_version),
+                ("entries", &manifest.entries),
+                ("bytes", &manifest.bytes),
+                ("sha256", &manifest.db_sha256),
+            ],
+        )
     );
 }
 
 /// Usage for missing files, data error for integrity failures.
 fn data_or_usage_error(err: &mut dyn Write, e: &amivuln_cache::offline::OfflineError) -> ExitCode {
-    let _ = writeln!(err, "error: {e}");
+    let _ = writeln!(err, "{}", tr_args("error.line", &[("message", e)]));
     match e {
         // A missing input is a usage error; corrupted content is data error.
         amivuln_cache::offline::OfflineError::NotFound(_) => ExitCode::Usage,
@@ -597,7 +603,11 @@ fn fetch_archive(
     if !source.starts_with("https://") {
         let path = PathBuf::from(source);
         if !path.is_file() {
-            let _ = writeln!(err, "error: {} does not exist", path.display());
+            let _ = writeln!(
+                err,
+                "{}",
+                tr_args("error.not_exist", &[("path", &path.display())])
+            );
             return Err(ExitCode::Usage);
         }
         return Ok((path, false));
@@ -607,7 +617,7 @@ fn fetch_archive(
         ..HttpConfig::default()
     })
     .map_err(|e| {
-        let _ = writeln!(err, "error: {e}");
+        let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &e)]));
         ExitCode::Usage
     })?;
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -615,7 +625,7 @@ fn fetch_archive(
         .enable_io()
         .build()
         .map_err(|e| {
-            let _ = writeln!(err, "error: cannot start the async runtime: {e}");
+            let _ = writeln!(err, "{}", tr_args("error.runtime", &[("error", &e)]));
             ExitCode::Internal
         })?;
     let staged = env
@@ -670,10 +680,15 @@ fn cache_cmd(
         CacheAction::Info => cache.info().map(|i| {
             let _ = writeln!(
                 out,
-                "path:    {}\nentries: {}\nbytes:   {}",
-                path.display(),
-                i.entries,
-                i.bytes
+                "{}",
+                tr_args(
+                    "info.cache",
+                    &[
+                        ("path", &path.display()),
+                        ("entries", &i.entries),
+                        ("bytes", &i.bytes),
+                    ],
+                )
             );
         }),
         CacheAction::Clear => cache.clear().map(|()| {
@@ -787,7 +802,7 @@ pub(crate) fn check_with(
     ) {
         // A closed pipe (`| head`) is not an error worth a message.
         if e.kind() != std::io::ErrorKind::BrokenPipe {
-            let _ = writeln!(err, "error: cannot write the report: {e}");
+            let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
         }
         return ExitCode::Internal;
     }

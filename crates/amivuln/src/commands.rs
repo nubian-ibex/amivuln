@@ -4,6 +4,7 @@
 
 use std::io::Write;
 
+use amivuln_core::i18n::tr_args;
 use amivuln_core::{
     Condition, CveReport, CveState, ExitCode, Finding, PendingReport, RestartItem, RestartReport,
     Verdict, cve_answers, exit_code, is_complete, pending_updates,
@@ -98,7 +99,7 @@ pub(crate) fn cve(
         out,
     ) {
         if e.kind() != std::io::ErrorKind::BrokenPipe {
-            let _ = writeln!(err, "error: cannot write the report: {e}");
+            let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
         }
         return ExitCode::Internal;
     }
@@ -168,7 +169,7 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         out,
     ) {
         if e.kind() != std::io::ErrorKind::BrokenPipe {
-            let _ = writeln!(err, "error: cannot write the report: {e}");
+            let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
         }
         return ExitCode::Internal;
     }
@@ -191,7 +192,9 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
 pub(crate) fn services(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn Write) -> ExitCode {
     let units = match running_services() {
         Ok(u) => u,
-        Err(e) => return usage(err, &format!("cannot list the running services: {e}")),
+        Err(e) => {
+            return usage(err, &tr_args("error.list_services", &[("error", &e)]));
+        }
     };
     let mode = CheckMode {
         hide_clean: true,
@@ -267,7 +270,7 @@ pub(crate) fn restart(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         out,
     ) {
         if e.kind() != std::io::ErrorKind::BrokenPipe {
-            let _ = writeln!(err, "error: cannot write the report: {e}");
+            let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
         }
         return ExitCode::Internal;
     }

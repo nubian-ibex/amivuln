@@ -8,10 +8,7 @@
 #[cfg(not(feature = "tui"))]
 /// Reports that the `tui` feature is not compiled in.
 pub fn run(_env: &crate::app::Env, err: &mut dyn std::io::Write) -> amivuln_core::ExitCode {
-    let _ = writeln!(
-        err,
-        "error: the tui command needs the `tui` feature: cargo install amivuln --features tui"
-    );
+    let _ = writeln!(err, "{}", amivuln_core::i18n::tr("error.tui_feature"));
     amivuln_core::ExitCode::Usage
 }
 
@@ -25,7 +22,11 @@ pub fn run(env: &crate::app::Env, err: &mut dyn std::io::Write) -> amivuln_core:
     let (s, _) = match crate::app::settings(&cli.global, env) {
         Ok(v) => v,
         Err(m) => {
-            let _ = writeln!(err, "error: {m}");
+            let _ = writeln!(
+                err,
+                "{}",
+                amivuln_core::i18n::tr_args("error.line", &[("message", &m)])
+            );
             return amivuln_core::ExitCode::Usage;
         }
     };
@@ -130,7 +131,7 @@ mod terminal {
         let mut stdout = std::io::stdout();
         let backend = ratatui::backend::CrosstermBackend::new(&mut stdout);
         let Ok(mut terminal) = ratatui::Terminal::new(backend) else {
-            let _ = writeln!(err, "error: cannot initialise the terminal");
+            let _ = writeln!(err, "{}", amivuln_core::i18n::tr("error.terminal"));
             return ExitCode::Internal;
         };
         let _ = crossterm::terminal::enable_raw_mode();
