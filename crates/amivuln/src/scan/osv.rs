@@ -54,7 +54,10 @@ pub(super) fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version)
         amivuln_core::Version::Rpm(v)
             if matches!(
                 eco,
-                Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_)
+                Ecosystem::Rocky(_)
+                    | Ecosystem::Alma(_)
+                    | Ecosystem::Rhel(_)
+                    | Ecosystem::Opensuse(_)
             ) =>
         {
             Some(v.to_string())
@@ -305,9 +308,10 @@ pub(super) async fn load_osv(
         // so a binary such as `libcrypto3` or `libssl1.1` is asked about as
         // `openssl`.
         let osv_name = match pkg.ecosystem {
-            Ecosystem::Alpine(_) | Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
-                pkg.source_name.as_deref().unwrap_or(&pkg.name)
-            }
+            Ecosystem::Alpine(_)
+            | Ecosystem::Debian(_)
+            | Ecosystem::Ubuntu(_)
+            | Ecosystem::Opensuse(_) => pkg.source_name.as_deref().unwrap_or(&pkg.name),
             _ => pkg.name.as_str(),
         };
         for osv_eco in osv_ecosystems {

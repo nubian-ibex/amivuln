@@ -155,7 +155,8 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
         | Ecosystem::Rhel(_)
         | Ecosystem::Go
         | Ecosystem::Crates
-        | Ecosystem::Alpine(_) => SourceId::Osv,
+        | Ecosystem::Alpine(_)
+        | Ecosystem::Opensuse(_) => SourceId::Osv,
     }
 }
 

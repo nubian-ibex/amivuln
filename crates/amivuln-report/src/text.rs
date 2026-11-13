@@ -52,6 +52,8 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Go => "Go module".to_owned(),
         Ecosystem::Crates => "Rust crate".to_owned(),
         Ecosystem::Alpine(v) => format!("Alpine {}.{}", v / 100, v % 100),
+        Ecosystem::Opensuse(0) => "openSUSE Tumbleweed".to_owned(),
+        Ecosystem::Opensuse(v) => format!("openSUSE Leap {}.{}", v / 100, v % 100),
     }
 }
 
@@ -66,6 +68,7 @@ fn update_hint(target: &TargetReport) -> String {
         // Nothing on the host's package manager updates a statically linked
         // dependency: the program has to be rebuilt or replaced.
         Ecosystem::Alpine(_) => format!("apk upgrade {name}"),
+        Ecosystem::Opensuse(_) => format!("zypper update {name}"),
         Ecosystem::Go | Ecosystem::Crates => tr("hint.rebuild"),
     }
 }

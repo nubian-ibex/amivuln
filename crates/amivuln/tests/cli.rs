@@ -1652,6 +1652,99 @@ async fn osv_advisories_stay_with_the_package_they_were_found_for() {
     assert!(ids("curl").is_empty(), "curl inherited {:?}", ids("curl"));
 }
 
+/// openSUSE advisories are filed under the source package, so a package that
+/// the host knows by its source name is found and a fixed one is not.
+#[tokio::test(flavor = "multi_thread")]
+async fn opensuse_packages_are_judged_by_the_advisories_of_their_source() {
+    let server = MockServer::start().await;
+    // OSV answers a query only when the version is in the affected range.
+    Mock::given(method("POST"))
+        .and(path("/osv/v1/querybatch"))
+        .respond_with(|req: &wiremock::Request| {
+            let asked: serde_json::Value = serde_json::from_slice(&req.body).unwrap();
+            let results: Vec<_> = asked["queries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|q| {
+                    let hit = q["package"]["ecosystem"] == "openSUSE:Leap 15.6"
+                        && q["package"]["name"] == "examplelib"
+                        && q["version"] == "1.0-150600.1.1";
+                    if hit {
+                        serde_json::json!({"vulns": [{"id": "SUSE-SU-2099:0001-1"}, {"id": "SUSE-RU-2099:0002-1"}]})
+                    } else {
+                        serde_json::json!({})
+                    }
+                })
+                .collect();
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "results": results }))
+        })
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/osv/v1/vulns/SUSE-SU-2099:0001-1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "SUSE-SU-2099:0001-1",
+            "upstream": ["CVE-2099-0001"],
+            "affected": [{
+                "package": {"ecosystem": "openSUSE:Leap 15.6", "name": "examplelib"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "1.0-150600.2.1"}]}]
+            }]
+        })))
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    let cfg = home.path().join("cfg.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}/osv\"\n[sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let inv = home.path().join("inv.txt");
+    std::fs::write(&inv, "examplelib@1.0-150600.1.1\n").unwrap();
+    let ask = |inventory: &std::path::Path| {
+        Command::cargo_bin("amivuln")
+            .unwrap()
+            .env_clear()
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", home.path().join("cache"))
+            .env("PATH", "/nonexistent")
+            .args(["--config"])
+            .arg(&cfg)
+            .args(["--packages-from"])
+            .arg(inventory)
+            .args(["--distro", "opensuse:15.6", "-f", "json"])
+            .output()
+            .unwrap()
+    };
+    let out = ask(&inv);
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let t = &v["targets"][0];
+    assert_eq!(t["package"]["ecosystem"], "opensuse", "{v}");
+    assert!(
+        t["package"]["purl"]
+            .as_str()
+            .unwrap()
+            .starts_with("pkg:rpm/opensuse/examplelib@")
+    );
+    assert_eq!(t["findings"][0]["id"], "CVE-2099-0001", "{v}");
+    assert_eq!(
+        t["findings"][0]["distro_status"]["fixed_in"],
+        "1.0-150600.2.1"
+    );
+    // The recommended update (SUSE-RU) is not a security advisory: never fetched.
+    assert_eq!(t["findings"].as_array().unwrap().len(), 1);
+
+    // The fixed build is clean.
+    std::fs::write(&inv, "examplelib@1.0-150600.2.1\n").unwrap();
+    let fixed = ask(&inv);
+    let v: serde_json::Value = serde_json::from_slice(&fixed.stdout).unwrap();
+    assert_eq!(v["targets"][0]["findings"], serde_json::json!([]), "{v}");
+}
+
 /// Runs the binary with a per-test HOME and returns its output.
 fn run_home(
     home: &std::path::Path,

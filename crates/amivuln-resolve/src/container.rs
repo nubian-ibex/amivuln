@@ -315,7 +315,11 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         .trim_matches('"');
     // Ubuntu writes "24.04": the OSV ecosystem wants 2404. Other distros use
     // the major release alone.
-    let version = if id == "alpine" {
+    let version = if id == "opensuse-leap" {
+        // `15.6` is 1506, `16.0` is 1600.
+        raw.split_once('.')
+            .and_then(|(maj, min)| Some(maj.parse::<u16>().ok()? * 100 + min.parse::<u16>().ok()?))
+    } else if id == "alpine" {
         // `3.20.3` is release 3.20 (320). An edge or alpha image
         // (`3.23.0_alpha20250108`) has no release OSV knows: refuse it.
         let mut parts = raw.split('.');
@@ -347,6 +351,8 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         ("ubuntu", Some(v)) if matches!(v % 100, 4 | 10) => Some(Ecosystem::Ubuntu(v)),
         ("arch", _) => Some(Ecosystem::Arch),
         ("alpine", Some(v)) => Some(Ecosystem::Alpine(v)),
+        ("opensuse-leap", Some(v)) => Some(Ecosystem::Opensuse(v)),
+        ("opensuse-tumbleweed", _) => Some(Ecosystem::Opensuse(0)),
         _ => None,
     }
 }
@@ -388,7 +394,11 @@ fn read_packages(
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
             Ok(crate::apk::parse_installed(&installed, eco))
         }
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
+        Ecosystem::Fedora(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_)
+        | Ecosystem::Opensuse(_) => {
             // Fedora 36+ and RHEL 9+ keep the database in /usr/lib/sysimage/rpm;
             // /var/lib/rpm is only a symlink to it there.
             let sysimage = root.join("root/usr/lib/sysimage/rpm");
@@ -405,7 +415,7 @@ fn read_packages(
                         db.to_str().unwrap_or_default(),
                         "-qa",
                         "--qf",
-                        "%{NAME}@%{EPOCH}:%{VERSION}-%{RELEASE}\\n",
+                        crate::rpm::QUERY_FORMAT,
                     ],
                 )
                 .map_err(|_| ContainerError::HostToolMissing("rpm".to_owned()))?;
@@ -414,7 +424,8 @@ fn read_packages(
                     "rpm could not read the container's database".to_owned(),
                 ));
             }
-            Ok(rpm_packages(&String::from_utf8_lossy(&out.stdout), eco))
+            crate::rpm::parse_installed(&String::from_utf8_lossy(&out.stdout), eco)
+                .map_err(|e| ContainerError::Export(e.to_string()))
         }
         Ecosystem::Arch => {
             let db = root.join("root/var/lib/pacman");
@@ -435,20 +446,6 @@ fn read_packages(
             "a language ecosystem".to_owned(),
         )),
     }
-}
-
-fn rpm_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
-    let mut packages = Vec::new();
-    for line in stdout.lines() {
-        let Some((name, version)) = line.split_once('@') else {
-            continue;
-        };
-        let version = version.strip_prefix("(none):").unwrap_or(version);
-        if let Ok(pkg) = crate::from_name_version(eco, name, version) {
-            packages.push(pkg);
-        }
-    }
-    packages
 }
 
 fn pacman_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
@@ -515,6 +512,20 @@ mod tests {
             ecosystem_from_os_release(alpine),
             Some(Ecosystem::Alpine(320))
         );
+        let leap = "ID=\"opensuse-leap\"\nVERSION_ID=\"15.6\"\n";
+        assert_eq!(
+            ecosystem_from_os_release(leap),
+            Some(Ecosystem::Opensuse(1506))
+        );
+        assert_eq!(
+            ecosystem_from_os_release("ID=\"opensuse-leap\"\nVERSION_ID=\"16.0\"\n"),
+            Some(Ecosystem::Opensuse(1600))
+        );
+        // Tumbleweed has a date for VERSION_ID and one rolling ecosystem.
+        assert_eq!(
+            ecosystem_from_os_release("ID=\"opensuse-tumbleweed\"\nVERSION_ID=\"20251107\"\n"),
+            Some(Ecosystem::Opensuse(0))
+        );
         // Edge and alpha images have no OSV release.
         let edge = "ID=alpine\nVERSION_ID=3.23.0_alpha20250108\n";
         assert_eq!(ecosystem_from_os_release(edge), None);
@@ -553,10 +564,11 @@ mod tests {
 
     #[test]
     fn rpm_and_pacman_lines_are_parsed() {
-        let rpm = rpm_packages(
-            "nginx@1:1.26.2-1.fc41\nopenssl@3.2.2-1.fc41\n",
+        let rpm = crate::rpm::parse_installed(
+            "1\tnginx\t1.26.2\t1.fc41\tx86_64\tnginx-1.26.2-1.fc41.src.rpm\n(none)\topenssl\t3.2.2\t1.fc41\tx86_64\topenssl-3.2.2-1.fc41.src.rpm\n",
             Ecosystem::Fedora(41),
-        );
+        )
+        .unwrap();
         assert_eq!(rpm.len(), 2);
         assert_eq!(rpm[0].version.to_string(), "1:1.26.2-1.fc41");
         let pac = pacman_packages("nginx 1.26.2-1\nopenssl 3.2.2-1\n", Ecosystem::Arch);
@@ -837,6 +849,22 @@ mod extraction_tests {
         assert!(dir.path().join("export2/root/etc/os-release").is_file());
     }
 
+    /// Regression: the container reader dropped the source package name, and
+    /// openSUSE advisories are filed under it (`libopenssl3` is built from
+    /// `openssl-3`), so a container with a vulnerable library read as clean.
+    #[test]
+    fn a_container_keeps_the_source_package_of_each_rpm() {
+        let found = crate::rpm::parse_installed(
+            "(none)\tlibopenssl3\t3.1.4\t150600.5.12.1\tx86_64\topenssl-3-3.1.4-150600.5.12.1.src.rpm\n\
+             (none)\tgpg-pubkey\t3dbdc284\t53a46b5f\t(none)\t(none)\n",
+            Ecosystem::Opensuse(1506),
+        )
+        .unwrap();
+        assert_eq!(found.len(), 1, "gpg-pubkey is not software");
+        assert_eq!(found[0].name, "libopenssl3");
+        assert_eq!(found[0].source_name.as_deref(), Some("openssl-3"));
+    }
+
     /// Regression: the pacman database lives in `var/lib/pacman/local/<pkg>/desc`,
     /// which was never extracted, so an Arch container read as unreadable.
     #[test]
@@ -927,7 +955,7 @@ mod extraction_tests {
         );
         let rpm = FakeRpm {
             success: true,
-            stdout: "bash@(none):5.2.37-1.fc44\n",
+            stdout: "(none)\tbash\t5.2.37\t1.fc44\tx86_64\tbash-5.2.37-1.fc44.src.rpm\n",
             dbpath: std::sync::Mutex::default(),
         };
         let found = packages(&rpm, eco, &dest).unwrap();

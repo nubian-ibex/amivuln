@@ -6,7 +6,8 @@ use amivuln_core::{Ecosystem, PackageRef, ProcessRunner, Program, Provenance, Ve
 
 use crate::{PackageResolver, ResolveError};
 
-const QUERY_FORMAT: &str = "%{EPOCH}\t%{NAME}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{SOURCERPM}\n";
+pub(crate) const QUERY_FORMAT: &str =
+    "%{EPOCH}\t%{NAME}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{SOURCERPM}\n";
 
 /// Resolver backed by the rpm database.
 #[derive(Debug)]
@@ -85,24 +86,37 @@ impl<R: ProcessRunner> PackageResolver for RpmResolver<'_, R> {
         if !out.success {
             return Err(ResolveError::Parse("rpm -qa failed".into()));
         }
-        let text = String::from_utf8_lossy(&out.stdout);
-        let mut pkgs = Vec::new();
-        for line in text.lines().filter(|l| !l.is_empty()) {
-            let p = parse_line(line, self.ecosystem)?;
-            // gpg-pubkey pseudo packages carry no software.
-            if p.name != "gpg-pubkey" {
-                pkgs.push(p);
-            }
-        }
-        pkgs.sort_by(|a, b| {
-            a.name
-                .cmp(&b.name)
-                .then_with(|| a.version.to_string().cmp(&b.version.to_string()))
-        });
-        // Multilib: one build installed for several architectures is one package.
-        pkgs.dedup_by(|a, b| a.name == b.name && a.version == b.version);
-        Ok(pkgs)
+        parse_installed(&String::from_utf8_lossy(&out.stdout), self.ecosystem)
     }
+}
+
+/// The packages in `rpm -qa --qf QUERY_FORMAT` output, sorted by name then
+/// version. Pseudo packages are dropped and a build installed for several
+/// architectures (multilib) counts once. Shared with the container reader, so
+/// both keep the source package name an advisory database may be keyed by.
+///
+/// # Errors
+///
+/// [`ResolveError::Parse`] for a line that is not in the query format.
+pub(crate) fn parse_installed(
+    text: &str,
+    ecosystem: Ecosystem,
+) -> Result<Vec<PackageRef>, ResolveError> {
+    let mut pkgs = Vec::new();
+    for line in text.lines().filter(|l| !l.is_empty()) {
+        let p = parse_line(line, ecosystem)?;
+        // gpg-pubkey pseudo packages carry no software.
+        if p.name != "gpg-pubkey" {
+            pkgs.push(p);
+        }
+    }
+    pkgs.sort_by(|a, b| {
+        a.name
+            .cmp(&b.name)
+            .then_with(|| a.version.to_string().cmp(&b.version.to_string()))
+    });
+    pkgs.dedup_by(|a, b| a.name == b.name && a.version == b.version);
+    Ok(pkgs)
 }
 
 /// Parses one tab-separated line produced with [`QUERY_FORMAT`].
