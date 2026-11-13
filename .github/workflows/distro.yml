@@ -87,3 +87,43 @@ jobs:
         run: |
           chmod +x /opt/distro-test/amivuln
           PATH="/opt/distro-test:$PATH" sh /opt/distro-test/run.sh host
+
+  container:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          # Fedora and Arch images are not listed: their data does not come from
+          # OSV, and this runner is Ubuntu (see the roadmap).
+          - registry.access.redhat.com/ubi9/ubi:9.6
+          - debian:stable
+          - ubuntu:24.04
+          - alpine:3.20
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: distro-test
+          path: out
+      # The rpm database of a Fedora or Red Hat image is read with the host's rpm.
+      - run: sudo apt-get update -qq && sudo apt-get install -qq -y rpm jq
+      - name: An image is read, and a container with no packages is an error
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          chmod +x out/amivuln
+          # amivuln prefers podman when both runtimes exist, so the container is created with it.
+          id=$(podman create "$IMAGE")
+          rc=0
+          out/amivuln check --container "$id" --format json >container.json 2>container.err || rc=$?
+          if [ "$rc" != 0 ] && [ "$rc" != 1 ]; then
+            echo "exit code $rc"
+            cat container.err
+            jq -c '{complete, unresolved, sources: [.sources[] | select(.status != "ok")]}' container.json || true
+            exit 1
+          fi
+          jq -e '(.targets | length) > 10 and .complete' container.json
