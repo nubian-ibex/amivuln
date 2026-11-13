@@ -111,8 +111,9 @@ jobs:
         with:
           name: distro-test
           path: out
-      # The rpm database of a Fedora or Red Hat image is read with the host's rpm.
-      - run: sudo apt-get update -qq && sudo apt-get install -qq -y rpm jq
+      # The package databases of Fedora, Red Hat and Arch images are read with
+      # the host's rpm and pacman.
+      - run: sudo apt-get update -qq && sudo apt-get install -qq -y rpm jq pacman-package-manager
       - name: An image is read, and a container with no packages is an error
         env:
           IMAGE: ${{ matrix.image }}
