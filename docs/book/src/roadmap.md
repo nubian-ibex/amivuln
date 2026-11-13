@@ -7,8 +7,28 @@ below follows what blocks a 1.0 first.
 ## Before 1.0
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
-command line are a contract for a major version. The code for that is in
-place; what remains is trust and people:
+command line are a contract for a major version. An internal audit in
+November 2026 left this code work, in order:
+
+1. **Harden the container export:** a private temporary directory, a real
+   size limit, and strict checks on the archive member paths.
+2. **HTTPS only, redirects included.**
+3. **Honest advisory limit:** a run is marked incomplete only when advisories
+   were really left out.
+4. **Notifications use the network settings** (proxy, CA, User-Agent) of the
+   scan.
+5. **Cache keys and pruning:** shorter keys and removal of entries past
+   `stale_max_age`. This changes the offline database format, so it lands
+   before the format becomes a contract.
+6. **Faster first `--all` run:** OSV queries in batches and advisories fetched
+   a few at a time.
+
+If time allows before 1.0, otherwise in 1.x: package ownership looked up once
+for many files (`restart`), the OSV loading moved out of `scan.rs`, no retry
+for webhook posts, and small dead code removed.
+
+The rest is trust and people, and the security review comes after the items
+above so that it sees the fixed code:
 
 - a second maintainer with release permission, so that the project survives
   the absence of one person;

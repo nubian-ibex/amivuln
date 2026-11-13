@@ -858,11 +858,8 @@ fn read_container(
 ) -> Result<(Ecosystem, Vec<PackageRef>), amivuln_resolve::ContainerError> {
     use amivuln_resolve::{container_packages, export_container};
     let runner = SystemRunner::default();
-    let dir = std::env::temp_dir().join(format!(
-        "amivuln-container-{}-{}",
-        container_id,
-        std::process::id()
-    ));
+    let dir = private_scratch_dir()
+        .map_err(|e| amivuln_resolve::ContainerError::Export(format!("scratch directory: {e}")))?;
     let result = (|| {
         let eco = export_container(&runner, container_id, &dir)?;
         let packages = container_packages(&runner, eco, &dir)?;
@@ -871,6 +868,22 @@ fn read_container(
     // The export can be large; it never outlives the run.
     let _ = std::fs::remove_dir_all(&dir);
     result
+}
+
+/// A new directory only this user can enter. Creation fails when the name is
+/// taken, so a directory another user prepared in the shared temp dir (with a
+/// symlink waiting for the export) is never reused.
+fn private_scratch_dir() -> std::io::Result<PathBuf> {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_nanos());
+    let dir =
+        std::env::temp_dir().join(format!("amivuln-container-{}-{nanos}", std::process::id()));
+    let mut builder = std::fs::DirBuilder::new();
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(&dir)?;
+    Ok(dir)
 }
 
 /// The package that owns each path, or `None` when none does.
