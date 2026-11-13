@@ -115,7 +115,8 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: |
           chmod +x out/amivuln
-          id=$(docker create "$IMAGE")
+          # amivuln prefers podman when both runtimes exist, so the container is created with it.
+          id=$(podman create "$IMAGE")
           rc=0
           out/amivuln check --container "$id" --format json >container.json || rc=$?
           [ "$rc" = 0 ] || [ "$rc" = 1 ] || { echo "exit code $rc"; exit 1; }
