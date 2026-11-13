@@ -222,6 +222,21 @@ impl Cache {
         Ok(n > 0)
     }
 
+    /// Removes the entries older than `max_age` seconds, which no lookup can
+    /// serve any more (past `stale_max_age` only the validators are useful).
+    /// Returns how many were removed. Without this the cache keeps one entry
+    /// per package version ever asked about.
+    ///
+    /// # Errors
+    ///
+    /// Fails on SQLite errors.
+    pub fn prune(&self, now: i64, max_age: i64) -> Result<usize, CacheError> {
+        Ok(self.conn.execute(
+            "DELETE FROM http_cache WHERE fetched_at < ?1",
+            [now.saturating_sub(max_age)],
+        )?)
+    }
+
     /// Removes every entry.
     ///
     /// # Errors
@@ -288,6 +303,26 @@ mod tests {
 
     fn cache() -> Cache {
         Cache::in_memory().unwrap()
+    }
+
+    #[test]
+    fn prune_removes_only_what_no_lookup_can_serve() {
+        let c = cache();
+        c.put("old", b"1", None, None, 100).unwrap();
+        c.put("edge", b"2", None, None, 1000).unwrap();
+        c.put("new", b"3", None, None, 2000).unwrap();
+        // At now = 2000 with a 1000 s limit, an entry exactly 1000 s old stays.
+        assert_eq!(c.prune(2000, 1000).unwrap(), 1);
+        assert_eq!(c.get("old", 2000, POLICY).unwrap(), Lookup::Miss);
+        assert!(matches!(
+            c.get("edge", 2000, POLICY).unwrap(),
+            Lookup::Stale(_)
+        ));
+        assert!(matches!(
+            c.get("new", 2000, POLICY).unwrap(),
+            Lookup::Fresh(_)
+        ));
+        assert_eq!(c.prune(2000, 1000).unwrap(), 0, "idempotent");
     }
 
     #[test]

@@ -1433,7 +1433,15 @@ fn open_cache(g: &Global, s: &Settings, env: &Env, err: &mut dyn Write) -> Resul
         return memory(err, Some("cannot determine the cache directory".into()));
     };
     match Cache::open(&path) {
-        Ok(c) => Ok(c),
+        Ok(c) => {
+            // Offline runs only read; the rest drop what can no longer be
+            // served so the file does not grow with every package update.
+            // A failed prune costs disk space, not correctness.
+            if !s.offline {
+                let _ = c.prune(env.now, s.stale_max_age);
+            }
+            Ok(c)
+        }
         Err(e) => memory(err, Some(format!("{}: {e}", path.display()))),
     }
 }
