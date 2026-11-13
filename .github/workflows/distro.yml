@@ -96,7 +96,8 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - fedora:44
+          # Fedora and Arch images are not listed: their data does not come from
+          # OSV, and this runner is Ubuntu (see the roadmap).
           - registry.access.redhat.com/ubi9/ubi:9.6
           - debian:stable
           - ubuntu:24.04

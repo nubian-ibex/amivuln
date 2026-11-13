@@ -8,24 +8,24 @@ below follows what blocks a 1.0 first.
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
 command line are a contract for a major version. An internal audit in
-November 2026 left this code work, in order:
+November 2026 left this code work:
 
-1. **Harden the container export:** a private temporary directory, a real
-   size limit, and strict checks on the archive member paths.
-2. **HTTPS only, redirects included.**
-3. **Honest advisory limit:** a run is marked incomplete only when advisories
-   were really left out.
-4. **Notifications use the network settings** (proxy, CA, User-Agent) of the
-   scan.
-5. **Cache keys and pruning:** shorter keys and removal of entries past
-   `stale_max_age`. This changes the offline database format, so it lands
-   before the format becomes a contract.
-6. **Faster first `--all` run:** OSV queries in batches and advisories fetched
-   a few at a time.
+1. **Containers whose data source is not the host's.** Debian, Ubuntu,
+   Alpine and Red Hat family images (data from OSV) are read from any host. A
+   Fedora or Arch image is only judged from a host with the same source: from
+   anywhere else the run is reported incomplete ("no OSV data"). Each data
+   source needs its own pass, as the OSV packages already have.
+2. **Limit the container export on disk.** The export size is checked before
+   it is read, but the runtime has already written the whole archive; reading
+   it from a pipe would stop earlier.
 
-If time allows before 1.0, otherwise in 1.x: package ownership looked up once
-for many files (`restart`), the OSV loading moved out of `scan.rs`, no retry
-for webhook posts, and small dead code removed.
+Done since the audit: the container export is hardened and reads the rpm
+database of current Fedora images, redirects never leave HTTPS, the webhook
+uses the scan's network settings and is not retried, the advisory limit is
+reported where the cut happens, the cache is pruned, OSV queries are batched
+and advisories fetched in parallel (a Debian container went from 39 s to 5 s
+cold), and file owners are looked up in one pass. The OSV loading can still
+move out of `scan.rs`, which is a refactor for 1.x.
 
 The rest is trust and people, and the security review comes after the items
 above so that it sees the fixed code:
