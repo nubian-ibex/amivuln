@@ -152,7 +152,8 @@ fn extract_wanted(tar_path: &Path, dest: &Path) -> Result<(), ContainerError> {
         let wanted = matches!(
             name,
             "os-release" | "status" | "installed" | "Packages" | "pacman"
-        ) || path.starts_with("var/lib/rpm");
+        ) || path.starts_with("var/lib/rpm")
+            || path.starts_with("usr/lib/sysimage/rpm");
         // A directory entry under var/lib/rpm matches the prefix but holds no
         // data; writing it as a file would block the database files inside.
         if !wanted || entry.header().entry_type().is_dir() {
@@ -343,6 +344,22 @@ pub fn packages(
     eco: Ecosystem,
     root: &Path,
 ) -> Result<Vec<PackageRef>, ContainerError> {
+    let found = read_packages(runner, eco, root)?;
+    // Every distribution image has packages; none means the database was not
+    // found or not read, and reporting "no CVEs" for it would be a lie.
+    if found.is_empty() {
+        return Err(ContainerError::Export(
+            "no installed packages found in the container's package database".to_owned(),
+        ));
+    }
+    Ok(found)
+}
+
+fn read_packages(
+    runner: &dyn ProcessRunner,
+    eco: Ecosystem,
+    root: &Path,
+) -> Result<Vec<PackageRef>, ContainerError> {
     match eco {
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
             let status = std::fs::read_to_string(root.join("root/var/lib/dpkg/status"))
@@ -355,7 +372,14 @@ pub fn packages(
             Ok(apk_packages(&installed, eco))
         }
         Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
-            let db = root.join("root/var/lib/rpm");
+            // Fedora 36+ and RHEL 9+ keep the database in /usr/lib/sysimage/rpm;
+            // /var/lib/rpm is only a symlink to it there.
+            let sysimage = root.join("root/usr/lib/sysimage/rpm");
+            let db = if sysimage.is_dir() {
+                sysimage
+            } else {
+                root.join("root/var/lib/rpm")
+            };
             let out = runner
                 .run(
                     Program::Rpm,
@@ -368,6 +392,11 @@ pub fn packages(
                     ],
                 )
                 .map_err(|_| ContainerError::HostToolMissing("rpm".to_owned()))?;
+            if !out.success {
+                return Err(ContainerError::Export(
+                    "rpm could not read the container's database".to_owned(),
+                ));
+            }
             Ok(rpm_packages(&String::from_utf8_lossy(&out.stdout), eco))
         }
         Ecosystem::Arch => {
@@ -378,6 +407,11 @@ pub fn packages(
                     &["-Q", "--dbpath", db.to_str().unwrap_or_default()],
                 )
                 .map_err(|_| ContainerError::HostToolMissing("pacman".to_owned()))?;
+            if !out.success {
+                return Err(ContainerError::Export(
+                    "pacman could not read the container's database".to_owned(),
+                ));
+            }
             Ok(pacman_packages(&String::from_utf8_lossy(&out.stdout), eco))
         }
         Ecosystem::Go | Ecosystem::Crates => Err(ContainerError::Unsupported(
@@ -612,6 +646,7 @@ mod tests {
 mod extraction_tests {
     use super::tests::{ScriptedRuntime, build_tar};
     use super::*;
+    use amivuln_core::ProcessOutput;
 
     #[test]
     fn export_reads_a_debian_container_end_to_end() {
@@ -752,5 +787,98 @@ mod extraction_tests {
         let dest = dir.path().join("export");
         assert_eq!(export(&runtime, "ubi", &dest).unwrap(), Ecosystem::Rhel(9));
         assert!(dest.join("root/var/lib/rpm/rpmdb.sqlite").is_file());
+    }
+
+    /// Answers `rpm` with fixed output and remembers the `--dbpath` it got.
+    struct FakeRpm {
+        success: bool,
+        stdout: &'static str,
+        dbpath: std::sync::Mutex<String>,
+    }
+    impl ProcessRunner for FakeRpm {
+        fn run(
+            &self,
+            _: Program,
+            args: &[&str],
+        ) -> Result<ProcessOutput, amivuln_core::ProcessError> {
+            if let Some(i) = args.iter().position(|a| *a == "--dbpath") {
+                *self.dbpath.lock().unwrap() = args[i + 1].to_owned();
+            }
+            Ok(ProcessOutput {
+                success: self.success,
+                stdout: self.stdout.as_bytes().to_vec(),
+            })
+        }
+    }
+
+    /// Regression: Fedora 36+ keeps the database in /usr/lib/sysimage/rpm and
+    /// /var/lib/rpm is a symlink, so only the link was extracted and the
+    /// container reported zero packages as a complete result.
+    #[test]
+    fn the_sysimage_rpm_database_is_extracted_and_read() {
+        let mut bytes = Vec::new();
+        {
+            let mut tar = tar::Builder::new(&mut bytes);
+            add_member(
+                &mut tar,
+                "etc/os-release",
+                tar::EntryType::Regular,
+                b"ID=fedora\nVERSION_ID=44\n",
+            );
+            add_member(
+                &mut tar,
+                "usr/lib/sysimage/rpm/",
+                tar::EntryType::Directory,
+                b"",
+            );
+            add_member(
+                &mut tar,
+                "usr/lib/sysimage/rpm/rpmdb.sqlite",
+                tar::EntryType::Regular,
+                b"db",
+            );
+            let mut link = tar::Header::new_gnu();
+            link.set_entry_type(tar::EntryType::Symlink);
+            link.set_size(0);
+            tar.append_link(&mut link, "var/lib/rpm", "../../usr/lib/sysimage/rpm")
+                .unwrap();
+            tar.finish().unwrap();
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("fixture.tar");
+        std::fs::write(&tar_path, &bytes).unwrap();
+        let dest = dir.path().join("export");
+        let eco = export(&ScriptedRuntime { tar_path }, "f44", &dest).unwrap();
+        assert!(
+            dest.join("root/usr/lib/sysimage/rpm/rpmdb.sqlite")
+                .is_file()
+        );
+        let rpm = FakeRpm {
+            success: true,
+            stdout: "bash@(none):5.2.37-1.fc44\n",
+            dbpath: std::sync::Mutex::default(),
+        };
+        let found = packages(&rpm, eco, &dest).unwrap();
+        assert_eq!(found[0].name, "bash");
+        assert!(rpm.dbpath.lock().unwrap().ends_with("usr/lib/sysimage/rpm"));
+    }
+
+    #[test]
+    fn an_empty_or_unreadable_database_is_an_error_not_a_clean_result() {
+        let dir = tempfile::tempdir().unwrap();
+        let empty = FakeRpm {
+            success: true,
+            stdout: "",
+            dbpath: std::sync::Mutex::default(),
+        };
+        let err = packages(&empty, Ecosystem::Fedora(44), dir.path()).unwrap_err();
+        assert!(err.to_string().contains("no installed packages"), "{err}");
+        let failed = FakeRpm {
+            success: false,
+            stdout: "",
+            dbpath: std::sync::Mutex::default(),
+        };
+        let err = packages(&failed, Ecosystem::Fedora(44), dir.path()).unwrap_err();
+        assert!(err.to_string().contains("could not read"), "{err}");
     }
 }
