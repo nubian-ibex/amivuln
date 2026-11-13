@@ -10,12 +10,14 @@
 
 mod apk;
 mod deb;
+mod gentoo;
 mod pacman;
 mod rpm;
 mod semver;
 
 pub use apk::{ApkVersion, apk_vercmp};
 pub use deb::{DebVersion, debvercmp};
+pub use gentoo::{GentooVersion, gentoo_vercmp};
 pub use pacman::{PacmanVersion, alpm_vercmp, pacman_vercmp};
 pub use rpm::{RpmEvr, rpmvercmp};
 pub use semver::{SemverError, SemverVersion};
