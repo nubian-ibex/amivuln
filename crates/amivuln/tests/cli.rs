@@ -1442,20 +1442,27 @@ async fn osv_advisories_stay_with_the_package_they_were_found_for() {
     // Regression: advisories of one package were judged against every other
     // package of the run, so curl 1.0 inherited openssl's fix version.
     let server = MockServer::start().await;
+    // Both packages go to OSV in ONE request, and the answer holds one result
+    // per query in the order they were asked.
     Mock::given(method("POST"))
         .and(path("/osv/v1/querybatch"))
-        .and(body_string_contains("\"openssl\""))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "results": [{"vulns": [{"id": "DEBIAN-CVE-2023-5678"}]}]
-        })))
-        .mount(&server)
-        .await;
-    Mock::given(method("POST"))
-        .and(path("/osv/v1/querybatch"))
-        .and(body_string_contains("\"curl\""))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "results": [{}]
-        })))
+        .respond_with(|req: &wiremock::Request| {
+            let asked: serde_json::Value = serde_json::from_slice(&req.body).unwrap();
+            let results: Vec<_> = asked["queries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|q| {
+                    if q["package"]["name"] == "openssl" {
+                        serde_json::json!({"vulns": [{"id": "DEBIAN-CVE-2023-5678"}]})
+                    } else {
+                        serde_json::json!({})
+                    }
+                })
+                .collect();
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "results": results }))
+        })
+        .expect(1)
         .mount(&server)
         .await;
     let advisory =

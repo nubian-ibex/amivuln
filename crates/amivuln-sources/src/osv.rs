@@ -27,6 +27,14 @@ pub enum OsvError {
     /// Not the expected JSON shape.
     #[error("OSV data is not valid JSON of the expected shape: {0}")]
     Invalid(#[from] serde_json::Error),
+    /// A `querybatch` answer does not hold one result per query.
+    #[error("OSV answered {got} results for {expected} queries")]
+    BatchSize {
+        /// Queries sent.
+        expected: usize,
+        /// Results received.
+        got: usize,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,6 +68,52 @@ pub fn batch_request(name: &str, ecosystem: &str, version: &str) -> Result<Strin
         }]
     }))
     .map_err(OsvError::Invalid)
+}
+
+/// One `querybatch` request holding several package queries, in order.
+///
+/// # Errors
+///
+/// Fails when the document cannot be serialised.
+pub fn batch_request_many(queries: &[(&str, &str, &str)]) -> Result<String, OsvError> {
+    let queries: Vec<_> = queries
+        .iter()
+        .map(|(name, ecosystem, version)| {
+            serde_json::json!({
+                "package": {"name": name, "ecosystem": ecosystem},
+                "version": version
+            })
+        })
+        .collect();
+    serde_json::to_string(&serde_json::json!({ "queries": queries })).map_err(OsvError::Invalid)
+}
+
+/// Splits a `querybatch` answer into one single-result document per query, in
+/// query order. Each part is what a one-query request would have returned, so
+/// it is cached under the same key (and read back by [`parse_batch`]).
+///
+/// # Errors
+///
+/// Fails on malformed JSON or when the answer does not hold `expected`
+/// results.
+pub fn split_batch(bytes: &[u8], expected: usize) -> Result<Vec<Vec<u8>>, OsvError> {
+    let answer: serde_json::Value = serde_json::from_slice(bytes)?;
+    let results = answer
+        .get("results")
+        .and_then(serde_json::Value::as_array)
+        .ok_or(OsvError::BatchSize { expected, got: 0 })?;
+    if results.len() != expected {
+        return Err(OsvError::BatchSize {
+            expected,
+            got: results.len(),
+        });
+    }
+    results
+        .iter()
+        .map(|r| {
+            serde_json::to_vec(&serde_json::json!({ "results": [r] })).map_err(OsvError::Invalid)
+        })
+        .collect()
 }
 
 /// Decodes a `querybatch` response, ignoring ids that do not look like
@@ -434,6 +488,38 @@ mod tests {
         for bad in ["RLSA-2024", "RLSA-x:1", "RLSA-2024:1/../x", "GHSA-xxxx", ""] {
             assert!(!is_advisory_id(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn a_batch_is_split_into_the_answers_of_single_queries() {
+        let req = batch_request_many(&[
+            ("openssl", "Debian:12", "3.0.11-1"),
+            ("bash", "Debian:12", "5.2-1"),
+        ])
+        .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&req).unwrap();
+        assert_eq!(v["queries"].as_array().unwrap().len(), 2);
+        let parts = split_batch(
+            br#"{"results":[{"vulns":[{"id":"DEBIAN-CVE-2023-5363"}]},{}]}"#,
+            2,
+        )
+        .unwrap();
+        assert_eq!(parse_batch(&parts[0]).unwrap(), ["DEBIAN-CVE-2023-5363"]);
+        assert!(parse_batch(&parts[1]).unwrap().is_empty());
+        // A part has the shape of a one-query answer, so it fills the cache
+        // entry a single query would have.
+        let single = batch_request("openssl", "Debian:12", "3.0.11-1").unwrap();
+        let first: serde_json::Value = serde_json::from_str(&req).unwrap();
+        let one: serde_json::Value = serde_json::from_str(&single).unwrap();
+        assert_eq!(first["queries"][0], one["queries"][0]);
+        assert!(matches!(
+            split_batch(br#"{"results":[{}]}"#, 2),
+            Err(OsvError::BatchSize {
+                expected: 2,
+                got: 1
+            })
+        ));
+        assert!(split_batch(b"{}", 1).is_err());
     }
 
     #[test]

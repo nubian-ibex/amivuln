@@ -44,6 +44,10 @@ const EPSS_URL: &str = "https://api.first.org/data/v1/epss";
 const EPSS_BATCH: usize = 50;
 /// Most advisory documents fetched per run.
 const MAX_OSV_ADVISORIES: usize = 5000;
+/// Package queries per OSV `querybatch` request (the endpoint's limit).
+const OSV_BATCH: usize = 1000;
+/// Advisory documents fetched at the same time.
+const ADVISORY_PARALLEL: usize = 8;
 
 /// The package manager lookups for a host.
 enum Backend<'a> {
@@ -231,7 +235,6 @@ async fn fetch_all_advisories(
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
     let distinct: std::collections::BTreeSet<&String> = asked.iter().map(|(eco, _)| eco).collect();
-    let mut total = 0usize;
     for osv_eco in distinct {
         let mut mine: Vec<String> = asked
             .iter()
@@ -240,20 +243,11 @@ async fn fetch_all_advisories(
             .collect();
         mine.sort();
         mine.dedup();
-        total += mine.len();
         let (mut got, adv_status, adv_age) =
             fetch_advisories(f, base, osv_eco.as_str(), &mine).await;
         entries.append(&mut got);
         status = worse(status, adv_status);
         age = age.max(adv_age);
-    }
-    if total > MAX_OSV_ADVISORIES {
-        status = worse(
-            status,
-            SourceStatus::Failed(format!(
-                "{total} advisories exceeded the fetch limit of {MAX_OSV_ADVISORIES}"
-            )),
-        );
     }
     (entries, status, age)
 }
@@ -283,69 +277,185 @@ fn split_per_package(
     entries: &[amivuln_sources::osv::OsvEntry],
     ids_by_package: &[Vec<String>],
 ) -> Vec<OsvData> {
+    let mut by_advisory: std::collections::HashMap<&str, Vec<&amivuln_sources::osv::OsvEntry>> =
+        std::collections::HashMap::new();
+    for e in entries {
+        by_advisory.entry(e.advisory.as_str()).or_default().push(e);
+    }
     ids_by_package
         .iter()
         .map(|mine| {
             OsvData::from_entries(
-                entries
-                    .iter()
-                    .filter(|e| mine.contains(&e.advisory))
-                    .cloned()
+                mine.iter()
+                    .filter_map(|id| by_advisory.get(id.as_str()))
+                    .flatten()
+                    .map(|e| (*e).clone())
                     .collect(),
             )
         })
         .collect()
 }
 
-/// Fetches one advisory document per id and parses it for the ecosystem.
+/// Fetches one advisory document and parses it for the ecosystem. A failure
+/// is reported in the status; the entries are then empty.
+async fn fetch_advisory(
+    f: &Fetcher<'_>,
+    base: &str,
+    osv_eco: &str,
+    id: &str,
+) -> (Vec<amivuln_sources::osv::OsvEntry>, SourceStatus, Duration) {
+    let url = format!("{base}/v1/vulns/{id}");
+    let key = format!("osv-advisory:{id}");
+    let doc = match fetch_cached_body(&f.ctx(), &key, &url, None).await {
+        Ok(d) => d,
+        Err(e) => {
+            return (
+                Vec::new(),
+                SourceStatus::Failed(describe(&e)),
+                Duration::ZERO,
+            );
+        }
+    };
+    match amivuln_sources::osv::OsvData::parse_advisory(&doc.body, osv_eco) {
+        Ok(parsed) => {
+            let entries = parsed
+                .entries()
+                .into_iter()
+                .map(|e| amivuln_sources::osv::OsvEntry {
+                    advisory: id.to_owned(),
+                    ..e
+                })
+                .collect();
+            (entries, doc.status, doc.age)
+        }
+        Err(e) => (
+            Vec::new(),
+            SourceStatus::Failed(e.to_string()),
+            Duration::ZERO,
+        ),
+    }
+}
+
+/// Fetches the advisory documents for `ids`, a few at a time. More than
+/// [`MAX_OSV_ADVISORIES`] ids are cut and the status says so.
 async fn fetch_advisories(
     f: &Fetcher<'_>,
     base: &str,
     osv_eco: &str,
     ids: &[String],
 ) -> (Vec<amivuln_sources::osv::OsvEntry>, SourceStatus, Duration) {
-    let mut entries = Vec::new();
+    use futures_util::StreamExt;
     let mut status = SourceStatus::Ok;
+    if ids.len() > MAX_OSV_ADVISORIES {
+        status = SourceStatus::Failed(format!(
+            "{} advisories for {osv_eco} exceeded the fetch limit of {MAX_OSV_ADVISORIES}",
+            ids.len()
+        ));
+    }
+    // `buffered` keeps the order of `ids`, so the output stays deterministic.
+    let results: Vec<_> = futures_util::stream::iter(ids.iter().take(MAX_OSV_ADVISORIES))
+        .map(|id| fetch_advisory(f, base, osv_eco, id))
+        .buffered(ADVISORY_PARALLEL)
+        .collect()
+        .await;
+    let mut entries = Vec::new();
     let mut age = Duration::ZERO;
-    for id in ids.iter().take(MAX_OSV_ADVISORIES) {
-        let url = format!("{base}/v1/vulns/{id}");
-        let key = format!("osv-advisory:{id}");
-        let doc = match fetch_cached_body(
-            &FetchCtx {
-                http: f.http,
-                cache: f.cache,
-                now: f.now,
-                policy: f.policy,
-                offline: f.offline,
-                offline_db: f.offline_db,
-            },
-            &key,
-            &url,
-            None,
-        )
-        .await
-        {
-            Ok(d) => d,
-            Err(e) => {
-                status = worse(status, SourceStatus::Failed(describe(&e)));
-                continue;
-            }
-        };
-        match amivuln_sources::osv::OsvData::parse_advisory(&doc.body, osv_eco) {
-            Ok(parsed) => {
-                for e in parsed.entries() {
-                    entries.push(amivuln_sources::osv::OsvEntry {
-                        advisory: id.clone(),
-                        ..e
-                    });
-                }
-                status = worse(status, doc.status);
-                age = age.max(doc.age);
-            }
-            Err(e) => status = worse(status, SourceStatus::Failed(e.to_string())),
-        }
+    for (mut got, s, a) in results {
+        entries.append(&mut got);
+        status = worse(status, s);
+        age = age.max(a);
     }
     (entries, status, age)
+}
+
+/// One package asked about in one OSV ecosystem.
+struct OsvQuery<'a> {
+    name: &'a str,
+    ecosystem: String,
+    version: String,
+    /// The one-query request document, which also names the cache entry.
+    body: String,
+}
+
+/// A query with the cache key and the answer found so far.
+struct Slot<'q, 'a> {
+    query: &'q OsvQuery<'a>,
+    key: String,
+    answer: Option<Result<Fetched, FetchError>>,
+}
+
+/// The answers to `queries`, in order. Fresh cache entries are used as they
+/// are, the rest go to OSV in batches of [`OSV_BATCH`], and each answer is
+/// cached as the answer of its own query. Whatever a batch could not answer
+/// falls back to the per-query path (stale cache, offline database, error).
+async fn query_osv(
+    f: &Fetcher<'_>,
+    base: &str,
+    queries: &[OsvQuery<'_>],
+) -> Vec<Result<Fetched, FetchError>> {
+    let url = format!("{base}/v1/querybatch");
+    let mut slots: Vec<Slot<'_, '_>> = queries
+        .iter()
+        .map(|query| Slot {
+            query,
+            key: format!("osv:{}", query.body),
+            answer: None,
+        })
+        .collect();
+    for slot in &mut slots {
+        if let Ok(amivuln_cache::Lookup::Fresh(e)) = f.cache.get(&slot.key, f.now, f.policy) {
+            slot.answer = Some(Ok(Fetched {
+                age: Duration::from_secs(
+                    u64::try_from(f.now.saturating_sub(e.fetched_at)).unwrap_or(0),
+                ),
+                body: e.body,
+                status: SourceStatus::Ok,
+            }));
+        }
+    }
+    if !f.offline {
+        let mut pending: Vec<&mut Slot<'_, '_>> =
+            slots.iter_mut().filter(|s| s.answer.is_none()).collect();
+        for chunk in pending.chunks_mut(OSV_BATCH) {
+            let asked: Vec<(&str, &str, &str)> = chunk
+                .iter()
+                .map(|s| {
+                    (
+                        s.query.name,
+                        s.query.ecosystem.as_str(),
+                        s.query.version.as_str(),
+                    )
+                })
+                .collect();
+            let Ok(request) = amivuln_sources::osv::batch_request_many(&asked) else {
+                continue;
+            };
+            let Ok(amivuln_sources::http::Response::Fresh { body, .. }) =
+                f.http.post(&url, &request).await
+            else {
+                continue;
+            };
+            let Ok(parts) = amivuln_sources::osv::split_batch(&body, chunk.len()) else {
+                continue;
+            };
+            for (slot, part) in chunk.iter_mut().zip(parts) {
+                // A cache write that fails only costs the next run a request.
+                let _ = f.cache.put(&slot.key, &part, None, None, f.now);
+                slot.answer = Some(Ok(Fetched {
+                    body: part,
+                    status: SourceStatus::Ok,
+                    age: Duration::ZERO,
+                }));
+            }
+        }
+    }
+    for slot in &mut slots {
+        if slot.answer.is_none() {
+            slot.answer =
+                Some(fetch_cached_body(&f.ctx(), &slot.key, &url, Some(&slot.query.body)).await);
+        }
+    }
+    slots.into_iter().filter_map(|s| s.answer).collect()
 }
 
 /// Loads the OSV data for the host's ecosystem.
@@ -380,13 +490,13 @@ async fn load_osv(
     // The endpoint override is the API base (an internal mirror).
     let base = url_override.unwrap_or_else(|| OSV_URL.to_owned());
     let base = base.trim_end_matches('/');
-    let mut ids_by_package: Vec<Vec<String>> = Vec::new();
     let mut status = SourceStatus::Ok;
     let mut age = Duration::ZERO;
-    // One entry per (OSV ecosystem, advisory ids found there). Red Hat files a
-    // package under several repositories, so a package may add more than one.
-    let mut asked: Vec<(String, Vec<String>)> = Vec::new();
-    for (_, pkg) in packages {
+    // Every (package, OSV ecosystem) question. Red Hat files a package under
+    // several repositories, so a package may add more than one.
+    let mut queries: Vec<OsvQuery<'_>> = Vec::new();
+    let mut owner: Vec<usize> = Vec::new();
+    for (index, (_, pkg)) in packages.iter().enumerate() {
         let osv_ecosystems = pkg.ecosystem.osv_ecosystems();
         if osv_ecosystems.is_empty() {
             return fail(format!("package {} has no OSV data", pkg.name));
@@ -406,7 +516,6 @@ async fn load_osv(
             }
             _ => pkg.name.as_str(),
         };
-        let mut found_for_package: Vec<String> = Vec::new();
         for osv_eco in osv_ecosystems {
             let body = match amivuln_sources::osv::batch_request(
                 osv_name,
@@ -416,41 +525,42 @@ async fn load_osv(
                 Ok(b) => b,
                 Err(e) => return fail(e.to_string()),
             };
-            let key = format!("osv:{body}");
-            let batch = match fetch_cached_body(
-                &FetchCtx {
-                    http: f.http,
-                    cache: f.cache,
-                    now: f.now,
-                    policy: f.policy,
-                    offline: f.offline,
-                    offline_db: f.offline_db,
-                },
-                &key,
-                &format!("{base}/v1/querybatch"),
-                Some(body.as_str()),
-            )
-            .await
-            {
-                Ok(d) => d,
-                Err(e) => return fail(describe(&e)),
-            };
-            match amivuln_sources::osv::parse_batch(&batch.body) {
-                Ok(found) => {
-                    status = worse(status, batch.status);
-                    age = age.max(batch.age);
-                    found_for_package.extend(found.iter().cloned());
-                    asked.push((osv_eco, found));
+            queries.push(OsvQuery {
+                name: osv_name,
+                ecosystem: osv_eco.clone(),
+                version: version.clone(),
+                body,
+            });
+            owner.push(index);
+        }
+    }
+    let answers = query_osv(f, base, &queries).await;
+    let mut ids_by_package: Vec<Vec<String>> = vec![Vec::new(); packages.len()];
+    // One entry per (OSV ecosystem, advisory ids found there).
+    let mut asked: Vec<(String, Vec<String>)> = Vec::new();
+    for ((query, index), answer) in queries.iter().zip(owner).zip(answers) {
+        let batch = match answer {
+            Ok(d) => d,
+            Err(e) => return fail(describe(&e)),
+        };
+        match amivuln_sources::osv::parse_batch(&batch.body) {
+            Ok(found) => {
+                status = worse(status, batch.status);
+                age = age.max(batch.age);
+                if let Some(ids) = ids_by_package.get_mut(index) {
+                    ids.extend(found.iter().cloned());
                 }
-                Err(e) => {
-                    status = worse(status, SourceStatus::Failed(e.to_string()));
-                    asked.push((osv_eco, Vec::new()));
-                }
+                asked.push((query.ecosystem.clone(), found));
+            }
+            Err(e) => {
+                status = worse(status, SourceStatus::Failed(e.to_string()));
+                asked.push((query.ecosystem.clone(), Vec::new()));
             }
         }
-        found_for_package.sort();
-        found_for_package.dedup();
-        ids_by_package.push(found_for_package);
+    }
+    for ids in &mut ids_by_package {
+        ids.sort();
+        ids.dedup();
     }
     let (entries, adv_status, adv_age) = fetch_all_advisories(f, base, &asked).await;
     status = worse(status, adv_status);
@@ -500,6 +610,17 @@ struct Fetcher<'a> {
 }
 
 impl Fetcher<'_> {
+    fn ctx(&self) -> FetchCtx<'_> {
+        FetchCtx {
+            http: self.http,
+            cache: self.cache,
+            now: self.now,
+            policy: self.policy,
+            offline: self.offline,
+            offline_db: self.offline_db,
+        }
+    }
+
     async fn get(&self, url: &str) -> Result<Fetched, FetchError> {
         fetch_cached_body(
             &FetchCtx {
@@ -1487,4 +1608,46 @@ async fn load_nvd(
         );
     }
     (entries, report_of(SourceId::Nvd, required, status, age))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Fetches against an empty offline cache, so every document fails fast.
+    async fn offline_fetch(ids: &[String]) -> SourceStatus {
+        let http = HttpClient::new(HttpConfig::default()).unwrap();
+        let cache = Cache::in_memory().unwrap();
+        let f = Fetcher {
+            http: &http,
+            cache: &cache,
+            now: 0,
+            policy: CachePolicy {
+                ttl: 1,
+                stale_max_age: 1,
+            },
+            offline: true,
+            offline_db: None,
+        };
+        fetch_advisories(&f, "https://osv.invalid", "Debian:12", ids)
+            .await
+            .1
+    }
+
+    #[tokio::test]
+    async fn only_a_real_cut_reports_the_advisory_limit() {
+        let ids = |n: usize| {
+            (0..n)
+                .map(|i| format!("DEBIAN-CVE-2024-{i:04}"))
+                .collect::<Vec<_>>()
+        };
+        // The documents fail (offline), but the limit is not the cause.
+        let under = format!("{:?}", offline_fetch(&ids(3)).await);
+        assert!(
+            under.contains("Failed") && !under.contains("exceeded"),
+            "{under}"
+        );
+        let over = format!("{:?}", offline_fetch(&ids(MAX_OSV_ADVISORIES + 1)).await);
+        assert!(over.contains("exceeded the fetch limit"), "{over}");
+    }
 }
