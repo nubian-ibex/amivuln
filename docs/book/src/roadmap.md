@@ -8,20 +8,15 @@ below follows what blocks a 1.0 first.
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
 command line are a contract for a major version. An internal audit in
-November 2026 left this code work:
-
-1. **Limit the container export on disk.** The export size is checked before
-   it is read, but the runtime has already written the whole archive; reading
-   it from a pipe would stop earlier.
-
-Done since the audit: the container export is hardened, reads the rpm
+November 2026 found code work, now done: the container export is hardened and
+reads the archive as a stream (nothing is stored, and the size limit stops the
+running program), reads the rpm
 database of current Fedora images and the pacman database of Arch images, a
 Fedora or Arch image is judged by its own data from any host, redirects never leave HTTPS, the webhook
 uses the scan's network settings and is not retried, the advisory limit is
 reported where the cut happens, the cache is pruned, OSV queries are batched
 and advisories fetched in parallel (a Debian container went from 39 s to 5 s
-cold), and file owners are looked up in one pass. The OSV loading can still
-move out of `scan.rs`, which is a refactor for 1.x.
+cold), and file owners are looked up in one pass.
 
 The rest is trust and people, and the security review comes after the items
 above so that it sees the fixed code:
