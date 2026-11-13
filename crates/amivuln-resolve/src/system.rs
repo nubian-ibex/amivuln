@@ -49,6 +49,18 @@ fn locate(program: Program) -> Option<&'static str> {
 impl ProcessRunner for SystemRunner {
     fn run(&self, program: Program, args: &[&str]) -> Result<ProcessOutput, ProcessError> {
         let path = locate(program).ok_or(ProcessError::NotInstalled(program))?;
+        self.run_at(program, path, args)
+    }
+}
+
+impl SystemRunner {
+    /// Runs the program at `path`, bounded in time and output size.
+    fn run_at(
+        &self,
+        program: Program,
+        path: &str,
+        args: &[&str],
+    ) -> Result<ProcessOutput, ProcessError> {
         let io = |e: std::io::Error| ProcessError::Io(program, e.to_string());
         let mut child = Command::new(path)
             .args(args)
@@ -60,12 +72,15 @@ impl ProcessRunner for SystemRunner {
             .spawn()
             .map_err(io)?;
         let stdout = child.stdout.take();
+        let overflow = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = std::sync::Arc::clone(&overflow);
         let reader = thread::spawn(move || {
             let mut buf = Vec::new();
             if let Some(out) = stdout {
                 // One byte past the limit tells "exactly full" from "too much".
                 let _ = out.take(MAX_OUTPUT as u64 + 1).read_to_end(&mut buf);
             }
+            flag.store(buf.len() > MAX_OUTPUT, std::sync::atomic::Ordering::SeqCst);
             buf
         });
 
@@ -74,11 +89,15 @@ impl ProcessRunner for SystemRunner {
             if let Some(status) = child.try_wait().map_err(io)? {
                 break status;
             }
-            if Instant::now() >= deadline || reader.is_finished() {
+            // The reader also finishes at end-of-file, which comes a moment
+            // before the child can be reaped: only an overflow stops the
+            // program early, otherwise it is waited for until the deadline.
+            let too_much = overflow.load(std::sync::atomic::Ordering::SeqCst);
+            if too_much || Instant::now() >= deadline {
                 let _ = child.kill();
                 let _ = child.wait();
-                let buf = reader.join().unwrap_or_default();
-                return Err(if buf.len() > MAX_OUTPUT {
+                let _ = reader.join();
+                return Err(if too_much {
                     ProcessError::TooMuchOutput(program, MAX_OUTPUT)
                 } else {
                     ProcessError::TimedOut(program)
@@ -126,6 +145,36 @@ mod tests {
         if let Ok(out) = r.run(Program::Rpm, &["-q", "--", "amivuln-surely-not-installed"]) {
             assert!(!out.success);
         }
+    }
+
+    /// Regression: the reader sees end-of-file a moment before the child can
+    /// be reaped, and that was taken for "too much output", so fast programs
+    /// sometimes failed and a package looked unresolved.
+    #[test]
+    fn a_fast_program_never_fails_spuriously() {
+        // A program that closes its output and keeps running a moment is the
+        // case that used to be killed as "too much output".
+        let r = SystemRunner::default();
+        let out = r.run_at(
+            Program::Rpm,
+            "/bin/sh",
+            &["-c", "exec >&-; sleep 0.3; exit 0"],
+        );
+        assert!(out.is_ok_and(|o| o.success));
+    }
+
+    #[test]
+    fn output_over_the_limit_is_still_refused() {
+        let r = SystemRunner::default();
+        let out = r.run_at(
+            Program::Rpm,
+            "/bin/sh",
+            &["-c", "head -c 5000000 /dev/zero; sleep 5"],
+        );
+        assert_eq!(
+            out,
+            Err(ProcessError::TooMuchOutput(Program::Rpm, MAX_OUTPUT))
+        );
     }
 
     #[test]
