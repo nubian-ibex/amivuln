@@ -10,6 +10,7 @@
 
 mod baseline;
 mod exit;
+pub mod i18n;
 mod ignore;
 mod matching;
 mod package;

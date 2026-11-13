@@ -8,6 +8,8 @@ use amivuln_core::{
     Ecosystem, Finding, RunReport, Severity, SourceStatus, Summary, TargetReport, Verdict, Version,
 };
 
+use amivuln_core::i18n::{tr, tr_args};
+
 use crate::sanitize_terminal;
 
 /// Rendering switches.
@@ -64,9 +66,7 @@ fn update_hint(target: &TargetReport) -> String {
         // Nothing on the host's package manager updates a statically linked
         // dependency: the program has to be rebuilt or replaced.
         Ecosystem::Alpine(_) => format!("apk upgrade {name}"),
-        Ecosystem::Go | Ecosystem::Crates => {
-            "rebuild or replace the program with a fixed dependency".to_owned()
-        }
+        Ecosystem::Go | Ecosystem::Crates => tr("hint.rebuild"),
     }
 }
 
@@ -120,8 +120,8 @@ fn write_counts(out: &mut dyn Write, opts: RenderOptions, s: &Summary) -> io::Re
     if s.unverified > 0 {
         writeln!(
             out,
-            "  {} finding(s) could not be verified against distro data (listed apart, not counted above)",
-            s.unverified
+            "{}",
+            tr_args("counts.unverified", &[("n", &s.unverified)])
         )?;
     }
     Ok(())
@@ -131,9 +131,14 @@ fn write_fix(out: &mut dyn Write, t: &TargetReport) -> io::Result<()> {
     if let Some(v) = highest_fix(&t.findings) {
         writeln!(
             out,
-            "  Fixed in: {}  ({})",
-            sanitize_terminal(&v.to_string()),
-            update_hint(t)
+            "{}",
+            tr_args(
+                "fix.fixed_in",
+                &[
+                    ("version", &sanitize_terminal(&v.to_string())),
+                    ("hint", &update_hint(t)),
+                ],
+            )
         )?;
     }
     Ok(())
@@ -145,7 +150,7 @@ fn write_footer(out: &mut dyn Write, opts: RenderOptions, r: &RunReport) -> io::
         writeln!(
             out,
             "{} {}: {}",
-            paint(opts, "1;31", "unresolved"),
+            paint(opts, "1;31", &tr("footer.unresolved")),
             sanitize_terminal(&u.input),
             sanitize_terminal(&u.reason)
         )?;
@@ -157,28 +162,38 @@ fn write_footer(out: &mut dyn Write, opts: RenderOptions, r: &RunReport) -> io::
             }
             _ => String::new(),
         };
-        writeln!(
-            out,
-            "source {:<18} {}{}  age {}s{}",
-            s.source.as_str(),
-            s.status.label(),
-            detail,
-            s.age.as_secs(),
-            if s.required { "  required" } else { "" }
-        )?;
+        writeln!(out, "{}", source_line(s, &detail))?;
     }
-    if r.complete {
-        writeln!(out, "result: complete")
+    write_result(out, opts, r.complete)
+}
+
+/// One `source ...` line of the footer.
+fn source_line(s: &amivuln_core::SourceReport, detail: &str) -> String {
+    tr_args(
+        "footer.source",
+        &[
+            ("name", &format!("{:<18}", s.source.as_str())),
+            ("status", &s.status.label()),
+            ("detail", &detail),
+            ("age", &s.age.as_secs()),
+            (
+                "required",
+                &if s.required {
+                    tr("footer.required")
+                } else {
+                    String::new()
+                },
+            ),
+        ],
+    )
+}
+
+/// The last line: complete, or a warning that the result may hide something.
+fn write_result(out: &mut dyn Write, opts: RenderOptions, complete: bool) -> io::Result<()> {
+    if complete {
+        writeln!(out, "{}", tr("footer.complete"))
     } else {
-        writeln!(
-            out,
-            "{}",
-            paint(
-                opts,
-                "1;31",
-                "result: INCOMPLETE (a required source failed); do not treat this as clean"
-            )
-        )
+        writeln!(out, "{}", paint(opts, "1;31", &tr("footer.incomplete")))
     }
 }
 
@@ -193,18 +208,23 @@ fn write_totals(out: &mut dyn Write, r: &RunReport) -> io::Result<()> {
         let sc = amivuln_core::score(&all);
         let accepted = r.suppressed.len();
         let accepted_note = if accepted > 0 {
-            format!("   {accepted} accepted")
+            tr_args("totals.accepted", &[("n", &accepted)])
         } else {
             String::new()
         };
         writeln!(
             out,
-            "checked {} packages, {} with findings   host score {} ({} points){}",
-            r.targets.len(),
-            with,
-            sc.grade.letter(),
-            sc.points,
-            accepted_note
+            "{}",
+            tr_args(
+                "totals.line",
+                &[
+                    ("packages", &r.targets.len()),
+                    ("with", &with),
+                    ("grade", &sc.grade.letter()),
+                    ("points", &sc.points),
+                    ("accepted", &accepted_note),
+                ],
+            )
         )?;
     }
     Ok(())
@@ -238,14 +258,23 @@ fn write_finding(
 ) -> io::Result<()> {
     let fixed = match &f.verdict {
         Verdict::Affected { fixed_in: Some(v) } => sanitize_terminal(&v.to_string()),
-        Verdict::Affected { fixed_in: None } => "no fix published".to_owned(),
+        Verdict::Affected { fixed_in: None } => tr("finding.no_fix"),
         _ => "-".to_owned(),
     };
     let kev = f.kev.as_ref().map_or(String::new(), |k| {
-        format!(
-            "  KEV(added {}{})",
-            k.added,
-            if k.ransomware { ", ransomware" } else { "" }
+        tr_args(
+            "finding.kev",
+            &[
+                ("added", &k.added),
+                (
+                    "ransomware",
+                    &if k.ransomware {
+                        tr("finding.ransomware")
+                    } else {
+                        String::new()
+                    },
+                ),
+            ],
         )
     });
     let epss = f
@@ -255,15 +284,19 @@ fn write_finding(
     let note = suppressed.as_ref().map_or(String::new(), |r| {
         format!(
             "  {}",
-            paint(opts, "32", &format!("ACCEPTED ({})", sanitize_terminal(r)))
+            paint(
+                opts,
+                "32",
+                &tr_args("finding.accepted", &[("reason", &sanitize_terminal(r))]),
+            )
         )
     });
     writeln!(
         out,
-        "    {:<16} {:<18} fix: {}{}{}{}",
+        "    {:<16} {:<18} {}{}{}{}",
         sanitize_terminal(&f.id),
         severity_label(opts, f.severity),
-        fixed,
+        tr_args("finding.fix", &[("fixed", &fixed)]),
         kev,
         epss,
         note
@@ -290,7 +323,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
             .filter(|f| matches!(f.verdict, Verdict::Affected { .. }))
             .collect();
         if !affected.is_empty() {
-            writeln!(out, "  Affected:")?;
+            writeln!(out, "{}", tr("detail.affected"))?;
             for f in affected {
                 write_finding(out, opts, f, r.suppressed.get(&f.id))?;
             }
@@ -301,7 +334,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
             .filter(|f| f.verdict == Verdict::Unverified)
             .collect();
         if !unverified.is_empty() {
-            writeln!(out, "  Unverified (no distro statement):")?;
+            writeln!(out, "{}", tr("detail.unverified"))?;
             for f in unverified {
                 write_finding(out, opts, f, r.suppressed.get(&f.id))?;
             }
@@ -325,29 +358,9 @@ fn write_sources_footer(
             }
             _ => String::new(),
         };
-        writeln!(
-            out,
-            "source {:<18} {}{}  age {}s{}",
-            s.source.as_str(),
-            s.status.label(),
-            detail,
-            s.age.as_secs(),
-            if s.required { "  required" } else { "" }
-        )?;
+        writeln!(out, "{}", source_line(s, &detail))?;
     }
-    if complete {
-        writeln!(out, "result: complete")
-    } else {
-        writeln!(
-            out,
-            "{}",
-            paint(
-                opts,
-                "1;31",
-                "result: INCOMPLETE (a required source failed); do not treat this as clean"
-            )
-        )
-    }
+    write_result(out, opts, complete)
 }
 
 /// `amivuln pending`: the updates that close the most risk first.
@@ -361,44 +374,60 @@ pub fn render_pending(
     out: &mut dyn Write,
 ) -> io::Result<()> {
     if r.updates.is_empty() {
-        writeln!(out, "no pending update closes an affected finding")?;
+        writeln!(out, "{}", tr("pending.none"))?;
     } else {
         let closed: usize = r.updates.iter().map(|u| u.closes.len()).sum();
         let kev: usize = r.updates.iter().map(|u| u.kev).sum();
         writeln!(
             out,
-            "{} update(s) close {} finding(s), {} in KEV",
-            r.updates.len(),
-            closed,
-            kev
+            "{}",
+            tr_args(
+                "pending.summary",
+                &[
+                    ("updates", &r.updates.len()),
+                    ("closed", &closed),
+                    ("kev", &kev)
+                ],
+            )
         )?;
         writeln!(out)?;
         for u in &r.updates {
             let more = if u.also.is_empty() {
                 String::new()
             } else {
-                format!(" (+{} packages)", u.also.len())
+                tr_args("pending.more", &[("n", &u.also.len())])
             };
             writeln!(
                 out,
-                "{}{} {} -> {}   closes {} ({})   KEV {}{}",
-                sanitize_terminal(&u.package.name),
-                more,
-                sanitize_terminal(&u.package.version.to_string()),
-                sanitize_terminal(&u.target.to_string()),
-                u.closes.len(),
-                severity_label(opts, u.severity),
-                u.kev,
-                u.epss_max
-                    .map_or(String::new(), |e| format!("   EPSS max {e:.2}"))
+                "{}",
+                tr_args(
+                    "pending.line",
+                    &[
+                        ("package", &sanitize_terminal(&u.package.name)),
+                        ("more", &more),
+                        (
+                            "version",
+                            &sanitize_terminal(&u.package.version.to_string())
+                        ),
+                        ("target", &sanitize_terminal(&u.target.to_string())),
+                        ("closes", &u.closes.len()),
+                        ("severity", &severity_label(opts, u.severity)),
+                        ("kev", &u.kev),
+                        (
+                            "epss",
+                            &u.epss_max
+                                .map_or(String::new(), |e| format!("   EPSS max {e:.2}")),
+                        ),
+                    ],
+                )
             )?;
         }
     }
     if r.without_fix > 0 {
         writeln!(
             out,
-            "\n{} affected finding(s) have no published fix yet, so no update closes them",
-            r.without_fix
+            "{}",
+            tr_args("pending.without_fix", &[("n", &r.without_fix)])
         )?;
     }
     writeln!(out)?;
@@ -420,11 +449,16 @@ pub fn render_cve(
         let id = sanitize_terminal(&a.id);
         match a.state {
             CveState::Affected => {
-                writeln!(out, "{id}: {}", paint(opts, "1;31", "AFFECTED"))?;
+                writeln!(out, "{id}: {}", paint(opts, "1;31", &tr("cve.affected")))?;
                 for h in &a.hits {
                     let fix = h.fixed_in.as_ref().map_or_else(
-                        || "no fix published".to_owned(),
-                        |v| format!("fixed in {}", sanitize_terminal(&v.to_string())),
+                        || tr("finding.no_fix"),
+                        |v| {
+                            tr_args(
+                                "cve.fixed_in",
+                                &[("version", &sanitize_terminal(&v.to_string()))],
+                            )
+                        },
                     );
                     writeln!(
                         out,
@@ -441,14 +475,10 @@ pub fn render_cve(
                     )?;
                 }
             }
-            CveState::NotAffected => writeln!(
-                out,
-                "{id}: no installed package is affected (fixed, not affected, or not installed)"
-            )?,
-            CveState::Unknown => writeln!(
-                out,
-                "{id}: the distribution data has no record of this CVE; that is not a statement that this host is safe"
-            )?,
+            CveState::NotAffected => {
+                writeln!(out, "{}", tr_args("cve.not_affected", &[("id", &id)]))?;
+            }
+            CveState::Unknown => writeln!(out, "{}", tr_args("cve.unknown", &[("id", &id)]))?,
         }
     }
     writeln!(out)?;
@@ -466,7 +496,7 @@ pub fn render_restart(
     out: &mut dyn Write,
 ) -> io::Result<()> {
     if r.items.is_empty() {
-        writeln!(out, "no inspected process runs a replaced file")?;
+        writeln!(out, "{}", tr("restart.none"))?;
     }
     for it in &r.items {
         let pids = it
@@ -476,7 +506,12 @@ pub fn render_restart(
             .collect::<Vec<_>>()
             .join(", ");
         let name = it.unit.as_deref().map_or_else(
-            || format!("{} (no service)", sanitize_terminal(&it.comm)),
+            || {
+                tr_args(
+                    "restart.no_service",
+                    &[("comm", &sanitize_terminal(&it.comm))],
+                )
+            },
             sanitize_terminal,
         );
         writeln!(out, "{}  pid {}", paint(opts, "1;33", &name), pids)?;
@@ -487,34 +522,42 @@ pub fn render_restart(
         if let Some((path, pkg)) = &it.exe {
             writeln!(
                 out,
-                "  executable replaced: {}{}",
-                sanitize_terminal(path),
-                owner(pkg)
+                "{}",
+                tr_args(
+                    "restart.exe",
+                    &[("path", &sanitize_terminal(path)), ("owner", &owner(pkg))],
+                )
             )?;
         }
         for (path, pkg) in &it.libs {
             writeln!(
                 out,
-                "  library replaced:    {}{}",
-                sanitize_terminal(path),
-                owner(pkg)
+                "{}",
+                tr_args(
+                    "restart.lib",
+                    &[("path", &sanitize_terminal(path)), ("owner", &owner(pkg))],
+                )
             )?;
         }
         if let Some(u) = &it.unit {
             writeln!(
                 out,
-                "  restart with: systemctl restart {}",
-                sanitize_terminal(u)
+                "{}",
+                tr_args("restart.with", &[("unit", &sanitize_terminal(u))])
             )?;
         }
     }
     writeln!(out)?;
-    writeln!(out, "inspected {} processes", r.inspected)?;
+    writeln!(
+        out,
+        "{}",
+        tr_args("restart.inspected", &[("n", &r.inspected)])
+    )?;
     if r.unreadable > 0 {
         writeln!(
             out,
-            "{} process(es) could not be inspected; run as root to see all of them",
-            r.unreadable
+            "{}",
+            tr_args("restart.unreadable", &[("n", &r.unreadable)])
         )?;
     }
     Ok(())

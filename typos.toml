@@ -1,5 +1,9 @@
 [files]
-extend-exclude = ["tests/fixtures/**", "tests/vendor/**", "supply-chain/**", "Cargo.lock", "LICENSES/**", "LICENSE-*", "bench/truth/**", "crates/*/tests/*.txt", "docs/book/i18n/**"]
+extend-exclude = ["tests/fixtures/**", "crates/*/locales/pt.txt", "tests/vendor/**", "supply-chain/**", "Cargo.lock", "LICENSES/**", "LICENSE-*", "bench/truth/**", "crates/*/tests/*.txt", "docs/book/i18n/**"]
 
 [default.extend-identifiers]
 ratatui = "ratatui"
+
+[default.extend-words]
+# The Portuguese word for "error", asserted by the locale test.
+erro = "erro"

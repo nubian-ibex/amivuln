@@ -673,6 +673,76 @@ async fn sarif_markdown_and_csv_output() {
     assert!(String::from_utf8_lossy(&bad.stderr).contains("prometheus, cyclonedx or openvex"));
 }
 
+/// The messages follow the locale; the formats other programs read do not.
+#[tokio::test(flavor = "multi_thread")]
+async fn messages_follow_the_locale_and_machine_formats_do_not() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let target = "python3-multipart@0:1.3.0-1.fc43";
+    let ask = |format: &'static str| vec!["-f", format, target, "--distro", "fedora:43"];
+
+    let mut portuguese = sb.cmd();
+    portuguese.env("LC_ALL", "pt_BR.UTF-8");
+    let pt = run(portuguese, ask("detail")).await;
+    let text = stdout(&pt);
+    assert!(text.contains("Corrigido em:"), "{text}");
+    assert!(text.contains("resultado: completo"), "{text}");
+    assert!(text.contains("Afetados:"), "{text}");
+    assert!(!text.contains("result: complete"), "{text}");
+
+    // LANG is used when LC_ALL is not set; C and unknown languages are English.
+    let mut lang = sb.cmd();
+    lang.env("LANG", "pt_BR.UTF-8");
+    assert!(stdout(&run(lang, ask("summary")).await).contains("resultado: completo"));
+    let mut posix = sb.cmd();
+    posix.env("LC_ALL", "C").env("LANG", "pt_BR.UTF-8");
+    assert!(stdout(&run(posix, ask("summary")).await).contains("result: complete"));
+
+    // JSON, SARIF and the other machine formats are identical in every locale.
+    for format in ["json", "sarif", "csv", "prometheus", "cyclonedx", "openvex"] {
+        let mut a = sb.cmd();
+        a.env("LC_ALL", "pt_BR.UTF-8");
+        let mut b = sb.cmd();
+        b.env("LC_ALL", "C");
+        let (in_pt, in_en) = (run(a, ask(format)).await, run(b, ask(format)).await);
+        let strip = |o: &std::process::Output| {
+            // The generation time differs between two runs; nothing else may.
+            stdout(o)
+                .lines()
+                .filter(|l| {
+                    !l.contains("generated_at")
+                        && !l.contains("timestamp")
+                        && !l.contains("last_run")
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        assert_eq!(
+            strip(&in_pt),
+            strip(&in_en),
+            "{format} depends on the locale"
+        );
+    }
+
+    // A usage error is translated too; the exit code is not.
+    let mut bad = sb.cmd();
+    bad.env("LC_ALL", "pt_BR.UTF-8");
+    let failed = run(
+        bad,
+        vec![
+            "--packages-from",
+            "/nonexistent/list.txt",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    assert_eq!(failed.status.code(), Some(64));
+    assert!(String::from_utf8_lossy(&failed.stderr).starts_with("erro:"));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn cyclonedx_and_openvex_state_what_the_distribution_says() {
     let server = MockServer::start().await;
@@ -1551,6 +1621,7 @@ async fn osv_advisories_stay_with_the_package_they_were_found_for() {
     let inv_arg: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
     let out = Command::cargo_bin("amivuln")
         .unwrap()
+        .env("LC_ALL", "C")
         .env("HOME", home.path())
         .env("XDG_CACHE_HOME", home.path().join("cache"))
         .env("PATH", "/nonexistent")
@@ -1588,7 +1659,9 @@ fn run_home(
     args: Vec<&'static str>,
 ) -> std::process::Output {
     let mut cmd = Command::cargo_bin("amivuln").unwrap();
-    cmd.env("HOME", home).env("PATH", "/nonexistent");
+    cmd.env("HOME", home)
+        .env("LC_ALL", "C")
+        .env("PATH", "/nonexistent");
     if let Some(cache) = cache {
         cmd.env("XDG_CACHE_HOME", cache);
     }
@@ -1634,6 +1707,7 @@ async fn the_offline_database_answers_when_the_network_is_gone() {
 
     let online = Command::cargo_bin("amivuln")
         .unwrap()
+        .env("LC_ALL", "C")
         .env("HOME", home_a.path())
         .env("XDG_CACHE_HOME", cache_a.path())
         .env("PATH", "/nonexistent")

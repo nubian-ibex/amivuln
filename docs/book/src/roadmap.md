@@ -46,11 +46,11 @@ above so that it sees the final code:
 2. **Flatpak runtimes,** read from the installed runtimes.
 3. **Known mitigations,** a curated list of "CVE to configuration that
    mitigates it".
-4. **Translatable messages.** The messages of the tool are English only. The
-   OpenSSF Silver criterion `internationalization` asks for a mechanism that
-   separates the text from the code, not for translations. Human formats and
-   stderr would be localized; the JSON, SARIF and the other machine formats
-   stay in English.
+4. **More languages and the rest of the messages.** The mechanism is in
+   place (message catalogs, English and Brazilian Portuguese, chosen from the
+   locale). The `--help` text, the configuration errors and the messages of
+   the libraries are still English only, and Spanish, German and French
+   catalogs would need a native reviewer.
 5. **An optional local explanation** of a finding, off by default, that never
    sends data off the machine.
 6. **Unfixed Red Hat CVEs.** RHEL results come from OSV, which only has
