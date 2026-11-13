@@ -5,7 +5,7 @@
 // manual SRPM builds working. The version is bumped at every release
 // (release-plz only knows Cargo.toml; keep this file in sync).
 Name:           amivuln
-Version:        0.0.13
+Version:        0.1.0
 Release:        1%{?dist}
 Summary:        Backport-aware CVE check for binaries, services and packages on this host
 
@@ -53,5 +53,8 @@ install -Dpm 0644 contrib/completions/amivuln.fish %{buildroot}%{_datadir}/fish/
 %{_datadir}/fish/vendor_completions.d/amivuln.fish
 
 %changelog
+* Fri Nov 13 2026 amivuln contributors <noreply@github.com> - 0.1.0-1
+- Update to 0.1.0
+
 * Tue Nov 11 2026 amivuln contributors <noreply@github.com> - 0.0.13-1
 - Initial package

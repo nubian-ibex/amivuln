@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 # Maintainer: amivuln contributors <https://github.com/nubian-ibex/amivuln>
 pkgname=amivuln
-pkgver=0.0.10
+pkgver=0.1.0
 pkgrel=1
 pkgdesc='Am I vulnerable? Backport-aware CVE check for binaries, services and packages on this host'
 arch=('x86_64' 'aarch64')
@@ -11,7 +11,7 @@ license=('MIT' 'Apache-2.0')
 depends=('gcc-libs')
 makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/source.tar.gz")
-sha256sums=('25c04880ad2c5d79c2e55f6460ef78200f4243d36fff0a722bd825694806655f')
+sha256sums=('a0155afe437a7e6299dbaba801d1ea23fda72d9029778ec9b4035d16ecc748c5')
 
 prepare() {
   cd "$pkgname-$pkgver"

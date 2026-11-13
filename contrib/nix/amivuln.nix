@@ -6,7 +6,7 @@
   fetchurl,
   installShellFiles,
 }: let
-  version = "0.0.13";
+  version = "0.1.0";
 in
   rustPlatform.buildRustPackage {
     pname = "amivuln";
@@ -14,7 +14,7 @@ in
 
     src = fetchurl {
       url = "https://github.com/nubian-ibex/amivuln/releases/download/v${version}/source.tar.gz";
-      hash = "sha256-9e/BqhAVIJStoZXqIyKAs3YIz8a+lXUYeDW0qzCtYhY=";
+      hash = "sha256-oBVa/kN6fmKZ26uoAdHqI/2nLZApd47JtANdFuzHSMU=";
     };
     sourceRoot = "amivuln-${version}";
 
