@@ -83,51 +83,60 @@ pub fn export(
     std::fs::create_dir_all(dest).map_err(|e| ContainerError::Export(e.to_string()))?;
     let runtime = available_runtime(runner)
         .ok_or_else(|| ContainerError::Runtime("podman or docker is not installed".to_owned()))?;
-    let out = runner
-        .run(
-            runtime,
-            &[
-                "export",
-                "-o",
-                tar_at(dest).to_str().unwrap_or_default(),
-                container_id,
-            ],
-        )
+    // The archive is read as the runtime writes it and never stored: an image
+    // of any size costs only the few files that are copied out.
+    let mut stream = runner
+        .stream(runtime, &["export", container_id])
         .map_err(|e| match e {
             ProcessError::NotInstalled(p) => {
                 ContainerError::Runtime(format!("{p:?} is not installed"))
             }
             other => ContainerError::Export(other.to_string()),
         })?;
-    if !out.success {
+    extract_wanted(&mut stream, dest, MAX_EXPORT_BYTES)?;
+    let succeeded = stream
+        .finish()
+        .map_err(|e| ContainerError::Export(e.to_string()))?;
+    if !succeeded {
         return Err(ContainerError::Runtime(format!(
             "the runtime could not export {container_id:?}"
         )));
     }
-    extract_wanted(&tar_at(dest), dest)?;
     let os_release = read_os_release(dest)
         .map_err(|_| ContainerError::Export("the container has no /etc/os-release".to_owned()))?;
     ecosystem_from_os_release(&os_release)
         .ok_or_else(|| ContainerError::Unsupported(distro_id(&os_release)))
 }
 
-/// Copies the package database files and os-release out of the export into
-/// `dest/root`, each bounded.
-fn extract_wanted(tar_path: &Path, dest: &Path) -> Result<(), ContainerError> {
-    let file = std::fs::File::open(tar_path)
-        .map_err(|e| ContainerError::Export(format!("{}: {e}", tar_path.display())))?;
-    // The runtime has already written the whole export by now; the limit
-    // keeps the read bounded, not the disk use.
-    let size = file
-        .metadata()
-        .map_err(|e| ContainerError::Export(e.to_string()))?
-        .len();
-    if size > MAX_EXPORT_BYTES {
-        return Err(ContainerError::Export(format!(
-            "the export is {size} bytes, more than the {MAX_EXPORT_BYTES} byte limit"
-        )));
+/// A reader that fails once more than `left` bytes have gone through it.
+struct Capped<R> {
+    inner: R,
+    left: u64,
+}
+
+impl<R: Read> Read for Capped<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        let n_u64 = n as u64;
+        if n_u64 > self.left {
+            return Err(std::io::Error::other(
+                "the export is larger than the size limit",
+            ));
+        }
+        self.left -= n_u64;
+        Ok(n)
     }
-    let mut tar = tar::Archive::new(std::io::BufReader::new(file));
+}
+
+/// Copies the package database files and os-release out of the export into
+/// `dest/root`, each bounded. At most `limit` bytes are read from `export`;
+/// the rest of the stream is consumed so the program can finish.
+fn extract_wanted(export: &mut dyn Read, dest: &Path, limit: u64) -> Result<(), ContainerError> {
+    let capped = Capped {
+        inner: export,
+        left: limit,
+    };
+    let mut tar = tar::Archive::new(std::io::BufReader::new(capped));
     let entries = tar
         .entries()
         .map_err(|e| ContainerError::Export(e.to_string()))?;
@@ -190,6 +199,11 @@ fn extract_wanted(tar_path: &Path, dest: &Path) -> Result<(), ContainerError> {
         }
         std::fs::write(&target, &bytes).map_err(|e| ContainerError::Export(e.to_string()))?;
     }
+    // Read the end of the archive too, so the program is not left blocked on
+    // a full pipe and the size limit covers the whole stream.
+    let mut rest = tar.into_inner();
+    std::io::copy(&mut rest, &mut std::io::sink())
+        .map_err(|e| ContainerError::Export(e.to_string()))?;
     Ok(())
 }
 
@@ -220,10 +234,6 @@ fn read_os_release(dest: &Path) -> Result<String, std::io::Error> {
 
 /// Marks the stub file written for a symlinked member.
 const SYMLINK_MARK: &str = "amivuln-symlink\t";
-
-fn tar_at(dest: &Path) -> PathBuf {
-    dest.join("rootfs.tar")
-}
 
 /// Files copied out of an export, relative to the container root.
 const WANTED_FILES: [&str; 4] = [
@@ -601,26 +611,38 @@ mod tests {
                     success: true,
                     stdout: b"0.0.0-test".to_vec(),
                 }),
-                Program::Podman | Program::Docker => {
-                    let out = args
-                        .iter()
-                        .zip(args.iter().skip(1))
-                        .find_map(|(flag, path)| (*flag == "-o").then_some(*path));
-                    let Some(out) = out else {
-                        return Err(amivuln_core::ProcessError::Io(
-                            program,
-                            "unexpected args".to_owned(),
-                        ));
-                    };
-                    std::fs::copy(&self.tar_path, out)
-                        .map_err(|e| amivuln_core::ProcessError::Io(program, e.to_string()))?;
-                    Ok(ProcessOutput {
-                        success: true,
-                        stdout: Vec::new(),
-                    })
-                }
                 _ => Err(amivuln_core::ProcessError::NotInstalled(program)),
             }
+        }
+
+        fn stream(
+            &self,
+            program: Program,
+            args: &[&str],
+        ) -> Result<Box<dyn amivuln_core::ProcessStream>, amivuln_core::ProcessError> {
+            assert_eq!(args.first(), Some(&"export"), "only export is streamed");
+            let file = std::fs::File::open(&self.tar_path)
+                .map_err(|e| amivuln_core::ProcessError::Io(program, e.to_string()))?;
+            Ok(Box::new(FileStream {
+                file,
+                success: true,
+            }))
+        }
+    }
+
+    /// A finished export read from a file, standing in for the runtime.
+    pub(crate) struct FileStream {
+        pub(crate) file: std::fs::File,
+        pub(crate) success: bool,
+    }
+    impl Read for FileStream {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            self.file.read(buf)
+        }
+    }
+    impl amivuln_core::ProcessStream for FileStream {
+        fn finish(self: Box<Self>) -> Result<bool, amivuln_core::ProcessError> {
+            Ok(self.success)
         }
     }
 
@@ -667,8 +689,8 @@ mod extraction_tests {
         let found = packages(&runtime, eco, &dest).unwrap();
         let names: Vec<&str> = found.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(names, ["nginx"], "{names:?}");
-        // The export tar and the scratch tree stay inside the caller's dir.
-        assert!(dest.join("rootfs.tar").is_file());
+        // Only the copied files land in the scratch tree: the archive is not stored.
+        assert!(!dest.join("rootfs.tar").exists());
         assert!(dest.join("root/etc/os-release").is_file());
     }
 
@@ -786,6 +808,33 @@ mod extraction_tests {
         let dest = dir.path().join("export");
         assert_eq!(export(&runtime, "ubi", &dest).unwrap(), Ecosystem::Rhel(9));
         assert!(dest.join("root/var/lib/rpm/rpmdb.sqlite").is_file());
+    }
+
+    #[test]
+    fn an_export_over_the_limit_is_refused_while_it_streams() {
+        let tar = build_tar(&[
+            ("etc/os-release", b"ID=debian\nVERSION_ID=13\n"),
+            ("usr/share/filler", &vec![1u8; 4096]),
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("fixture.tar");
+        std::fs::write(&tar_path, &tar).unwrap();
+        let mut stream = ScriptedRuntime { tar_path }
+            .stream(Program::Podman, &["export", "web"])
+            .unwrap();
+        let err = extract_wanted(&mut stream, &dir.path().join("export"), 1024).unwrap_err();
+        assert!(
+            err.to_string().contains("larger than the size limit"),
+            "{err}"
+        );
+        // A limit that fits reads the same archive.
+        let mut stream = ScriptedRuntime {
+            tar_path: dir.path().join("fixture.tar"),
+        }
+        .stream(Program::Podman, &["export", "web"])
+        .unwrap();
+        extract_wanted(&mut stream, &dir.path().join("export2"), 1 << 20).unwrap();
+        assert!(dir.path().join("export2/root/etc/os-release").is_file());
     }
 
     /// Regression: the pacman database lives in `var/lib/pacman/local/<pkg>/desc`,

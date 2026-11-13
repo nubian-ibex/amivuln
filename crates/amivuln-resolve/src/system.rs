@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use amivuln_core::{ProcessError, ProcessOutput, ProcessRunner, Program};
+use amivuln_core::{ProcessError, ProcessOutput, ProcessRunner, ProcessStream, Program};
 
 /// Output limit per run.
 const MAX_OUTPUT: usize = 4 * 1024 * 1024;
@@ -47,9 +47,103 @@ fn locate(program: Program) -> Option<&'static str> {
 }
 
 impl ProcessRunner for SystemRunner {
+    fn stream(
+        &self,
+        program: Program,
+        args: &[&str],
+    ) -> Result<Box<dyn ProcessStream>, ProcessError> {
+        let path = locate(program).ok_or(ProcessError::NotInstalled(program))?;
+        let io = |e: std::io::Error| ProcessError::Io(program, e.to_string());
+        let mut child = Command::new(path)
+            .args(args)
+            .env_clear()
+            .env("LC_ALL", "C")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(io)?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| ProcessError::Io(program, "no standard output".to_owned()))?;
+        let child = std::sync::Arc::new(std::sync::Mutex::new(child));
+        let done = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (watched, finished) = (std::sync::Arc::clone(&child), std::sync::Arc::clone(&done));
+        let deadline = Instant::now() + STREAM_TIMEOUT;
+        thread::spawn(move || {
+            while !finished.load(std::sync::atomic::Ordering::SeqCst) {
+                if Instant::now() >= deadline {
+                    let _ = watched
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner)
+                        .kill();
+                    return;
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+        });
+        Ok(Box::new(ChildStream {
+            child,
+            stdout,
+            done,
+        }))
+    }
+
     fn run(&self, program: Program, args: &[&str]) -> Result<ProcessOutput, ProcessError> {
         let path = locate(program).ok_or(ProcessError::NotInstalled(program))?;
         self.run_at(program, path, args)
+    }
+}
+
+/// How long a streamed program may run: an export of a large image takes
+/// minutes, unlike the package queries.
+const STREAM_TIMEOUT: Duration = Duration::from_secs(600);
+
+/// A child whose standard output is read by the caller. A watchdog thread
+/// kills it at the deadline, which ends the read with end-of-file.
+struct ChildStream {
+    child: std::sync::Arc<std::sync::Mutex<std::process::Child>>,
+    stdout: std::process::ChildStdout,
+    done: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl ChildStream {
+    fn stop(&self) {
+        self.done.store(true, std::sync::atomic::Ordering::SeqCst);
+        let mut child = self
+            .child
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
+impl Read for ChildStream {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.stdout.read(buf)
+    }
+}
+
+impl ProcessStream for ChildStream {
+    fn finish(self: Box<Self>) -> Result<bool, ProcessError> {
+        self.done.store(true, std::sync::atomic::Ordering::SeqCst);
+        let status = self
+            .child
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .wait()
+            .map_err(|e| ProcessError::Io(Program::Podman, e.to_string()))?;
+        Ok(status.success())
+    }
+}
+
+impl Drop for ChildStream {
+    fn drop(&mut self) {
+        // Stopping a finished child is harmless; stopping a running one is the
+        // point (the reader gave up, for example at the size limit).
+        self.stop();
     }
 }
 

@@ -28,7 +28,7 @@ pub use matching::{
 };
 pub use package::{Ecosystem, PackageRef, Provenance, Version};
 pub use pending::{CveAnswer, CveHit, CveState, PendingUpdate, cve_answers, pending_updates};
-pub use process::{ProcessError, ProcessOutput, ProcessRunner, Program};
+pub use process::{ProcessError, ProcessOutput, ProcessRunner, ProcessStream, Program};
 pub use report::{
     CveReport, FailOn, HostMeta, PendingReport, Policy, RestartItem, RestartReport, RunReport,
     Summary, TargetReport, Unresolved,
