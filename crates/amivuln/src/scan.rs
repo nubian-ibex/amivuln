@@ -1118,6 +1118,11 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
 /// whether such a separate pass exists.
 type LanguageSplit = (Vec<(String, PackageRef)>, Vec<(String, PackageRef)>, bool);
 
+/// True for a package whose distribution data is not OSV (Fedora, Arch).
+fn served_by_other_distro(pkg: &PackageRef) -> bool {
+    !pkg.ecosystem.is_language() && host_source_id(pkg.ecosystem) != SourceId::Osv
+}
+
 /// Splits the resolved packages into those the host's distribution data judges
 /// and those that get an OSV pass of their own (Go modules and crates on a
 /// host whose own source is not OSV). On OSV hosts everything shares one pass.
@@ -1144,17 +1149,33 @@ fn split_language(eco: Ecosystem, resolved: &[(String, PackageRef)]) -> Language
     (pick(false), language, separate)
 }
 
+/// The data each group of packages is judged by.
+struct Judging<'a> {
+    /// The host's distribution.
+    distro: Option<&'a DistroData>,
+    /// OSV, for language packages and OSV distributions under another host.
+    language: Option<&'a DistroData>,
+    /// Fedora or Arch data for images of those distributions.
+    foreign: &'a [(Ecosystem, DistroData)],
+}
+
 /// One report per resolved package, each judged by the data that applies to it.
 fn build_reports(
     resolved: &[(String, PackageRef)],
     separate_lang: bool,
     host_source: SourceId,
-    data: Option<&DistroData>,
-    lang_data: Option<&DistroData>,
+    judging: &Judging<'_>,
     nvd_data: &std::collections::BTreeMap<String, Vec<amivuln_sources::nvd::NvdEntry2>>,
     vex: &[VexStatement],
 ) -> Vec<TargetReport> {
+    let Judging {
+        distro: data,
+        language: lang_data,
+        foreign,
+    } = *judging;
     let (mut distro_index, mut lang_index) = (0usize, 0usize);
+    let mut foreign_index: std::collections::HashMap<Ecosystem, usize> =
+        std::collections::HashMap::new();
     resolved
         .iter()
         .map(|(input, pkg)| {
@@ -1162,7 +1183,21 @@ fn build_reports(
             // whose source is not the host's were fetched in the own pass.
             let own_pass = separate_lang
                 && (pkg.ecosystem.is_language() || host_source_id(pkg.ecosystem) != host_source);
-            let findings = if own_pass {
+            let findings = if own_pass && served_by_other_distro(pkg) {
+                // A Fedora or Arch package under a host of another family: it
+                // is judged by the data of its own distribution.
+                let index = foreign_index.entry(pkg.ecosystem).or_default();
+                let found = match foreign.iter().find(|(e, _)| *e == pkg.ecosystem) {
+                    Some((_, DistroData::Arch(t))) => arch_findings(pkg, t, vex),
+                    Some((_, DistroData::Fedora(i))) => fedora_findings(pkg, i, vex),
+                    Some((_, DistroData::Osv(list))) => list
+                        .get(*index)
+                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
+                    None => Vec::new(),
+                };
+                *index += 1;
+                found
+            } else if own_pass {
                 let found = match lang_data {
                     Some(DistroData::Osv(list)) => list
                         .get(lang_index)
@@ -1263,6 +1298,12 @@ async fn gather(
         )
     };
     sources.extend(rep);
+    // Packages of a Fedora or Arch image under a host of another family are
+    // judged by their own distribution's data, one pass per distribution.
+    let (other_resolved, lang_resolved): (Vec<_>, Vec<_>) = lang_resolved
+        .into_iter()
+        .partition(|(_, p)| served_by_other_distro(p));
+    let foreign = load_foreign(fetcher, cfg, &other_resolved, &mut sources).await;
     let lang_data = if lang_resolved.is_empty() {
         None
     } else {
@@ -1295,8 +1336,11 @@ async fn gather(
         resolved,
         separate_lang,
         host_source_id(eco),
-        data.as_ref(),
-        lang_data.as_ref(),
+        &Judging {
+            distro: data.as_ref(),
+            language: lang_data.as_ref(),
+            foreign: &foreign,
+        },
         &nvd_data,
         vex,
     );
@@ -1322,6 +1366,36 @@ async fn gather(
         sources,
         known,
     }
+}
+
+/// One pass per distribution for packages whose data is not the host's and not
+/// OSV: the ecosystem and the data its source returned.
+async fn load_foreign(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    other_resolved: &[(String, PackageRef)],
+    sources: &mut Vec<SourceReport>,
+) -> Vec<(Ecosystem, DistroData)> {
+    let mut ecosystems: Vec<Ecosystem> = other_resolved.iter().map(|(_, p)| p.ecosystem).collect();
+    ecosystems.sort_by_key(|e| format!("{e:?}"));
+    ecosystems.dedup();
+    let mut foreign = Vec::new();
+    for eco in ecosystems {
+        let group: Vec<(String, PackageRef)> = other_resolved
+            .iter()
+            .filter(|(_, p)| p.ecosystem == eco)
+            .cloned()
+            .collect();
+        // The configured distro endpoint belongs to the host's distribution.
+        let mut attempt = cfg.clone();
+        attempt.sources.distro.url = None;
+        let (data, report) = load_distro(fetcher, eco, &attempt, &group).await;
+        sources.push(report);
+        if let Some(data) = data {
+            foreign.push((eco, data));
+        }
+    }
+    foreign
 }
 
 /// The HTTP settings every outgoing request shares: timeout, proxy, extra CA,
@@ -1619,6 +1693,69 @@ async fn load_nvd(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn pkg(eco: Ecosystem, name: &str, version: &str, kind: &str) -> PackageRef {
+        let version = match kind {
+            "rpm" => amivuln_core::Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
+            _ => amivuln_core::Version::Deb(version.parse().unwrap_or_else(|n| match n {})),
+        };
+        PackageRef {
+            ecosystem: eco,
+            name: name.to_owned(),
+            source_name: None,
+            version,
+            arch: None,
+            provenance: amivuln_core::Provenance::PackageDb,
+        }
+    }
+
+    /// A Fedora image scanned from a Debian host used to fall into the OSV
+    /// pass and fail with "no OSV data". It is judged by Fedora's own data.
+    #[test]
+    fn a_fedora_package_under_a_debian_host_uses_fedora_data() {
+        let host = Ecosystem::Debian(12);
+        let fedora = pkg(
+            Ecosystem::Fedora(43),
+            "python3-multipart",
+            "0:1.3.0-1.fc43",
+            "rpm",
+        );
+        let debian = pkg(host, "curl", "7.88.1-10", "deb");
+        let resolved = vec![
+            ("c:curl".to_owned(), debian),
+            ("c:python3-multipart".to_owned(), fedora.clone()),
+        ];
+        let (host_group, own_group, separate) = split_language(host, &resolved);
+        assert!(separate);
+        assert_eq!(host_group.len(), 1);
+        assert_eq!(own_group.len(), 1);
+        assert!(served_by_other_distro(&fedora));
+        assert!(!served_by_other_distro(&host_group[0].1));
+
+        let info = Updateinfo::parse_zst(include_bytes!(
+            "../../../tests/fixtures/http/fedora-updateinfo/2026-11-07/updateinfo.xml.zst"
+        ))
+        .unwrap();
+        let foreign = [(Ecosystem::Fedora(43), DistroData::Fedora(info))];
+        let judging = Judging {
+            distro: None,
+            language: None,
+            foreign: &foreign,
+        };
+        let reports = build_reports(
+            &own_group,
+            separate,
+            host_source_id(host),
+            &judging,
+            &std::collections::BTreeMap::new(),
+            &[],
+        );
+        assert!(
+            reports[0].findings.iter().any(|f| f.id == "CVE-2026-28356"),
+            "{:?}",
+            reports[0].findings
+        );
+    }
 
     /// Fetches against an empty offline cache, so every document fails fast.
     async fn offline_fetch(ids: &[String]) -> SourceStatus {

@@ -145,15 +145,8 @@ fn extract_wanted(tar_path: &Path, dest: &Path) -> Result<(), ContainerError> {
                 path.display()
             )));
         };
-        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-            continue;
-        };
-        // Only the files this reader needs are extracted, each bounded.
-        let wanted = matches!(
-            name,
-            "os-release" | "status" | "installed" | "Packages" | "pacman"
-        ) || path.starts_with("var/lib/rpm")
-            || path.starts_with("usr/lib/sysimage/rpm");
+        let wanted = WANTED_FILES.iter().any(|f| path == Path::new(f))
+            || WANTED_DIRS.iter().any(|d| path.starts_with(d));
         // A directory entry under var/lib/rpm matches the prefix but holds no
         // data; writing it as a file would block the database files inside.
         if !wanted || entry.header().entry_type().is_dir() {
@@ -231,6 +224,20 @@ const SYMLINK_MARK: &str = "amivuln-symlink\t";
 fn tar_at(dest: &Path) -> PathBuf {
     dest.join("rootfs.tar")
 }
+
+/// Files copied out of an export, relative to the container root.
+const WANTED_FILES: [&str; 4] = [
+    "etc/os-release",
+    "usr/lib/os-release",
+    "var/lib/dpkg/status",
+    "lib/apk/db/installed",
+];
+/// Directories copied out of an export: the rpm and pacman databases.
+const WANTED_DIRS: [&str; 3] = [
+    "var/lib/rpm",
+    "usr/lib/sysimage/rpm",
+    "var/lib/pacman/local",
+];
 
 /// Largest container export read.
 const MAX_EXPORT_BYTES: u64 = 4 * 1024 * 1024 * 1024;
@@ -779,6 +786,30 @@ mod extraction_tests {
         let dest = dir.path().join("export");
         assert_eq!(export(&runtime, "ubi", &dest).unwrap(), Ecosystem::Rhel(9));
         assert!(dest.join("root/var/lib/rpm/rpmdb.sqlite").is_file());
+    }
+
+    /// Regression: the pacman database lives in `var/lib/pacman/local/<pkg>/desc`,
+    /// which was never extracted, so an Arch container read as unreadable.
+    #[test]
+    fn the_pacman_database_is_extracted_and_other_files_called_status_are_not() {
+        let big = vec![0u8; 65 * 1024 * 1024];
+        let tar = build_tar(&[
+            ("etc/os-release", b"ID=arch\n"),
+            ("var/lib/pacman/local/acl-2.4.0-1/desc", b"%NAME%\nacl\n"),
+            // An application file with a database-like name, over the limit.
+            ("srv/app/status", &big),
+        ]);
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("fixture.tar");
+        std::fs::write(&tar_path, &tar).unwrap();
+        let dest = dir.path().join("export");
+        let eco = export(&ScriptedRuntime { tar_path }, "arch", &dest).unwrap();
+        assert_eq!(eco, Ecosystem::Arch);
+        assert!(
+            dest.join("root/var/lib/pacman/local/acl-2.4.0-1/desc")
+                .is_file()
+        );
+        assert!(!dest.join("root/srv/app/status").exists());
     }
 
     /// Answers `rpm` with fixed output and remembers the `--dbpath` it got.

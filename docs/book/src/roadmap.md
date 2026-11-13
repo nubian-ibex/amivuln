@@ -10,17 +10,13 @@ below follows what blocks a 1.0 first.
 command line are a contract for a major version. An internal audit in
 November 2026 left this code work:
 
-1. **Containers whose data source is not the host's.** Debian, Ubuntu,
-   Alpine and Red Hat family images (data from OSV) are read from any host. A
-   Fedora or Arch image is only judged from a host with the same source: from
-   anywhere else the run is reported incomplete ("no OSV data"). Each data
-   source needs its own pass, as the OSV packages already have.
-2. **Limit the container export on disk.** The export size is checked before
+1. **Limit the container export on disk.** The export size is checked before
    it is read, but the runtime has already written the whole archive; reading
    it from a pipe would stop earlier.
 
-Done since the audit: the container export is hardened and reads the rpm
-database of current Fedora images, redirects never leave HTTPS, the webhook
+Done since the audit: the container export is hardened, reads the rpm
+database of current Fedora images and the pacman database of Arch images, a
+Fedora or Arch image is judged by its own data from any host, redirects never leave HTTPS, the webhook
 uses the scan's network settings and is not retried, the advisory limit is
 reported where the cut happens, the cache is pruned, OSV queries are batched
 and advisories fetched in parallel (a Debian container went from 39 s to 5 s
