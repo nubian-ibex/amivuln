@@ -77,6 +77,13 @@ pub trait PackageResolver {
     /// [`ResolveError::Ambiguous`] when several versions are installed.
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError>;
 
+    /// The owners of several files, in the order given. The default asks one
+    /// path at a time; resolvers that read a database file override it to read
+    /// the database once for all paths.
+    fn owners_of(&self, paths: &[String]) -> Vec<Result<PackageRef, ResolveError>> {
+        paths.iter().map(|p| self.owner_of(p)).collect()
+    }
+
     /// Every installed package, sorted by name then version.
     ///
     /// # Errors
