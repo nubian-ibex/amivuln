@@ -30,7 +30,7 @@ use amivuln_sources::resilience::{BreakerPolicy, RetryPolicy};
 use crate::app::{Env, Settings, cache_path, cpu_arch};
 use crate::cli::{Cli, Global};
 use crate::config::Config;
-use crate::pipeline::{arch_findings, enrich, fedora_findings, osv_findings};
+use crate::pipeline::{Assessment, arch_assess, enrich, fedora_assess, osv_assess};
 
 mod inputs;
 mod osv;
@@ -203,6 +203,24 @@ struct Judging<'a> {
     foreign: &'a [(Ecosystem, DistroData)],
 }
 
+/// What `data` says about `pkg`. `index` is the package's place among those the
+/// same OSV pass was asked about.
+fn assess(
+    pkg: &PackageRef,
+    data: Option<&DistroData>,
+    index: usize,
+    vex: &[VexStatement],
+) -> Assessment {
+    match data {
+        Some(DistroData::Arch(t)) => arch_assess(pkg, t, vex),
+        Some(DistroData::Fedora(i)) => fedora_assess(pkg, i, vex),
+        Some(DistroData::Osv(list)) => list
+            .get(index)
+            .map_or_else(Assessment::default, |o| osv_assess(pkg, o, vex)),
+        None => Assessment::default(),
+    }
+}
+
 /// One report per resolved package, each judged by the data that applies to it.
 fn build_reports(
     resolved: &[(String, PackageRef)],
@@ -227,44 +245,31 @@ fn build_reports(
             // whose source is not the host's were fetched in the own pass.
             let own_pass = separate_lang
                 && (pkg.ecosystem.is_language() || host_source_id(pkg.ecosystem) != host_source);
-            let findings = if own_pass && served_by_other_distro(pkg) {
+            let Assessment {
+                mut findings,
+                resolved,
+            } = if own_pass && served_by_other_distro(pkg) {
                 // A Fedora or Arch package under a host of another family: it
                 // is judged by the data of its own distribution.
-                let index = foreign_index.entry(pkg.ecosystem).or_default();
-                let found = match foreign.iter().find(|(e, _)| *e == pkg.ecosystem) {
-                    Some((_, DistroData::Arch(t))) => arch_findings(pkg, t, vex),
-                    Some((_, DistroData::Fedora(i))) => fedora_findings(pkg, i, vex),
-                    Some((_, DistroData::Osv(list))) => list
-                        .get(*index)
-                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
-                    None => Vec::new(),
-                };
-                *index += 1;
-                found
+                let slot = foreign_index.entry(pkg.ecosystem).or_default();
+                let own_data = foreign
+                    .iter()
+                    .find(|(e, _)| *e == pkg.ecosystem)
+                    .map(|(_, d)| d);
+                let a = assess(pkg, own_data, *slot, vex);
+                *slot += 1;
+                a
             } else if own_pass {
-                let found = match lang_data {
-                    Some(DistroData::Osv(list)) => list
-                        .get(lang_index)
-                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
-                    _ => Vec::new(),
-                };
+                let a = assess(pkg, lang_data, lang_index, vex);
                 lang_index += 1;
-                found
+                a
             } else {
-                let found = match data {
-                    Some(DistroData::Arch(t)) => arch_findings(pkg, t, vex),
-                    Some(DistroData::Fedora(i)) => fedora_findings(pkg, i, vex),
-                    Some(DistroData::Osv(list)) => list
-                        .get(distro_index)
-                        .map_or_else(Vec::new, |o| osv_findings(pkg, o, vex)),
-                    None => Vec::new(),
-                };
+                let a = assess(pkg, data, distro_index, vex);
                 distro_index += 1;
-                found
+                a
             };
             // NVD fallback: products with no distro data (the string
             // heuristic targets) get their CVEs from the NVD 2.0 API.
-            let mut findings = findings;
             if pkg.provenance == amivuln_core::Provenance::StringHeuristic
                 && let Some(entries) = nvd_data.get(&pkg.name)
             {
@@ -282,6 +287,7 @@ fn build_reports(
                 input: input.clone(),
                 package: pkg.clone(),
                 findings,
+                resolved,
             }
         })
         .collect()

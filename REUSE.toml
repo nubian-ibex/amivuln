@@ -9,3 +9,18 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 amivuln contributors"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# Third-party schemas, copied unmodified so the tests can validate the SBOM and
+# VEX output offline: the CycloneDX specification at 6470e34 and the OpenVEX
+# specification at 93139bd.
+[[annotations]]
+path = ["tests/vendor/schemas/bom-1.6.schema.json", "tests/vendor/schemas/spdx.schema.json", "tests/vendor/schemas/jsf-0.82.schema.json"]
+precedence = "override"
+SPDX-FileCopyrightText = "OWASP Foundation"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "tests/vendor/schemas/openvex_json_schema.json"
+precedence = "override"
+SPDX-FileCopyrightText = "The OpenVEX Authors"
+SPDX-License-Identifier = "Apache-2.0"

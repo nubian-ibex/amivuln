@@ -12,6 +12,7 @@ mod json;
 mod other;
 mod prometheus;
 mod sanitize;
+mod sbom;
 mod text;
 
 pub use json::{
@@ -21,6 +22,7 @@ pub use json::{
 pub use other::{render_csv, render_markdown, render_sarif};
 pub use prometheus::render_prometheus;
 pub use sanitize::sanitize_terminal;
+pub use sbom::{render_cyclonedx, render_openvex};
 pub use text::{
     RenderOptions, render_cve, render_detail, render_pending, render_restart, render_summary,
 };
@@ -42,6 +44,10 @@ pub enum Format {
     Csv,
     /// Prometheus text metrics, for the `node_exporter` textfile collector.
     Prometheus,
+    /// `CycloneDX` 1.6 BOM: the installed packages and their vulnerability analysis.
+    CycloneDx,
+    /// `OpenVEX` 0.2.0 document: one statement per package and vulnerability.
+    OpenVex,
 }
 
 impl core::str::FromStr for Format {
@@ -56,8 +62,10 @@ impl core::str::FromStr for Format {
             "markdown" => Ok(Self::Markdown),
             "csv" => Ok(Self::Csv),
             "prometheus" => Ok(Self::Prometheus),
+            "cyclonedx" => Ok(Self::CycloneDx),
+            "openvex" => Ok(Self::OpenVex),
             other => Err(format!(
-                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown, csv or prometheus"
+                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex"
             )),
         }
     }
@@ -82,6 +90,8 @@ pub fn render(
         Format::Markdown => render_markdown(report, out),
         Format::Csv => render_csv(report, out),
         Format::Prometheus => render_prometheus(report, out),
+        Format::CycloneDx => render_cyclonedx(report, out),
+        Format::OpenVex => render_openvex(report, out),
     }
 }
 
@@ -99,9 +109,14 @@ pub fn render_pending_report(
     match format {
         Format::Json => render_pending_json(report, out),
         Format::Summary | Format::Detail => render_pending(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
-            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
-        ),
+        Format::Sarif
+        | Format::Markdown
+        | Format::Csv
+        | Format::Prometheus
+        | Format::CycloneDx
+        | Format::OpenVex => Err(std::io::Error::other(
+            "--format sarif|markdown|csv|prometheus|cyclonedx|openvex applies to check only",
+        )),
     }
 }
 
@@ -119,9 +134,14 @@ pub fn render_cve_report(
     match format {
         Format::Json => render_cve_json(report, out),
         Format::Summary | Format::Detail => render_cve(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
-            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
-        ),
+        Format::Sarif
+        | Format::Markdown
+        | Format::Csv
+        | Format::Prometheus
+        | Format::CycloneDx
+        | Format::OpenVex => Err(std::io::Error::other(
+            "--format sarif|markdown|csv|prometheus|cyclonedx|openvex applies to check only",
+        )),
     }
 }
 
@@ -139,8 +159,13 @@ pub fn render_restart_report(
     match format {
         Format::Json => render_restart_json(report, out),
         Format::Summary | Format::Detail => render_restart(report, options, out),
-        Format::Sarif | Format::Markdown | Format::Csv | Format::Prometheus => Err(
-            std::io::Error::other("--format sarif|markdown|csv|prometheus applies to check only"),
-        ),
+        Format::Sarif
+        | Format::Markdown
+        | Format::Csv
+        | Format::Prometheus
+        | Format::CycloneDx
+        | Format::OpenVex => Err(std::io::Error::other(
+            "--format sarif|markdown|csv|prometheus|cyclonedx|openvex applies to check only",
+        )),
     }
 }

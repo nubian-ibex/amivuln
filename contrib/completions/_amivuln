@@ -15,8 +15,8 @@ _amivuln() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -54,8 +54,8 @@ _amivuln() {
         case $line[2] in
             (check)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -84,8 +84,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (cve)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -113,8 +113,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (pending)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -141,8 +141,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (services)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -169,8 +169,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (restart)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -197,8 +197,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (mcp)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -225,8 +225,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (tui)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -253,8 +253,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (db)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -290,8 +290,8 @@ _arguments "${_arguments_options[@]}" : \
             (build)
 _arguments "${_arguments_options[@]}" : \
 '--archive=[Where to write the archive]:FILE:_files' \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -320,8 +320,8 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--key=[Minisign public key; the signature over the manifest is checked]:FILE:_files' \
 '--sig=[Minisign signature over \`manifest.json\`]:FILE:_files' \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -352,8 +352,8 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--key=[Minisign public key]:FILE:_files' \
 '--sig=[Minisign signature over \`manifest.json\`]:FILE:_files' \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -381,8 +381,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (info)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -450,8 +450,8 @@ esac
 ;;
 (config)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -486,8 +486,8 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (show)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -515,8 +515,8 @@ _arguments "${_arguments_options[@]}" : \
 (init)
 _arguments "${_arguments_options[@]}" : \
 '--path=[Where to write; defaults to the user configuration path]:FILE:_files' \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -543,8 +543,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (validate)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -607,8 +607,8 @@ esac
 ;;
 (cache)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -643,8 +643,8 @@ _arguments "${_arguments_options[@]}" : \
         case $line[1] in
             (info)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -671,8 +671,8 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (clear)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -731,8 +731,8 @@ esac
 ;;
 (completions)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \
@@ -764,8 +764,8 @@ powershell\:"PowerShell"))' \
 ;;
 (version)
 _arguments "${_arguments_options[@]}" : \
-'-f+[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
-'--format=[Output format\: summary, detail, json, sarif, markdown, csv or prometheus]:FORMAT:_default' \
+'-f+[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
+'--format=[Output format\: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex]:FORMAT:_default' \
 '--output=[Write the result to FILE instead of stdout, replacing it atomically]:FILE:_files' \
 '--fail-on=[Exit 1 when a finding reaches this level\: none, low, medium, high, critical or kev]:LEVEL:_default' \
 '--fail-on-epss=[Exit 1 when an affected finding has at least this EPSS score (0.0 to 1.0)]:SCORE:_default' \

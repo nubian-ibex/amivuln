@@ -210,6 +210,7 @@ mod tests {
                     Severity::High,
                     Verdict::Affected { fixed_in: None },
                 )],
+                resolved: Vec::new(),
             }],
             unresolved: Vec::new(),
         }

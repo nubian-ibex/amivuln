@@ -77,7 +77,7 @@ amivuln --all -f json > report.json    # machine-readable, schema version 1
 
 More ways to ask: `amivuln cve CVE-2024-6387` (is this host affected?), `amivuln pending` (which updates close the most risk), `amivuln restart` (processes still running replaced files), `amivuln --container ID` (a podman or docker container), `amivuln --packages-from list.txt` (a list exported from another host), `amivuln --sbom FILE`, `amivuln --pid PID`, `amivuln tui` (full-screen view, built with `--features tui`), `amivuln mcp` (a read-only server for AI assistants) and `amivuln db` (an offline database for hosts without internet).
 
-Formats: `summary` (default), `detail`, `json`, `sarif`, `markdown`, `csv` and `prometheus`. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete, `3` target not resolved, `64` usage error, `70` internal error. See `man amivuln` and `amivuln --help`.
+Formats: `summary` (default), `detail`, `json`, `sarif`, `markdown`, `csv`, `prometheus`, `cyclonedx` (an SBOM with its vulnerability analysis) and `openvex`. Exit codes: `0` clean, `1` findings at or above `--fail-on`, `2` incomplete, `3` target not resolved, `64` usage error, `70` internal error. See `man amivuln` and `amivuln --help`.
 
 In a CI pipeline, `amivuln --all --fail-on high` fails the job when an installed package has a pending high-severity security fix. To check a version for a distribution other than the runner's, use `name@version --distro fedora:44` or `--distro arch`.
 

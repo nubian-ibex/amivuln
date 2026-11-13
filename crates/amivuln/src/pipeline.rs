@@ -89,6 +89,16 @@ fn one_arch_entry(installed: &Version, e: &ArchEntry) -> Option<Verdict> {
     Some(classify(installed, &e.status))
 }
 
+/// What a package's advisories amount to.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Assessment {
+    /// The CVEs to report: affected or not verifiable.
+    pub findings: Vec<Finding>,
+    /// The CVEs already settled (patched, or declared not affecting this
+    /// version). Not reported, but a VEX document states them.
+    pub resolved: Vec<Finding>,
+}
+
 /// Findings for an Arch package from the Security Tracker.
 ///
 /// Patched and not-affected CVEs are not reported.
@@ -98,6 +108,12 @@ pub fn arch_findings(
     tracker: &ArchTracker,
     vex: &[VexStatement],
 ) -> Vec<Finding> {
+    arch_assess(pkg, tracker, vex).findings
+}
+
+/// Like [`arch_findings`], keeping the settled CVEs too.
+#[must_use]
+pub fn arch_assess(pkg: &PackageRef, tracker: &ArchTracker, vex: &[VexStatement]) -> Assessment {
     let mut by_cve: BTreeMap<String, (Verdict, Severity)> = BTreeMap::new();
     for e in tracker.entries_for(&pkg.name) {
         let Some(verdict) = one_arch_entry(&pkg.version, &e) else {
@@ -121,6 +137,12 @@ pub fn arch_findings(
 /// applies.
 #[must_use]
 pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]) -> Vec<Finding> {
+    fedora_assess(pkg, info, vex).findings
+}
+
+/// Like [`fedora_findings`], keeping the settled CVEs too.
+#[must_use]
+pub fn fedora_assess(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]) -> Assessment {
     let mut names = vec![pkg.name.as_str()];
     if let Some(src) = pkg.source_name.as_deref().filter(|s| *s != pkg.name) {
         names.push(src);
@@ -151,8 +173,14 @@ pub fn fedora_findings(pkg: &PackageRef, info: &Updateinfo, vex: &[VexStatement]
 /// version to move to.
 #[must_use]
 pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Vec<Finding> {
+    osv_assess(pkg, osv, vex).findings
+}
+
+/// Like [`osv_findings`], keeping the settled CVEs too.
+#[must_use]
+pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Assessment {
     if let Version::Semver(installed) = &pkg.version {
-        return osv_language_findings(pkg, installed, osv, vex);
+        return osv_language_assessment(pkg, installed, osv, vex);
     }
     let mut by_cve: BTreeMap<String, Verdict> = BTreeMap::new();
     let mut cves: Vec<String> = osv.ids();
@@ -186,16 +214,20 @@ pub fn osv_findings(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Ve
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }
-    let mut out: Vec<Finding> = by_cve
+    let (open, settled): (Vec<_>, Vec<_>) = by_cve
         .into_iter()
-        .filter(|(_, v)| matches!(v, Verdict::Affected { .. } | Verdict::Unverified))
-        .map(|(id, verdict)| {
-            let severity = osv_severity(osv.severity_for(&id));
-            Finding::new(id, severity, verdict)
-        })
-        .collect();
-    sort_findings(&mut out);
-    out
+        .partition(|(_, v)| matches!(v, Verdict::Affected { .. } | Verdict::Unverified));
+    let make = |(id, verdict): (String, Verdict)| {
+        let severity = osv_severity(osv.severity_for(&id));
+        Finding::new(id, severity, verdict)
+    };
+    let mut assessment = Assessment {
+        findings: open.into_iter().map(make).collect(),
+        resolved: settled.into_iter().map(make).collect(),
+    };
+    sort_findings(&mut assessment.findings);
+    sort_findings(&mut assessment.resolved);
+    assessment
 }
 
 /// Every fix OSV records for `cve` that applies to this package, in the
@@ -241,13 +273,13 @@ fn osv_severity(text: Option<&str>) -> Severity {
 /// returned affects it. The fix to report is the lowest fixed version above
 /// the installed one among the ranges that name this package; none means no
 /// fix is published.
-fn osv_language_findings(
+fn osv_language_assessment(
     pkg: &PackageRef,
     installed: &amivuln_version::SemverVersion,
     osv: &OsvData,
     vex: &[VexStatement],
-) -> Vec<Finding> {
-    let mut out: Vec<Finding> = Vec::new();
+) -> Assessment {
+    let mut out = Assessment::default();
     for cve in osv.ids() {
         let fixed_in = osv
             .fixes_for(&cve)
@@ -259,27 +291,39 @@ fn osv_language_findings(
             .map(Version::Semver);
         let mut verdict = Verdict::Affected { fixed_in };
         apply_vex(&mut verdict, vex, &cve);
+        let severity = osv_severity(osv.severity_for(&cve));
         if matches!(verdict, Verdict::Affected { .. } | Verdict::Unverified) {
-            let severity = osv_severity(osv.severity_for(&cve));
-            out.push(Finding::new(cve, severity, verdict));
+            out.findings.push(Finding::new(cve, severity, verdict));
+        } else {
+            out.resolved.push(Finding::new(cve, severity, verdict));
         }
     }
-    sort_findings(&mut out);
+    sort_findings(&mut out.findings);
+    sort_findings(&mut out.resolved);
     out
 }
 
-fn finish(by_cve: BTreeMap<String, (Verdict, Severity)>, vex: &[VexStatement]) -> Vec<Finding> {
-    let mut out: Vec<Finding> = by_cve
+fn finish(by_cve: BTreeMap<String, (Verdict, Severity)>, vex: &[VexStatement]) -> Assessment {
+    let (open, settled): (Vec<_>, Vec<_>) = by_cve
         .into_iter()
-        .filter(|(_, (v, _))| matches!(v, Verdict::Affected { .. } | Verdict::Unverified))
-        .map(|(id, (verdict, severity))| {
-            let mut verdict = verdict;
-            apply_vex(&mut verdict, vex, &id);
-            Finding::new(id, severity, verdict)
-        })
-        .collect();
-    sort_findings(&mut out);
-    out
+        .partition(|(_, (v, _))| matches!(v, Verdict::Affected { .. } | Verdict::Unverified));
+    let mut assessment = Assessment {
+        findings: open
+            .into_iter()
+            .map(|(id, (verdict, severity))| {
+                let mut verdict = verdict;
+                apply_vex(&mut verdict, vex, &id);
+                Finding::new(id, severity, verdict)
+            })
+            .collect(),
+        resolved: settled
+            .into_iter()
+            .map(|(id, (verdict, severity))| Finding::new(id, severity, verdict))
+            .collect(),
+    };
+    sort_findings(&mut assessment.findings);
+    sort_findings(&mut assessment.resolved);
+    assessment
 }
 
 /// Attaches KEV and EPSS data. Missing sources simply leave fields empty; the

@@ -347,6 +347,7 @@ mod terminal {
                 input: name.to_owned(),
                 package,
                 findings,
+                resolved: Vec::new(),
             }
         }
 

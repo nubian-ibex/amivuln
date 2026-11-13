@@ -670,7 +670,70 @@ async fn sarif_markdown_and_csv_output() {
 
     let bad = run(sb.cmd(), vec!["-f", "xml", "nginx@1.0-1"]).await;
     assert_eq!(bad.status.code(), Some(64));
-    assert!(String::from_utf8_lossy(&bad.stderr).contains("markdown, csv or prometheus"));
+    assert!(String::from_utf8_lossy(&bad.stderr).contains("prometheus, cyclonedx or openvex"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cyclonedx_and_openvex_state_what_the_distribution_says() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let args =
+        |format: &'static str, pkg: &'static str| vec!["-f", format, pkg, "--distro", "fedora:43"];
+
+    // 1.3.0 is below the fix: affected, with the update to move to.
+    let bom = run(
+        sb.cmd(),
+        args("cyclonedx", "python3-multipart@0:1.3.0-1.fc43"),
+    )
+    .await;
+    assert_eq!(
+        bom.status.code(),
+        Some(0),
+        "formats do not set the exit code"
+    );
+    let b = json(&bom);
+    assert_eq!(b["bomFormat"], "CycloneDX");
+    assert_eq!(b["specVersion"], "1.6");
+    assert_eq!(b["components"][0]["name"], "python3-multipart");
+    assert_eq!(b["metadata"]["properties"][0]["value"], "true");
+    let v = &b["vulnerabilities"][0];
+    assert_eq!(v["id"], "CVE-2026-28356");
+    assert_eq!(v["analysis"]["state"], "exploitable");
+    assert_eq!(v["analysis"]["response"][0], "update");
+    assert_eq!(v["affects"][0]["ref"], b["components"][0]["bom-ref"]);
+
+    // 1.3.1 carries the fix. It is not a finding (JSON stays empty), but the
+    // VEX states it: that statement is what lets a scanner drop the match.
+    let fixed = "python3-multipart@0:1.3.1-1.fc43";
+    let plain = run(sb.cmd(), args("json", fixed)).await;
+    assert_eq!(
+        json(&plain)["targets"][0]["findings"],
+        serde_json::json!([])
+    );
+    let vex = run(sb.cmd(), args("openvex", fixed)).await;
+    let x = json(&vex);
+    assert_eq!(x["@context"], "https://openvex.dev/ns/v0.2.0");
+    let st = &x["statements"][0];
+    assert_eq!(st["vulnerability"]["name"], "CVE-2026-28356");
+    assert_eq!(st["status"], "fixed");
+    assert!(
+        st["products"][0]["@id"]
+            .as_str()
+            .unwrap()
+            .starts_with("pkg:rpm/fedora/python3-multipart@1.3.1-1.fc43")
+    );
+    let bom_fixed = run(sb.cmd(), args("cyclonedx", fixed)).await;
+    assert_eq!(
+        json(&bom_fixed)["vulnerabilities"][0]["analysis"]["state"],
+        "resolved"
+    );
+
+    // The same run renders the same bytes, down to the document id.
+    let again = run(sb.cmd(), args("openvex", fixed)).await;
+    assert_eq!(x["@id"], json(&again)["@id"]);
+    assert_eq!(x["statements"], json(&again)["statements"]);
 }
 
 #[tokio::test(flavor = "multi_thread")]

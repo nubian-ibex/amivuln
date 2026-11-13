@@ -593,6 +593,7 @@ pub(crate) mod fixtures {
                     provenance: Provenance::PackageDb,
                 },
                 findings: vec![high, low, unknown],
+                resolved: Vec::new(),
             }],
             unresolved: vec![Unresolved {
                 input: "ghost".into(),

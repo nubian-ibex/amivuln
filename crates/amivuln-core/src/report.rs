@@ -83,6 +83,11 @@ pub struct TargetReport {
     pub package: PackageRef,
     /// Reportable findings, sorted.
     pub findings: Vec<Finding>,
+    /// CVEs the distribution has already settled for this version: fixed
+    /// (including by backport) or not affecting it. They are not findings and
+    /// no summary, score or exit code counts them; they are kept because a VEX
+    /// document states them.
+    pub resolved: Vec<Finding>,
 }
 
 /// A target that could not be resolved.
