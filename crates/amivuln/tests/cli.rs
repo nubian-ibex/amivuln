@@ -712,9 +712,15 @@ async fn messages_follow_the_locale_and_machine_formats_do_not() {
             stdout(o)
                 .lines()
                 .filter(|l| {
-                    !l.contains("generated_at")
-                        && !l.contains("timestamp")
-                        && !l.contains("last_run")
+                    [
+                        "generated_at",
+                        "timestamp",
+                        "last_run",
+                        "age_s",
+                        "age_seconds",
+                    ]
+                    .iter()
+                    .all(|word| !l.contains(word))
                 })
                 .collect::<Vec<_>>()
                 .join("\n")

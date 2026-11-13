@@ -311,7 +311,7 @@ fn distro_id(os_release: &str) -> String {
         .find_map(|l| l.strip_prefix("ID="))
         .unwrap_or("?")
         .trim()
-        .trim_matches('"')
+        .trim_matches(['"', '\''])
         .to_owned()
 }
 
@@ -323,7 +323,7 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         .find_map(|l| l.strip_prefix("VERSION_ID="))
         .unwrap_or("?")
         .trim()
-        .trim_matches('"');
+        .trim_matches(['"', '\'']);
     // Ubuntu writes "24.04": the OSV ecosystem wants 2404. Other distros use
     // the major release alone.
     let version = if id == "gentoo" {
@@ -532,6 +532,11 @@ mod tests {
         );
         assert_eq!(
             ecosystem_from_os_release("ID=gentoo\nVERSION_ID=\"2.15\"\n"),
+            Some(Ecosystem::Gentoo)
+        );
+        // The current Gentoo image quotes with single quotes.
+        assert_eq!(
+            ecosystem_from_os_release("ID='gentoo'\nVERSION_ID='2.18'\n"),
             Some(Ecosystem::Gentoo)
         );
         let leap = "ID=\"opensuse-leap\"\nVERSION_ID=\"15.6\"\n";
