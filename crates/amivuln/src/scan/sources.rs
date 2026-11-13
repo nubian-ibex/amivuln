@@ -41,6 +41,7 @@ pub(super) async fn load_distro(
         | Ecosystem::Opensuse(_)
         | Ecosystem::Go
         | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
+        Ecosystem::Gentoo => load_glsa(f, cfg),
         Ecosystem::Arch => {
             let url = override_url.unwrap_or_else(|| ARCH_URL.to_owned());
             match f.get(&url).await {
@@ -114,6 +115,74 @@ pub(super) async fn load_distro(
             }
         }
     }
+}
+
+/// Where a Gentoo host keeps the advisories: the Portage tree's metadata.
+const GLSA_DIRS: [&str; 2] = [
+    "/var/db/repos/gentoo/metadata/glsa",
+    "/usr/portage/metadata/glsa",
+];
+
+/// Reads the GLSAs of the host's own Portage tree (or of `path`), offline.
+///
+/// The tree's age is the data's age: a host that has not synchronised for
+/// longer than `stale_max_age` is reported stale, and a directory that cannot
+/// be read or holds no advisory is a failed source, never an empty answer.
+fn load_glsa(f: &Fetcher<'_>, cfg: &Config) -> (Option<DistroData>, SourceReport) {
+    let required = cfg.sources.distro.required;
+    let fail = |why: String| {
+        (
+            None,
+            report_of(
+                SourceId::Glsa,
+                required,
+                SourceStatus::Failed(why),
+                Duration::ZERO,
+            ),
+        )
+    };
+    let dir = match cfg.sources.distro.path.as_deref() {
+        Some(path) => std::path::PathBuf::from(path),
+        None => match GLSA_DIRS
+            .iter()
+            .map(std::path::Path::new)
+            .find(|p| p.is_dir())
+        {
+            Some(found) => found.to_path_buf(),
+            None => {
+                return fail(format!(
+                    "no Portage tree with advisories found ({}); set sources.distro.path",
+                    GLSA_DIRS.join(", ")
+                ));
+            }
+        },
+    };
+    let data = match amivuln_sources::glsa::GlsaData::load(&dir) {
+        Ok(d) if d.is_empty() => {
+            return fail(format!("{} holds no advisory", dir.display()));
+        }
+        Ok(d) => d,
+        Err(e) => return fail(e.to_string()),
+    };
+    let age = data
+        .updated
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map_or(Duration::ZERO, |t| {
+            Duration::from_secs(
+                u64::try_from(f.now)
+                    .unwrap_or(0)
+                    .saturating_sub(t.as_secs()),
+            )
+        });
+    let status = if i64::try_from(age.as_secs()).is_ok_and(|a| a > f.policy.stale_max_age) {
+        SourceStatus::Stale
+    } else {
+        SourceStatus::Ok
+    };
+    (
+        Some(DistroData::Glsa(data)),
+        report_of(SourceId::Glsa, required, status, age),
+    )
 }
 
 pub(super) async fn load_kev(f: &Fetcher<'_>, cfg: &Config) -> (Option<Kev>, SourceReport) {

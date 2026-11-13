@@ -276,8 +276,9 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
             }
         }
         None if s == "arch" => Ok(Ecosystem::Arch),
+        None if s == "gentoo" => Ok(Ecosystem::Gentoo),
         _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, rhel:N, rocky:NN or alma:NN"
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, gentoo, rhel:N, rocky:NN or alma:NN"
         )),
     }
 }
@@ -866,6 +867,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),
         Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
         Ecosystem::Alpine(v) => ("alpine".to_owned(), format!("{}.{}", v / 100, v % 100)),
+        Ecosystem::Gentoo => ("gentoo".to_owned(), "rolling".to_owned()),
         Ecosystem::Opensuse(0) => ("opensuse-tumbleweed".to_owned(), "rolling".to_owned()),
         Ecosystem::Opensuse(v) => (
             "opensuse-leap".to_owned(),

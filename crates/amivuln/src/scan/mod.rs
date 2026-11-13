@@ -15,9 +15,9 @@ use amivuln_core::{
     TargetReport, Unresolved, Verdict, sort_findings,
 };
 use amivuln_resolve::{
-    ApkResolver, DpkgResolver, PackageResolver, PacmanResolver, ResolveError, RpmResolver,
-    SystemRunner, Target, exe_for_unit, from_name_version, from_purl, language_packages,
-    package_from_note, parse_target,
+    ApkResolver, DpkgResolver, PackageResolver, PacmanResolver, PortageResolver, ResolveError,
+    RpmResolver, SystemRunner, Target, exe_for_unit, from_name_version, from_purl,
+    language_packages, package_from_note, parse_target,
 };
 use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
@@ -31,7 +31,7 @@ use amivuln_sources::resilience::{BreakerPolicy, RetryPolicy};
 use crate::app::{Env, Settings, cache_path, cpu_arch};
 use crate::cli::{Cli, Global};
 use crate::config::Config;
-use crate::pipeline::{Assessment, arch_assess, enrich, fedora_assess, osv_assess};
+use crate::pipeline::{Assessment, arch_assess, enrich, fedora_assess, glsa_assess, osv_assess};
 
 mod inputs;
 mod osv;
@@ -57,6 +57,7 @@ pub(crate) struct Evaluated {
 enum DistroData {
     Arch(ArchTracker),
     Fedora(Updateinfo),
+    Glsa(amivuln_sources::glsa::GlsaData),
     /// One entry per package, in the order of the resolved list: an advisory
     /// found for package A must never be judged against package B.
     Osv(Vec<OsvData>),
@@ -67,6 +68,7 @@ impl DistroData {
         match self {
             Self::Arch(t) => t.knows(cve),
             Self::Fedora(i) => i.knows(cve),
+            Self::Glsa(g) => g.knows(cve),
             Self::Osv(list) => list.iter().any(|o| o.knows(cve)),
         }
     }
@@ -147,6 +149,7 @@ pub(crate) type Scope = (Vec<(String, PackageRef)>, Vec<Unresolved>);
 fn host_source_id(eco: Ecosystem) -> SourceId {
     match eco {
         Ecosystem::Arch => SourceId::ArchTracker,
+        Ecosystem::Gentoo => SourceId::Glsa,
         Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
         Ecosystem::Debian(_)
         | Ecosystem::Ubuntu(_)
@@ -216,6 +219,7 @@ fn assess(
     match data {
         Some(DistroData::Arch(t)) => arch_assess(pkg, t, vex),
         Some(DistroData::Fedora(i)) => fedora_assess(pkg, i, vex),
+        Some(DistroData::Glsa(g)) => glsa_assess(pkg, g, vex),
         Some(DistroData::Osv(list)) => list
             .get(index)
             .map_or_else(Assessment::default, |o| osv_assess(pkg, o, vex)),
@@ -571,6 +575,7 @@ mod tests {
             source_name: None,
             version,
             arch: None,
+            slot: None,
             provenance: amivuln_core::Provenance::PackageDb,
         }
     }

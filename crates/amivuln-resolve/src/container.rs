@@ -18,6 +18,7 @@
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
+use crate::PackageResolver as _;
 use amivuln_core::{Ecosystem, PackageRef, ProcessError, ProcessRunner, Program};
 
 /// Why a container could not be read.
@@ -155,7 +156,8 @@ fn extract_wanted(export: &mut dyn Read, dest: &Path, limit: u64) -> Result<(), 
             )));
         };
         let wanted = WANTED_FILES.iter().any(|f| path == Path::new(f))
-            || WANTED_DIRS.iter().any(|d| path.starts_with(d));
+            || WANTED_DIRS.iter().any(|d| path.starts_with(d))
+            || is_portage_slot(&path);
         // A directory entry under var/lib/rpm matches the prefix but holds no
         // data; writing it as a file would block the database files inside.
         if !wanted || entry.header().entry_type().is_dir() {
@@ -249,6 +251,15 @@ const WANTED_DIRS: [&str; 3] = [
     "var/lib/pacman/local",
 ];
 
+/// `var/db/pkg/<category>/<name-version>/SLOT`: the one file of a Portage
+/// package entry that is copied (the directory name carries the rest).
+fn is_portage_slot(path: &Path) -> bool {
+    let parts: Vec<_> = path.components().collect();
+    parts.len() == 6
+        && parts.last().is_some_and(|c| c.as_os_str() == "SLOT")
+        && path.starts_with("var/db/pkg")
+}
+
 /// Largest container export read.
 const MAX_EXPORT_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 
@@ -300,7 +311,7 @@ fn distro_id(os_release: &str) -> String {
         .find_map(|l| l.strip_prefix("ID="))
         .unwrap_or("?")
         .trim()
-        .trim_matches('"')
+        .trim_matches(['"', '\''])
         .to_owned()
 }
 
@@ -312,10 +323,12 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         .find_map(|l| l.strip_prefix("VERSION_ID="))
         .unwrap_or("?")
         .trim()
-        .trim_matches('"');
+        .trim_matches(['"', '\'']);
     // Ubuntu writes "24.04": the OSV ecosystem wants 2404. Other distros use
     // the major release alone.
-    let version = if id == "opensuse-leap" {
+    let version = if id == "gentoo" {
+        None
+    } else if id == "opensuse-leap" {
         // `15.6` is 1506, `16.0` is 1600.
         raw.split_once('.')
             .and_then(|(maj, min)| Some(maj.parse::<u16>().ok()? * 100 + min.parse::<u16>().ok()?))
@@ -351,6 +364,8 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         ("ubuntu", Some(v)) if matches!(v % 100, 4 | 10) => Some(Ecosystem::Ubuntu(v)),
         ("arch", _) => Some(Ecosystem::Arch),
         ("alpine", Some(v)) => Some(Ecosystem::Alpine(v)),
+        // Gentoo is rolling; its VERSION_ID is the profile, not a release.
+        ("gentoo", _) => Some(Ecosystem::Gentoo),
         ("opensuse-leap", Some(v)) => Some(Ecosystem::Opensuse(v)),
         ("opensuse-tumbleweed", _) => Some(Ecosystem::Opensuse(0)),
         _ => None,
@@ -389,6 +404,9 @@ fn read_packages(
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
             Ok(crate::dpkg::parse_status(&status, eco))
         }
+        Ecosystem::Gentoo => crate::PortageResolver::under(&root.join("root"))
+            .list_all()
+            .map_err(|e| ContainerError::Export(e.to_string())),
         Ecosystem::Alpine(_) => {
             let installed = std::fs::read_to_string(root.join("root/lib/apk/db/installed"))
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
@@ -512,6 +530,15 @@ mod tests {
             ecosystem_from_os_release(alpine),
             Some(Ecosystem::Alpine(320))
         );
+        assert_eq!(
+            ecosystem_from_os_release("ID=gentoo\nVERSION_ID=\"2.15\"\n"),
+            Some(Ecosystem::Gentoo)
+        );
+        // The current Gentoo image quotes with single quotes.
+        assert_eq!(
+            ecosystem_from_os_release("ID='gentoo'\nVERSION_ID='2.18'\n"),
+            Some(Ecosystem::Gentoo)
+        );
         let leap = "ID=\"opensuse-leap\"\nVERSION_ID=\"15.6\"\n";
         assert_eq!(
             ecosystem_from_os_release(leap),
@@ -529,7 +556,7 @@ mod tests {
         // Edge and alpha images have no OSV release.
         let edge = "ID=alpine\nVERSION_ID=3.23.0_alpha20250108\n";
         assert_eq!(ecosystem_from_os_release(edge), None);
-        let unknown = "ID=gentoo\n";
+        let unknown = "ID=nixos\n";
         assert!(matches!(
             ecosystem_from_os_release(unknown),
             None | Some(Ecosystem::Arch)
@@ -708,13 +735,13 @@ mod extraction_tests {
 
     #[test]
     fn an_unsupported_container_is_reported_by_name() {
-        let tar = build_tar(&[("etc/os-release", b"ID=gentoo\n")]);
+        let tar = build_tar(&[("etc/os-release", b"ID=nixos\n")]);
         let dir = tempfile::tempdir().unwrap();
         let tar_path = dir.path().join("fixture.tar");
         std::fs::write(&tar_path, &tar).unwrap();
         let runtime = ScriptedRuntime { tar_path };
         let err = export(&runtime, "web", &dir.path().join("export")).unwrap_err();
-        assert!(err.to_string().contains("gentoo"), "{err}");
+        assert!(err.to_string().contains("nixos"), "{err}");
     }
 
     #[test]

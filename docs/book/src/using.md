@@ -141,6 +141,8 @@ rpm -qa --qf '%{NAME}@%|EPOCH?{%{EPOCH}:}|%{VERSION}-%{RELEASE}\n' > host.txt
 rpm -qa --qf '%{SOURCERPM} %|EPOCH?{%{EPOCH}:}|%{VERSION}-%{RELEASE}\n' \
   | grep -v '^(none)' | sed -E 's/-[^-]+-[^-]+\.src\.rpm / /' \
   | awk '{print $1"@"$2}' | sort -u > host.txt
+# Gentoo: category/name:slot@version; the slot picks the advisory ranges
+python3 -c 'import portage; from portage.versions import cpv_getkey, cpv_getversion; v = portage.db["/"]["vartree"].dbapi; [print(cpv_getkey(c) + ":" + v.aux_get(c, ["SLOT"])[0].split("/")[0] + "@" + cpv_getversion(c)) for c in v.cpv_all()]' > host.txt
 # Debian and Ubuntu: advisories use the source package name
 dpkg-query -W -f '${source:Package}@${Version}\n' > host.txt
 # Alpine: advisories use the origin package

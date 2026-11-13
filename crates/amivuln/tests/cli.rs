@@ -712,9 +712,15 @@ async fn messages_follow_the_locale_and_machine_formats_do_not() {
             stdout(o)
                 .lines()
                 .filter(|l| {
-                    !l.contains("generated_at")
-                        && !l.contains("timestamp")
-                        && !l.contains("last_run")
+                    [
+                        "generated_at",
+                        "timestamp",
+                        "last_run",
+                        "age_s",
+                        "age_seconds",
+                    ]
+                    .iter()
+                    .all(|word| !l.contains(word))
                 })
                 .collect::<Vec<_>>()
                 .join("\n")
@@ -1743,6 +1749,107 @@ async fn opensuse_packages_are_judged_by_the_advisories_of_their_source() {
     let fixed = ask(&inv);
     let v: serde_json::Value = serde_json::from_slice(&fixed.stdout).unwrap();
     assert_eq!(v["targets"][0]["findings"], serde_json::json!([]), "{v}");
+}
+
+/// A Gentoo list is judged by the GLSAs of a directory, offline, per slot; and
+/// without the advisories the result is incomplete, never clean.
+#[test]
+fn gentoo_packages_are_judged_by_the_advisories_of_a_directory() {
+    let home = tempfile::tempdir().unwrap();
+    let glsa = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/glsa");
+    let cfg = home.path().join("cfg.toml");
+    let write_config = |path: &std::path::Path| {
+        std::fs::write(
+            &cfg,
+            format!(
+                "[network]\nallow_insecure_http = true\n[sources.distro]\npath = \"{}\"\n[sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+                path.display()
+            ),
+        )
+        .unwrap();
+    };
+    write_config(&glsa);
+    let inv = home.path().join("inv.txt");
+    std::fs::write(
+        &inv,
+        "dev-python/joblib@1.1.0\ndev-lang/php:8.2@8.2.20\ndev-lang/php:8.3@8.3.12\nx11-libs/gtk+@3.24.41\n",
+    )
+    .unwrap();
+    let ask = || {
+        Command::cargo_bin("amivuln")
+            .unwrap()
+            .env_clear()
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", home.path().join("cache"))
+            .env("PATH", "/nonexistent")
+            .args(["--config"])
+            .arg(&cfg)
+            .args(["--packages-from"])
+            .arg(&inv)
+            .args(["--distro", "gentoo", "-f", "json"])
+            .output()
+            .unwrap()
+    };
+    let out = ask();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(out.status.code(), Some(0), "{v}");
+    assert_eq!(v["complete"], true);
+    assert_eq!(v["sources"][0]["id"], "glsa");
+    let by_name = |name: &str, slot: &str| {
+        v["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| {
+                t["package"]["name"] == name
+                    && (slot.is_empty()
+                        || t["package"]["purl"]
+                            .as_str()
+                            .unwrap()
+                            .contains(&format!("slot={slot}")))
+            })
+            .unwrap()
+            .clone()
+    };
+    let joblib = by_name("dev-python/joblib", "");
+    assert_eq!(joblib["findings"][0]["id"], "CVE-2022-21797");
+    assert_eq!(joblib["findings"][0]["distro_status"]["fixed_in"], "1.2.0");
+    assert_eq!(joblib["package"]["ecosystem"], "gentoo");
+    assert!(
+        joblib["package"]["purl"]
+            .as_str()
+            .unwrap()
+            .starts_with("pkg:generic/gentoo/dev-python/joblib@1.1.0")
+    );
+    // php 8.2.20 is below its slot's fix; 8.3.12 is at its own.
+    let php82 = by_name("dev-lang/php", "8.2");
+    assert_eq!(php82["findings"][0]["distro_status"]["fixed_in"], "8.2.24");
+    let php83 = by_name("dev-lang/php", "8.3");
+    assert_eq!(php83["findings"], serde_json::json!([]));
+    assert_eq!(
+        by_name("x11-libs/gtk+", "")["findings"],
+        serde_json::json!([])
+    );
+
+    // No advisories: incomplete (2), and the source says why.
+    write_config(&home.path().join("no-such-dir"));
+    let missing = ask();
+    let m: serde_json::Value = serde_json::from_slice(&missing.stdout).unwrap();
+    assert_eq!(missing.status.code(), Some(2), "{m}");
+    assert_eq!(m["complete"], false);
+    assert_eq!(m["sources"][0]["status"], "failed");
+    assert!(
+        m["sources"][0]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("no-such-dir")
+    );
+    // An empty directory is no answer either.
+    let empty = home.path().join("empty");
+    std::fs::create_dir(&empty).unwrap();
+    write_config(&empty);
+    let none = ask();
+    assert_eq!(none.status.code(), Some(2));
 }
 
 /// Runs the binary with a per-test HOME and returns its output.

@@ -75,6 +75,7 @@ fn parse_pair(line: &str) -> Result<PackageRef, ResolveError> {
         source_name: None,
         version: Version::Pacman(parsed),
         arch: None,
+        slot: None,
         provenance: Provenance::PackageDb,
     })
 }

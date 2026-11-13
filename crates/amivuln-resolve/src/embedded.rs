@@ -88,7 +88,8 @@ pub fn package_from_note(
         Ecosystem::Arch => "alpm",
         // A host is never a language ecosystem; no note can match it.
         Ecosystem::Alpine(_) => "apk",
-        Ecosystem::Go | Ecosystem::Crates => "none",
+        // Gentoo packages carry no `.note.package`.
+        Ecosystem::Gentoo | Ecosystem::Go | Ecosystem::Crates => "none",
     };
     let declared = note.pkg_type.as_deref().unwrap_or(host_kind);
     // Arch notes are written as `alpm` by some builders and `pacman` by others.
@@ -141,6 +142,7 @@ pub fn language_packages(
             source_name: None,
             version: Version::Semver(version),
             arch: None,
+            slot: None,
             provenance: Provenance::EmbeddedBuildInfo,
         });
         if out.len() >= MAX_LANGUAGE_PACKAGES {

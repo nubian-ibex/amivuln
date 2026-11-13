@@ -48,6 +48,8 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
             Ecosystem::Opensuse(major.parse::<u16>().ok()? * 100 + minor.parse::<u16>().ok()?)
         }
         "opensuse-tumbleweed" => Ecosystem::Opensuse(0),
+        // Gentoo is rolling: VERSION_ID, when present, is the profile.
+        "gentoo" => Ecosystem::Gentoo,
         // Alpine writes 3.20.3; an edge or alpha image (3.23.0_alpha...) has no
         // OSV release.
         "alpine" => {
@@ -111,6 +113,10 @@ mod tests {
         assert_eq!(parse_os_release("ID=opensuse-leap\nVERSION_ID=15\n"), None);
         // SUSE Linux Enterprise is a different product with its own data.
         assert_eq!(parse_os_release("ID=sles\nVERSION_ID=15.6\n"), None);
+        assert_eq!(
+            parse_os_release("ID=gentoo\nNAME=Gentoo\n").map(|h| h.ecosystem),
+            Some(Ecosystem::Gentoo)
+        );
     }
 
     #[test]

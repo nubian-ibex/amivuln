@@ -53,6 +53,9 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         Ecosystem::Alpine(_) => {
             Version::Apk(version.parse().unwrap_or_else(|never| match never {}))
         }
+        Ecosystem::Gentoo => {
+            Version::Gentoo(version.parse().unwrap_or_else(|never| match never {}))
+        }
         Ecosystem::Go | Ecosystem::Crates => {
             Version::Semver(amivuln_version::SemverVersion::default())
         }
@@ -63,8 +66,28 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         source_name: None,
         version: parsed,
         arch,
+        slot: None,
         provenance: Provenance::UserInput,
     }
+}
+
+/// A Gentoo package as users write it: `category/name`, optionally followed by
+/// `:slot` (`dev-lang/php:8.2`). Returns the name and the slot.
+fn gentoo_name(text: &str) -> Result<(&str, Option<&str>), ResolveError> {
+    let (name, slot) = match text.split_once(':') {
+        Some((name, slot)) => (name, Some(slot)),
+        None => (text, None),
+    };
+    let well_formed = name
+        .split_once('/')
+        .is_some_and(|(category, package)| valid_name(category) && valid_name(package))
+        && slot.is_none_or(|s| valid_name(s) && !s.contains('@'));
+    if !well_formed || name.contains('@') || name.matches('/').count() != 1 {
+        return Err(bad(format!(
+            "invalid Gentoo package {text:?}; use category/name or category/name:slot"
+        )));
+    }
+    Ok((name, slot))
 }
 
 /// Builds a package from `name@version` for the given ecosystem.
@@ -78,17 +101,25 @@ pub fn from_name_version(
     name: &str,
     version: &str,
 ) -> Result<PackageRef, ResolveError> {
-    if !valid_name(name) || name.contains('@') {
+    let (name, slot) = if ecosystem == Ecosystem::Gentoo {
+        gentoo_name(name)?
+    } else {
+        (name, None)
+    };
+    if ecosystem != Ecosystem::Gentoo && (!valid_name(name) || name.contains('@')) {
         return Err(bad(format!("invalid package name {name:?}")));
     }
     let ok = match ecosystem {
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => valid_deb_version(version),
+        Ecosystem::Gentoo => amivuln_version::GentooVersion::is_valid(version),
         _ => valid_version(version),
     };
     if !ok {
         return Err(bad(format!("invalid version {version:?}")));
     }
-    Ok(make(ecosystem, name, version, None))
+    let mut package = make(ecosystem, name, version, None);
+    package.slot = slot.map(str::to_owned);
+    Ok(package)
 }
 
 fn percent_decode(s: &str) -> Option<String> {
@@ -153,9 +184,10 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         Some(Ecosystem::Opensuse(v)) if (kind, namespace) == ("rpm", "opensuse") => {
             Ecosystem::Opensuse(v)
         }
+        Some(e @ Ecosystem::Gentoo) if (kind, namespace) == ("generic", "gentoo") => e,
         Some(e) => {
             return Err(bad(format!(
-                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine, pkg:rpm/redhat, pkg:rpm/opensuse",
+                "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine, pkg:rpm/redhat, pkg:rpm/opensuse, pkg:generic/gentoo",
                 match e {
                     Ecosystem::Fedora(v) => format!("fedora:{v}"),
                     Ecosystem::Arch => "arch".to_owned(),
@@ -167,6 +199,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     Ecosystem::Alma(v) => format!("alma:{v}"),
                     Ecosystem::Rhel(v) => format!("rhel:{v}"),
                     Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
+                    Ecosystem::Gentoo => "gentoo".to_owned(),
                     Ecosystem::Opensuse(0) => "opensuse:tumbleweed".to_owned(),
                     Ecosystem::Opensuse(v) => format!("opensuse:{}.{}", v / 100, v % 100),
                     Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
@@ -187,21 +220,26 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         percent_decode(version).ok_or_else(|| bad("bad percent-encoding in the version"))?;
 
     let mut arch = None;
+    let mut slot = None;
     for kv in query.split('&').filter(|s| !s.is_empty()) {
         let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
         let v = percent_decode(v).ok_or_else(|| bad("bad percent-encoding in a qualifier"))?;
         match k {
             "arch" => arch = Some(v),
+            "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
             "epoch" if matches!(ecosystem, Ecosystem::Fedora(_)) && !version.contains(':') => {
                 version = format!("{v}:{version}");
             }
             _ => {}
         }
     }
-    if !valid_name(&name) || name.contains('@') {
+    if ecosystem == Ecosystem::Gentoo {
+        gentoo_name(&name)?;
+    } else if !valid_name(&name) || name.contains('@') {
         return Err(bad(format!("invalid package name {name:?}")));
     }
     let ok = match ecosystem {
+        Ecosystem::Gentoo => amivuln_version::GentooVersion::is_valid(&version),
         Ecosystem::Debian(_)
         | Ecosystem::Ubuntu(_)
         | Ecosystem::Rocky(_)
@@ -212,7 +250,9 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
     if !ok {
         return Err(bad(format!("invalid version {version:?}")));
     }
-    Ok(make(ecosystem, &name, &version, arch))
+    let mut package = make(ecosystem, &name, &version, arch);
+    package.slot = slot;
+    Ok(package)
 }
 
 #[cfg(test)]
@@ -228,6 +268,40 @@ mod tests {
         assert!(matches!(p.version, Version::Rpm(_)));
         let a = from_name_version(Ecosystem::Arch, "openssl", "3.5.1-1").unwrap();
         assert!(matches!(a.version, Version::Pacman(_)));
+    }
+
+    #[test]
+    fn gentoo_packages_are_category_name_with_an_optional_slot() {
+        let p = from_name_version(Ecosystem::Gentoo, "dev-lang/php:8.2", "8.2.20-r1").unwrap();
+        assert_eq!(p.name, "dev-lang/php");
+        assert_eq!(p.slot.as_deref(), Some("8.2"));
+        assert!(matches!(p.version, Version::Gentoo(_)));
+        let plain = from_name_version(Ecosystem::Gentoo, "x11-libs/gtk+", "3.24.41").unwrap();
+        assert_eq!(plain.slot, None);
+        for bad in [
+            "openssl",
+            "a/b/c",
+            "/x",
+            "x/",
+            "dev-libs/openssl:",
+            "dev-libs/ope nssl",
+        ] {
+            assert!(
+                from_name_version(Ecosystem::Gentoo, bad, "1.0").is_err(),
+                "{bad}"
+            );
+        }
+        // A version outside the ebuild grammar is refused, not compared as text.
+        assert!(from_name_version(Ecosystem::Gentoo, "dev-libs/openssl", "3.0.x").is_err());
+        let purl = from_purl(
+            "pkg:generic/gentoo/dev-lang/php@8.2.20-r1?slot=8.2",
+            Some(Ecosystem::Gentoo),
+        )
+        .unwrap();
+        assert_eq!(
+            (purl.name.as_str(), purl.slot.as_deref()),
+            ("dev-lang/php", Some("8.2"))
+        );
     }
 
     #[test]

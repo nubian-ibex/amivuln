@@ -5,7 +5,9 @@
 use core::cmp::Ordering;
 use core::fmt;
 
-use amivuln_version::{ApkVersion, DebVersion, PacmanVersion, RpmEvr, SemverVersion};
+use amivuln_version::{
+    ApkVersion, DebVersion, GentooVersion, PacmanVersion, RpmEvr, SemverVersion,
+};
 
 /// Package ecosystem, which decides the version-comparison algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -33,6 +35,9 @@ pub enum Ecosystem {
     /// `openSUSE`: Leap as `major * 100 + minor` (1506 is Leap 15.6), and 0 for
     /// the rolling Tumbleweed.
     Opensuse(u16),
+    /// Gentoo (rolling): packages are `category/name`, versions are ebuild
+    /// versions, and the advisories are the GLSAs.
+    Gentoo,
 }
 
 impl Ecosystem {
@@ -54,7 +59,7 @@ impl Ecosystem {
             Self::Alpine(v) => Some(format!("Alpine:v{}.{}", v / 100, v % 100)),
             Self::Opensuse(0) => Some("openSUSE:Tumbleweed".to_owned()),
             Self::Opensuse(v) => Some(format!("openSUSE:Leap {}.{}", v / 100, v % 100)),
-            Self::Fedora(_) | Self::Arch => None,
+            Self::Fedora(_) | Self::Arch | Self::Gentoo => None,
         }
     }
 
@@ -96,6 +101,8 @@ impl Ecosystem {
             Self::Rhel(_) => "pkg:rpm/redhat",
             Self::Alpine(_) => "pkg:apk/alpine",
             Self::Opensuse(_) => "pkg:rpm/opensuse",
+            // purl has no type for ebuilds yet.
+            Self::Gentoo => "pkg:generic/gentoo",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
         }
@@ -129,6 +136,8 @@ pub enum Version {
     Deb(DebVersion),
     /// Alpine `apk` version.
     Apk(ApkVersion),
+    /// Gentoo ebuild version.
+    Gentoo(GentooVersion),
     /// Semantic version, for Go modules and crates.
     Semver(SemverVersion),
 }
@@ -142,6 +151,7 @@ impl Version {
             (Self::Pacman(a), Self::Pacman(b)) => Some(a.cmp(b)),
             (Self::Deb(a), Self::Deb(b)) => Some(a.cmp(b)),
             (Self::Apk(a), Self::Apk(b)) => Some(a.cmp(b)),
+            (Self::Gentoo(a), Self::Gentoo(b)) => Some(a.cmp(b)),
             (Self::Semver(a), Self::Semver(b)) => Some(a.cmp(b)),
             _ => None,
         }
@@ -155,6 +165,7 @@ impl fmt::Display for Version {
             Self::Pacman(v) => v.fmt(f),
             Self::Deb(v) => v.fmt(f),
             Self::Apk(v) => v.fmt(f),
+            Self::Gentoo(v) => v.fmt(f),
             Self::Semver(v) => v.fmt(f),
         }
     }
@@ -173,6 +184,9 @@ pub struct PackageRef {
     pub version: Version,
     /// Architecture, when known.
     pub arch: Option<String>,
+    /// The slot a Gentoo package is installed in (several versions of one
+    /// package can coexist, and an advisory names the slots it covers).
+    pub slot: Option<String>,
     /// How this identity was established.
     pub provenance: Provenance,
 }

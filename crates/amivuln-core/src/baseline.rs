@@ -136,6 +136,7 @@ mod tests {
                 source_name: None,
                 version: Version::Rpm("1.0-1".parse().unwrap_or_else(|n| match n {})),
                 arch: None,
+                slot: None,
                 provenance: Provenance::PackageDb,
             },
             findings,

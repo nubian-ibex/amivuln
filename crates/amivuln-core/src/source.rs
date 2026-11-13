@@ -21,6 +21,8 @@ pub enum SourceId {
     Epss,
     /// NVD 2.0 API, for products with no distro data.
     Nvd,
+    /// Gentoo Linux Security Advisories, read from the Portage tree.
+    Glsa,
 }
 
 impl SourceId {
@@ -35,6 +37,7 @@ impl SourceId {
             Self::Kev => "kev",
             Self::Epss => "epss",
             Self::Nvd => "nvd",
+            Self::Glsa => "glsa",
         }
     }
 }

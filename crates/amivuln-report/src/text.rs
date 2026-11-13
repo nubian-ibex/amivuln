@@ -52,6 +52,7 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Go => "Go module".to_owned(),
         Ecosystem::Crates => "Rust crate".to_owned(),
         Ecosystem::Alpine(v) => format!("Alpine {}.{}", v / 100, v % 100),
+        Ecosystem::Gentoo => "Gentoo".to_owned(),
         Ecosystem::Opensuse(0) => "openSUSE Tumbleweed".to_owned(),
         Ecosystem::Opensuse(v) => format!("openSUSE Leap {}.{}", v / 100, v % 100),
     }
@@ -69,6 +70,7 @@ fn update_hint(target: &TargetReport) -> String {
         // dependency: the program has to be rebuilt or replaced.
         Ecosystem::Alpine(_) => format!("apk upgrade {name}"),
         Ecosystem::Opensuse(_) => format!("zypper update {name}"),
+        Ecosystem::Gentoo => format!("emerge --update --oneshot {name}"),
         Ecosystem::Go | Ecosystem::Crates => tr("hint.rebuild"),
     }
 }
@@ -636,6 +638,7 @@ pub(crate) mod fixtures {
                     source_name: Some("nginx".into()),
                     version: rpm("1:1.26.2-1.fc41"),
                     arch: Some("x86_64".into()),
+                    slot: None,
                     provenance: Provenance::PackageDb,
                 },
                 findings: vec![high, low, unknown],
