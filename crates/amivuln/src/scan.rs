@@ -1205,6 +1205,33 @@ async fn gather(
     }
 }
 
+/// The HTTP settings every outgoing request shares: timeout, proxy, extra CA,
+/// User-Agent suffix, retries and breaker. The webhook uses it too, so it works
+/// wherever the scan does.
+pub(crate) fn http_config(s: &Settings) -> Result<HttpConfig, String> {
+    let ca_pem = match &s.config.network.ca_file {
+        Some(path) => Some(read_ca_file(path)?),
+        None => None,
+    };
+    Ok(HttpConfig {
+        timeout: s.timeout,
+        allow_insecure: s.config.network.allow_insecure_http,
+        proxy: s.config.network.proxy.clone(),
+        ca_pem,
+        user_agent_suffix: s.config.network.user_agent_suffix.clone(),
+        retry: RetryPolicy {
+            retries: s.net.retries,
+            ..RetryPolicy::default()
+        },
+        breaker: BreakerPolicy {
+            cooldown: s.cooldown,
+            ..BreakerPolicy::default()
+        },
+        min_interval: s.min_interval,
+        ..HttpConfig::default()
+    })
+}
+
 /// Sets up the cache, HTTP client and runtime, then runs [`gather`].
 pub(crate) fn evaluate(
     cli: &Cli,
@@ -1222,31 +1249,11 @@ pub(crate) fn evaluate(
 
     let cache = open_cache(&cli.global, s, env, err)
         .map_err(|e| internal(err, format!("cannot create a cache: {e}")))?;
-    let ca_pem = match &s.config.network.ca_file {
-        Some(path) => Some(read_ca_file(path).map_err(|e| {
-            let _ = writeln!(err, "error: {e}");
-            ExitCode::Usage
-        })?),
-        None => None,
-    };
-    let http = HttpClient::new(HttpConfig {
-        timeout: s.timeout,
-        allow_insecure: s.config.network.allow_insecure_http,
-        proxy: s.config.network.proxy.clone(),
-        ca_pem,
-        user_agent_suffix: s.config.network.user_agent_suffix.clone(),
-        retry: RetryPolicy {
-            retries: s.net.retries,
-            ..RetryPolicy::default()
-        },
-        breaker: BreakerPolicy {
-            cooldown: s.cooldown,
-            ..BreakerPolicy::default()
-        },
-        min_interval: s.min_interval,
-        ..HttpConfig::default()
-    })
-    .map_err(|e| internal(err, e.to_string()))?;
+    let config = http_config(s).map_err(|e| {
+        let _ = writeln!(err, "error: {e}");
+        ExitCode::Usage
+    })?;
+    let http = HttpClient::new(config).map_err(|e| internal(err, e.to_string()))?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_time()
         .enable_io()

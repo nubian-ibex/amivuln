@@ -1270,6 +1270,55 @@ async fn sbom_input_checks_os_packages_and_lists_the_rest() {
     assert!(String::from_utf8_lossy(&bad.stderr).contains("not a CycloneDX"));
 }
 
+/// Regression: the webhook client ignored the `[network]` settings, so behind
+/// a proxy or with a company CA the scan worked and the alert never left.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_webhook_uses_the_network_settings_of_the_scan() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let hook = MockServer::start().await;
+    let ua = format!("amivuln/{} team-sre", env!("CARGO_PKG_VERSION"));
+    Mock::given(method("POST"))
+        .and(header("user-agent", ua.as_str()))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&hook)
+        .await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("notify-ua.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\nuser_agent_suffix = \"team-sre\"\n\
+             [sources.distro]\nurl = \"{}/updates\"\n\
+             [sources.kev]\nurl = \"{}/kev.json\"\n\
+             [sources.epss]\nurl = \"{}/epss\"\n\
+             [notify]\nwebhook = \"{}\"\non = \"violation\"\n",
+            server.uri(),
+            server.uri(),
+            server.uri(),
+            hook.uri(),
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+            "--fail-on",
+            "high",
+        ],
+    )
+    .await;
+    assert_eq!(out.status.code(), Some(1));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn a_policy_violation_posts_a_webhook_summary() {
     let server = MockServer::start().await;

@@ -111,11 +111,17 @@ pub(crate) fn maybe_notify(
         let _ = writeln!(err, "warning: notify payload too large; skipped");
         return ExitCode::Success;
     }
-    let http = match amivuln_sources::http::HttpClient::new(amivuln_sources::http::HttpConfig {
-        timeout: s.timeout,
-        allow_insecure: s.config.network.allow_insecure_http,
-        ..amivuln_sources::http::HttpConfig::default()
-    }) {
+    let mut config = match crate::scan::http_config(s) {
+        Ok(c) => c,
+        Err(e) => {
+            let _ = writeln!(err, "warning: notify failed: {e}");
+            return ExitCode::Success;
+        }
+    };
+    // A POST that reached the server may have been processed even when the
+    // answer was a 5xx, so a retry could send the same alert twice.
+    config.retry.retries = 0;
+    let http = match amivuln_sources::http::HttpClient::new(config) {
         Ok(c) => c,
         Err(e) => {
             let _ = writeln!(err, "warning: notify failed: {e}");
