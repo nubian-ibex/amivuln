@@ -132,14 +132,22 @@ jobs:
           curl -sSfL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
             -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
           cosign sign-blob --bundle SHA256SUMS.sigstore.json SHA256SUMS
-      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+      - name: Attest the archives
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
             signed/*.tar.zst
             SHA256SUMS
+      # Scorecard looks for a *.intoto.jsonl release asset as the provenance of
+      # a release; the attestation bundle is that statement.
+      - name: Keep the provenance with the release
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" offline-db.intoto.jsonl
       - name: Publish to the nightly release
         run: |
           gh release delete offline-db --yes --cleanup-tag || true
           gh release create offline-db --title "Offline database (nightly)" \
             --notes "Built $(date -u +%Y-%m-%dT%H:%M:%SZ). Verify with contrib/offline-db/amivuln.pub before use."
-          gh release upload offline-db signed/*.tar.zst signed/*.tar.zst.minisig signed/*.sha256 SHA256SUMS SHA256SUMS.sigstore.json signed/*.manifest.txt
+          gh release upload offline-db signed/*.tar.zst signed/*.tar.zst.minisig signed/*.sha256 SHA256SUMS SHA256SUMS.sigstore.json offline-db.intoto.jsonl signed/*.manifest.txt
