@@ -364,12 +364,12 @@ fn read_packages(
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
             let status = std::fs::read_to_string(root.join("root/var/lib/dpkg/status"))
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
-            Ok(deb_packages(&status, eco))
+            Ok(crate::dpkg::parse_status(&status, eco))
         }
         Ecosystem::Alpine(_) => {
             let installed = std::fs::read_to_string(root.join("root/lib/apk/db/installed"))
                 .map_err(|e| ContainerError::Export(e.to_string()))?;
-            Ok(apk_packages(&installed, eco))
+            Ok(crate::apk::parse_installed(&installed, eco))
         }
         Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
             // Fedora 36+ and RHEL 9+ keep the database in /usr/lib/sysimage/rpm;
@@ -418,14 +418,6 @@ fn read_packages(
             "a language ecosystem".to_owned(),
         )),
     }
-}
-
-fn deb_packages(status: &str, eco: Ecosystem) -> Vec<PackageRef> {
-    crate::dpkg::parse_status(status, eco)
-}
-
-fn apk_packages(installed: &str, eco: Ecosystem) -> Vec<PackageRef> {
-    crate::apk::parse_installed(installed, eco)
 }
 
 fn rpm_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
@@ -519,7 +511,7 @@ mod tests {
     #[test]
     fn deb_status_is_parsed() {
         let status = "Package: nginx\nVersion: 1.22.1-9\nArchitecture: amd64\nDescription: web\n server\n\nPackage: curl\nVersion: 7.88.1-10+deb12u5\n\nPackage: libssl3\nSource: openssl (3.0.11-1)\nVersion: 3.0.11-1~deb12u1\n\n";
-        let found = deb_packages(status, Ecosystem::Debian(12));
+        let found = crate::dpkg::parse_status(status, Ecosystem::Debian(12));
         let names: Vec<&str> = found.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(names, ["nginx", "curl", "libssl3"]);
         assert_eq!(found[0].source_name, None);
@@ -530,7 +522,7 @@ mod tests {
     #[test]
     fn apk_installed_is_parsed() {
         let installed = "P:busybox\nV:1.36.1-r5\no:busybox\nA:x86_64\n\nP:libcrypto3\nV:3.1.4-r0\no:openssl\nA:x86_64\n\n";
-        let found = apk_packages(installed, Ecosystem::Alpine(319));
+        let found = crate::apk::parse_installed(installed, Ecosystem::Alpine(319));
         assert_eq!(found.len(), 2);
         assert_eq!(found[0].name, "busybox");
         assert_eq!(found[0].source_name, None);

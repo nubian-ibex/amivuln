@@ -89,7 +89,6 @@ pub struct HttpConfig {
     /// Circuit breaker thresholds per endpoint (host).
     pub breaker: BreakerPolicy,
     /// Minimum spacing between requests to one host, when set.
-    #[allow(dead_code)]
     pub min_interval: Option<Duration>,
 }
 

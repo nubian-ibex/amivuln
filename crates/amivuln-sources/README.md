@@ -10,7 +10,7 @@ Parsers for the vulnerability data sources used by amivuln, and the bounded HTTP
 - `fedora`: `repomd.xml` (with SHA-256 verification of the metadata) and `updateinfo`, plain or zstd. Only CVE ids that open a bugzilla bug title count as fixed CVEs, and security updates that name no CVE are kept under their update id.
 - `kev` and `epss`: CISA Known Exploited Vulnerabilities and FIRST EPSS.
 - `http`: reqwest with rustls (`ring`), HTTPS only, at most three redirects, no referrer, a fixed user agent, a timeout and a body limit enforced while streaming.
-- `fetch`: `fetch_cached` prefers fresh cache, then a conditional request, then a stale copy, and reports which one it used.
+- `fetch`: `fetch_cached_body` prefers fresh cache, then a conditional request, then a stale copy, and reports which one it used.
 
 Every parser takes bytes, caps its input size, drops identifiers that do not look right and is covered by tests against fixtures recorded from the real services. No test uses the network.
 
