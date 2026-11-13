@@ -16,8 +16,8 @@ categories = ["command-line-utilities"]
 [dependencies]
 serde_json = "1.0.154"
 tar = { workspace = true }
-amivuln-core = { path = "../amivuln-core", version = "0.1.0" }
-amivuln-version = { path = "../amivuln-version", version = "0.1.0" }
+amivuln-core = { path = "../amivuln-core", version = "0.2.0" }
+amivuln-version = { path = "../amivuln-version", version = "0.2.0" }
 thiserror = "2.0.21"
 
 [dev-dependencies]
