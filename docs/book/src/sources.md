@@ -2,7 +2,7 @@
 
 - **Arch Security Tracker**: CVE status and fixed version on Arch (`https://security.archlinux.org/issues/all.json`)
 - **Fedora `updateinfo`**: security updates and the CVEs they fix on Fedora (`https://dl.fedoraproject.org/pub/fedora/linux/updates/<release>/Everything/<arch>/repodata/`)
-- **OSV**: Debian, Ubuntu, Alpine, Red Hat Enterprise Linux, Rocky Linux, `AlmaLinux`, Go modules and `crates.io` (`https://api.osv.dev/v1/querybatch`, one advisory document per id). Advisories that also exist in the distro trackers carry the same meaning; for Go and crates exact versions are what decide.
+- **OSV**: Debian, Ubuntu, Alpine, openSUSE, Red Hat Enterprise Linux, Rocky Linux, `AlmaLinux`, Go modules and `crates.io` (`https://api.osv.dev/v1/querybatch`, one advisory document per id). Advisories that also exist in the distro trackers carry the same meaning; for Go and crates exact versions are what decide.
 - **CISA KEV**: actively exploited CVEs (`https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`)
 - **FIRST EPSS**: probability of exploitation (`https://api.first.org/data/v1/epss`)
 
@@ -60,6 +60,13 @@ How a target is identified, and what the data can and cannot show:
 - **Red Hat Enterprise Linux 8, 9 and 10.** The host is read through `rpm`; UBI containers work. Data: OSV's Red Hat ecosystem, a lower bound (see below).
 - **Rocky Linux and AlmaLinux 8 and 9.** The host is read through `rpm`. Data: OSV; only CVEs that shipped a fix are visible.
 - **Debian and Ubuntu (LTS).** The host is read from `/var/lib/dpkg` (nothing is run); containers, `--packages-from` lists, SBOMs and `name@version` work too. Data: OSV, which also lists open issues (reported as affected with no fix version).
+- **openSUSE Leap 15.x and 16.0, and Tumbleweed.** The host is read through
+  `rpm`, and containers work. Data: OSV, keyed by the *source* package (the
+  library `libopenssl3` is built from `openssl-3`): amivuln reads the source
+  name from the rpm database, but a package list or SBOM has to carry it (see
+  the Using page). Only the security updates (`SUSE-SU`, `openSUSE-SU`) count,
+  and only CVEs that shipped a fix are visible. SUSE Linux Enterprise has its
+  own data and is not read yet.
 - **Alpine 3.x.** The host is read from `/lib/apk/db/installed`; the same other inputs as Debian and Ubuntu. Edge and alpha images have no advisory data and are refused. Data: OSV, keyed by the origin package; only CVEs that shipped a fix are visible.
 - **Go modules and Rust crates** found in binaries, through OSV.
 

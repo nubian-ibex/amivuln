@@ -257,9 +257,26 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
                 )),
             }
         }
+        // Leap releases are "15.6"; Tumbleweed has no release.
+        Some(("opensuse", "tumbleweed")) => Ok(Ecosystem::Opensuse(0)),
+        Some(("opensuse", v)) => {
+            let mut parts = v.split('.');
+            match (
+                parts.next().and_then(|m| m.parse::<u16>().ok()),
+                parts.next().and_then(|m| m.parse::<u16>().ok()),
+                parts.next(),
+            ) {
+                (Some(maj), Some(min), None) if maj >= 15 && min < 100 => {
+                    Ok(Ecosystem::Opensuse(maj * 100 + min))
+                }
+                _ => Err(format!(
+                    "invalid openSUSE release {v:?}; use opensuse:15.6 or opensuse:tumbleweed"
+                )),
+            }
+        }
         None if s == "arch" => Ok(Ecosystem::Arch),
         _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, rhel:N, rocky:NN or alma:NN"
+            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, rhel:N, rocky:NN or alma:NN"
         )),
     }
 }
@@ -834,6 +851,11 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),
         Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
         Ecosystem::Alpine(v) => ("alpine".to_owned(), format!("{}.{}", v / 100, v % 100)),
+        Ecosystem::Opensuse(0) => ("opensuse-tumbleweed".to_owned(), "rolling".to_owned()),
+        Ecosystem::Opensuse(v) => (
+            "opensuse-leap".to_owned(),
+            format!("{}.{}", v / 100, v % 100),
+        ),
     };
     HostMeta {
         os_id,
@@ -872,4 +894,29 @@ fn mcp_cmd(cli: &Cli, env: &Env, stdout: &mut dyn Write) -> ExitCode {
     };
     let stdin = std::io::stdin();
     crate::mcp::serve(&mut stdin.lock(), stdout, &mut runner)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opensuse_releases_are_parsed() {
+        assert_eq!(parse_distro("opensuse:15.6"), Ok(Ecosystem::Opensuse(1506)));
+        assert_eq!(parse_distro("opensuse:16.0"), Ok(Ecosystem::Opensuse(1600)));
+        assert_eq!(
+            parse_distro("opensuse:tumbleweed"),
+            Ok(Ecosystem::Opensuse(0))
+        );
+        for bad in [
+            "opensuse",
+            "opensuse:15",
+            "opensuse:15.6.1",
+            "opensuse:leap",
+            "opensuse:14.3",
+            "opensuse:15.x",
+        ] {
+            assert!(parse_distro(bad).is_err(), "{bad}");
+        }
+    }
 }

@@ -69,6 +69,7 @@ jobs:
           - { image: "fedora:44", setup: "dnf install -y -q jq ca-certificates" }
           - { image: "archlinux:base", setup: "pacman -Sy --noconfirm jq ca-certificates" }
           - { image: "registry.access.redhat.com/ubi9/ubi:9.6", setup: "dnf install -y -q jq ca-certificates" }
+          - { image: "registry.opensuse.org/opensuse/leap:16.0", setup: "zypper --non-interactive install -y jq ca-certificates" }
           - { image: "alpine:3.20", setup: "apk add --no-cache jq ca-certificates" }
           - { image: "ubuntu:24.04", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
           - { image: "debian:stable", setup: "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -qq -y jq ca-certificates" }
@@ -101,6 +102,8 @@ jobs:
           - fedora:44
           - archlinux:base
           - registry.access.redhat.com/ubi9/ubi:9.6
+          - registry.opensuse.org/opensuse/leap:16.0
+          - registry.opensuse.org/opensuse/tumbleweed
           - debian:stable
           - ubuntu:24.04
           - alpine:3.20

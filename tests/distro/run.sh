@@ -107,7 +107,7 @@ host)
     # shellcheck disable=SC1091
     id=$(. /etc/os-release && echo "$ID")
     case "$id" in
-    fedora | arch | rhel)
+    fedora | arch | rhel | opensuse-leap | opensuse-tumbleweed)
         # Resolve a package every image has, through the real package manager.
         run check amivuln check bash --format json
         want_rc "0 1"

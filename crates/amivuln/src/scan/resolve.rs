@@ -161,9 +161,11 @@ pub(crate) fn owners(
 ) -> std::collections::BTreeMap<String, Option<String>> {
     let runner = SystemRunner::default();
     let backend = match eco {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
-            Backend::Rpm(RpmResolver::new(&runner, eco))
-        }
+        Ecosystem::Fedora(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_)
+        | Ecosystem::Opensuse(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Backend::Dpkg(DpkgResolver::new(eco)),
         Ecosystem::Alpine(_) => Backend::Apk(ApkResolver::new(eco)),
@@ -195,9 +197,11 @@ pub(crate) fn resolve_all(
     let mut resolved: Vec<(String, PackageRef)> = Vec::new();
     let mut unresolved: Vec<Unresolved> = Vec::new();
     let backend = match eco {
-        Ecosystem::Fedora(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_) | Ecosystem::Rhel(_) => {
-            Some(Backend::Rpm(RpmResolver::new(&runner, eco)))
-        }
+        Ecosystem::Fedora(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_)
+        | Ecosystem::Opensuse(_) => Some(Backend::Rpm(RpmResolver::new(&runner, eco))),
         Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Some(Backend::Dpkg(DpkgResolver::new(eco))),
         Ecosystem::Alpine(_) => Some(Backend::Apk(ApkResolver::new(eco))),

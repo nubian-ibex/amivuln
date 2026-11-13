@@ -38,6 +38,7 @@ pub(super) async fn load_distro(
         | Ecosystem::Alma(_)
         | Ecosystem::Rhel(_)
         | Ecosystem::Alpine(_)
+        | Ecosystem::Opensuse(_)
         | Ecosystem::Go
         | Ecosystem::Crates => load_osv(f, cfg, resolved, false).await,
         Ecosystem::Arch => {

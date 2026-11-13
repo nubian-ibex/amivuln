@@ -134,8 +134,9 @@ pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
 
 /// Accepts `DEBIAN-CVE-...`/`UBUNTU-CVE-...`/`ALPINE-CVE-...`, the Debian and
 /// Ubuntu advisory ids `DSA-N-N`, `DLA-N-N` and `USN-N-N`, and the Rocky/Alma
-/// errata ids `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`, and the Red Hat ids
-/// `RHSA-YYYY:NNNN` and `RHBA-YYYY:NNNN`; anything else is dropped so an id
+/// errata ids `RLSA-YYYY:NNNN` and `ALSA-YYYY:NNNN`, the Red Hat ids
+/// `RHSA-YYYY:NNNN` and `RHBA-YYYY:NNNN`, and the SUSE ids
+/// `SUSE-SU-YYYY:NNNN-N` and `openSUSE-SU-YYYY:NNNN-N`; anything else is dropped so an id
 /// from the response never reaches a URL unchecked.
 fn is_advisory_id(id: &str) -> bool {
     is_language_advisory_id(id) || is_distro_advisory_id(id)
@@ -179,6 +180,21 @@ fn is_distro_advisory_id(id: &str) -> bool {
                     && n.bytes().all(|b| b.is_ascii_digit())
                     && rev.bytes().all(|b| b.is_ascii_digit())
             });
+        }
+        // SUSE and openSUSE security updates (`SUSE-SU-2024:3106-1`,
+        // `openSUSE-SU-2024:14100-1`). The `RU` and `FU` kinds are bug fixes
+        // and features: they carry no CVE and are dropped.
+        if matches!(prefix, "SUSE" | "openSUSE") {
+            return rest
+                .strip_prefix("SU-")
+                .and_then(|r| r.split_once(':'))
+                .is_some_and(|(year, tail)| {
+                    tail.split_once('-').is_some_and(|(n, rev)| {
+                        [year, n, rev]
+                            .iter()
+                            .all(|p| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit()))
+                    })
+                });
         }
         return crate::is_cve_id(rest);
     }
@@ -610,6 +626,9 @@ mod tests {
             "RLSA-2024:1234",
             "RHSA-2024:0310",
             "RHBA-2025:6314",
+            "SUSE-SU-2024:3106-1",
+            "SUSE-SU-2025:03442-1",
+            "openSUSE-SU-2024:14100-1",
         ] {
             assert!(is_advisory_id(ok), "{ok} should be accepted");
         }
@@ -623,6 +642,13 @@ mod tests {
             "ALPINE-notacve",
             "RHSA-2024",
             "RHSA-x:1",
+            // Recommended and feature updates carry no CVE.
+            "SUSE-RU-2024:3106-1",
+            "openSUSE-FU-2024:1-1",
+            "SUSE-SU-2024",
+            "SUSE-SU-2024:x-1",
+            "SUSE-SU-2024:1-",
+            "SUSE-SU-../x:1-1",
         ] {
             assert!(!is_advisory_id(bad), "{bad} should be dropped");
         }

@@ -42,7 +42,12 @@ above so that it sees the final code:
 
 ## After 1.0 (1.x), in rough order
 
-1. **More distributions:** openSUSE, NixOS and Gentoo.
+1. **More distributions.** openSUSE (Leap and Tumbleweed) is done, through
+   OSV. NixOS and Gentoo are not in OSV, so each needs its own source and, for
+   Gentoo, its own version comparator (ebuild versions); NixOS has no
+   distribution fix status to read, which the rule "the distribution's data
+   decides" cannot do without a design decision. SUSE Linux Enterprise is in
+   OSV and is a small step from openSUSE.
 2. **Flatpak runtimes,** read from the installed runtimes.
 3. **Known mitigations,** a curated list of "CVE to configuration that
    mitigates it".

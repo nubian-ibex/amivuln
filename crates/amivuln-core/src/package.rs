@@ -30,6 +30,9 @@ pub enum Ecosystem {
     Crates,
     /// Alpine Linux, with the release as `major * 100 + minor` (320 is 3.20).
     Alpine(u16),
+    /// `openSUSE`: Leap as `major * 100 + minor` (1506 is Leap 15.6), and 0 for
+    /// the rolling Tumbleweed.
+    Opensuse(u16),
 }
 
 impl Ecosystem {
@@ -49,6 +52,8 @@ impl Ecosystem {
             Self::Crates => Some("crates.io".to_owned()),
             // OSV names Alpine releases `Alpine:v3.20`, with no zero padding.
             Self::Alpine(v) => Some(format!("Alpine:v{}.{}", v / 100, v % 100)),
+            Self::Opensuse(0) => Some("openSUSE:Tumbleweed".to_owned()),
+            Self::Opensuse(v) => Some(format!("openSUSE:Leap {}.{}", v / 100, v % 100)),
             Self::Fedora(_) | Self::Arch => None,
         }
     }
@@ -90,6 +95,7 @@ impl Ecosystem {
             Self::Alma(_) => "pkg:rpm/alma",
             Self::Rhel(_) => "pkg:rpm/redhat",
             Self::Alpine(_) => "pkg:apk/alpine",
+            Self::Opensuse(_) => "pkg:rpm/opensuse",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
         }
@@ -220,6 +226,22 @@ mod tests {
             Some("Alpine:v3.9")
         );
         assert_eq!(Ecosystem::Alpine(320).purl_namespace(), "pkg:apk/alpine");
+        assert_eq!(
+            Ecosystem::Opensuse(1506).osv_ecosystem().as_deref(),
+            Some("openSUSE:Leap 15.6")
+        );
+        assert_eq!(
+            Ecosystem::Opensuse(1600).osv_ecosystem().as_deref(),
+            Some("openSUSE:Leap 16.0")
+        );
+        assert_eq!(
+            Ecosystem::Opensuse(0).osv_ecosystem().as_deref(),
+            Some("openSUSE:Tumbleweed")
+        );
+        assert_eq!(
+            Ecosystem::Opensuse(1506).purl_namespace(),
+            "pkg:rpm/opensuse"
+        );
         assert_eq!(
             Ecosystem::Rhel(9).osv_ecosystem().as_deref(),
             Some("Red Hat:enterprise_linux:9::baseos")

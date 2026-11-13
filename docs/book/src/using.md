@@ -122,8 +122,8 @@ amivuln --container "$id" --fail-on high
 podman rm "$id"
 ```
 
-Alpine, Debian, Ubuntu, Fedora, Rocky, AlmaLinux and Red Hat (UBI) containers
-are judged against their own release. An Alpine edge or alpha image has no
+Alpine, Debian, Ubuntu, Fedora, openSUSE, Rocky, AlmaLinux and Red Hat (UBI)
+containers are judged against their own release. An Alpine edge or alpha image has no
 advisory data and is refused instead of reported clean. Pass several
 `--container` options to check a whole stack in one report.
 
@@ -137,6 +137,10 @@ check the list from wherever amivuln runs. One
 ```bash
 # Fedora, RHEL, Rocky, AlmaLinux (on the target host)
 rpm -qa --qf '%{NAME}@%|EPOCH?{%{EPOCH}:}|%{VERSION}-%{RELEASE}\n' > host.txt
+# openSUSE: advisories use the source package name, which rpm calls SOURCERPM
+rpm -qa --qf '%{SOURCERPM} %|EPOCH?{%{EPOCH}:}|%{VERSION}-%{RELEASE}\n' \
+  | grep -v '^(none)' | sed -E 's/-[^-]+-[^-]+\.src\.rpm / /' \
+  | awk '{print $1"@"$2}' | sort -u > host.txt
 # Debian and Ubuntu: advisories use the source package name
 dpkg-query -W -f '${source:Package}@${Version}\n' > host.txt
 # Alpine: advisories use the origin package

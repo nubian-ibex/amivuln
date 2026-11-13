@@ -40,6 +40,14 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         // RHEL declares VERSION_ID as major.minor (9.4); the major decides.
         "rhel" => Ecosystem::Rhel(version_id?.split('.').next()?.parse().ok()?),
         "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
+        // Leap writes 15.6 (or 16.0); Tumbleweed has a date for VERSION_ID and
+        // one rolling OSV ecosystem.
+        "opensuse-leap" => {
+            let vid = version_id?;
+            let (major, minor) = vid.split_once('.')?;
+            Ecosystem::Opensuse(major.parse::<u16>().ok()? * 100 + minor.parse::<u16>().ok()?)
+        }
+        "opensuse-tumbleweed" => Ecosystem::Opensuse(0),
         // Alpine writes 3.20.3; an edge or alpha image (3.23.0_alpha...) has no
         // OSV release.
         "alpine" => {
@@ -85,6 +93,24 @@ mod tests {
             parse_os_release(a).map(|h| h.ecosystem),
             Some(Ecosystem::Arch)
         );
+    }
+
+    #[test]
+    fn opensuse_leap_and_tumbleweed() {
+        let leap = "NAME=\"openSUSE Leap\"\nID=\"opensuse-leap\"\nVERSION_ID=\"15.6\"\n";
+        assert_eq!(
+            parse_os_release(leap).map(|h| h.ecosystem),
+            Some(Ecosystem::Opensuse(1506))
+        );
+        let tumbleweed = "ID=\"opensuse-tumbleweed\"\nVERSION_ID=\"20251107\"\n";
+        assert_eq!(
+            parse_os_release(tumbleweed).map(|h| h.ecosystem),
+            Some(Ecosystem::Opensuse(0))
+        );
+        // A Leap without a minor version is not a release OSV knows.
+        assert_eq!(parse_os_release("ID=opensuse-leap\nVERSION_ID=15\n"), None);
+        // SUSE Linux Enterprise is a different product with its own data.
+        assert_eq!(parse_os_release("ID=sles\nVERSION_ID=15.6\n"), None);
     }
 
     #[test]
