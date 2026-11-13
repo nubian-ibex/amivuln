@@ -16,7 +16,7 @@
 //! distribution never leaks into the answer.
 
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use amivuln_core::{Ecosystem, PackageRef, ProcessError, ProcessRunner, Program};
 
@@ -104,10 +104,29 @@ pub fn export(
             "the runtime could not export {container_id:?}"
         )));
     }
-    let tar_path = tar_at(dest);
-    let file = std::fs::File::open(&tar_path)
+    extract_wanted(&tar_at(dest), dest)?;
+    let os_release = read_os_release(dest)
+        .map_err(|_| ContainerError::Export("the container has no /etc/os-release".to_owned()))?;
+    ecosystem_from_os_release(&os_release)
+        .ok_or_else(|| ContainerError::Unsupported(distro_id(&os_release)))
+}
+
+/// Copies the package database files and os-release out of the export into
+/// `dest/root`, each bounded.
+fn extract_wanted(tar_path: &Path, dest: &Path) -> Result<(), ContainerError> {
+    let file = std::fs::File::open(tar_path)
         .map_err(|e| ContainerError::Export(format!("{}: {e}", tar_path.display())))?;
-    // The export is bounded: containers larger than 4 GiB are refused.
+    // The runtime has already written the whole export by now; the limit
+    // keeps the read bounded, not the disk use.
+    let size = file
+        .metadata()
+        .map_err(|e| ContainerError::Export(e.to_string()))?
+        .len();
+    if size > MAX_EXPORT_BYTES {
+        return Err(ContainerError::Export(format!(
+            "the export is {size} bytes, more than the {MAX_EXPORT_BYTES} byte limit"
+        )));
+    }
     let mut tar = tar::Archive::new(std::io::BufReader::new(file));
     let entries = tar
         .entries()
@@ -118,6 +137,14 @@ pub fn export(
             .path()
             .map_err(|e| ContainerError::Export(e.to_string()))?
             .to_path_buf();
+        // A member that climbs out of the archive root (`..`) is never what a
+        // runtime writes; refuse the export instead of guessing.
+        let Some(path) = clean_member(&path) else {
+            return Err(ContainerError::Export(format!(
+                "unsafe path in the export: {}",
+                path.display()
+            )));
+        };
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
@@ -134,7 +161,7 @@ pub fn export(
         // Debian's /etc/os-release is a symlink into usr/lib: record the
         // archive path and the target so the read step can follow the chain.
         if entry.header().entry_type().is_symlink() {
-            let target = dest.join(root_relative(&path));
+            let target = dest.join("root").join(&path);
             if let Some(parent) = target.parent() {
                 std::fs::create_dir_all(parent)
                     .map_err(|e| ContainerError::Export(e.to_string()))?;
@@ -163,16 +190,13 @@ pub fn export(
                 path.display()
             )));
         }
-        let target = dest.join(root_relative(&path));
+        let target = dest.join("root").join(&path);
         if let Some(parent) = target.parent() {
             std::fs::create_dir_all(parent).map_err(|e| ContainerError::Export(e.to_string()))?;
         }
         std::fs::write(&target, &bytes).map_err(|e| ContainerError::Export(e.to_string()))?;
     }
-    let os_release = read_os_release(dest)
-        .map_err(|_| ContainerError::Export("the container has no /etc/os-release".to_owned()))?;
-    ecosystem_from_os_release(&os_release)
-        .ok_or_else(|| ContainerError::Unsupported(distro_id(&os_release)))
+    Ok(())
 }
 
 /// Reads `/etc/os-release` from the extracted tree, following the symlink
@@ -187,13 +211,10 @@ fn read_os_release(dest: &Path) -> Result<String, std::io::Error> {
             let Some((recorded, target)) = rest.split_once('\t') else {
                 return Err(std::io::Error::other("a broken symlink record"));
             };
-            // The link target is relative to the recorded archive path.
-            let base = root
-                .join(recorded.trim())
-                .parent()
-                .unwrap_or(&root)
-                .to_path_buf();
-            at = base.join(target.trim());
+            at = root.join(resolve_link(
+                Path::new(recorded.trim()),
+                Path::new(target.trim()),
+            ));
             continue;
         }
         return Ok(text.into_owned());
@@ -210,14 +231,49 @@ fn tar_at(dest: &Path) -> PathBuf {
     dest.join("rootfs.tar")
 }
 
-/// Maps an absolute container path to its place under the export root.
-fn root_relative(path: &Path) -> PathBuf {
-    // Tar paths are absolute without a leading slash; keep them under root/.
-    let root = PathBuf::from("root");
-    if let Ok(stripped) = path.strip_prefix("/") {
-        return root.join(stripped);
+/// Largest container export read.
+const MAX_EXPORT_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+/// The member path relative to the container root, or `None` when it has a
+/// `..` (or a Windows prefix) and could point outside it.
+fn clean_member(path: &Path) -> Option<PathBuf> {
+    let mut out = PathBuf::new();
+    for part in path.components() {
+        match part {
+            Component::Normal(p) => out.push(p),
+            Component::RootDir | Component::CurDir => {}
+            Component::ParentDir | Component::Prefix(_) => return None,
+        }
     }
-    root.join(path)
+    Some(out)
+}
+
+/// Where a symlink at `link` (relative to the container root) points, kept
+/// inside the root the way the kernel does at `/`: `..` stops there and an
+/// absolute target starts there, never on the host.
+fn resolve_link(link: &Path, target: &Path) -> PathBuf {
+    let mut out: Vec<&std::ffi::OsStr> = Vec::new();
+    if !target.has_root() {
+        out.extend(
+            link.parent()
+                .into_iter()
+                .flat_map(Path::components)
+                .filter_map(|c| match c {
+                    Component::Normal(p) => Some(p),
+                    _ => None,
+                }),
+        );
+    }
+    for part in target.components() {
+        match part {
+            Component::Normal(p) => out.push(p),
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::RootDir | Component::CurDir | Component::Prefix(_) => {}
+        }
+    }
+    out.iter().collect()
 }
 
 fn distro_id(os_release: &str) -> String {
@@ -603,6 +659,53 @@ mod extraction_tests {
         let runtime = ScriptedRuntime { tar_path };
         let err = export(&runtime, "web", &dir.path().join("export")).unwrap_err();
         assert!(err.to_string().contains("too large"), "{err}");
+    }
+
+    #[test]
+    fn a_member_that_climbs_out_of_the_export_is_refused() {
+        // tar::Builder refuses `..` names, so the header is written raw.
+        let mut bytes = Vec::new();
+        {
+            let mut tar = tar::Builder::new(&mut bytes);
+            let mut header = tar::Header::new_gnu();
+            let name = b"var/lib/rpm/../../../../outside";
+            header.as_old_mut().name[..name.len()].copy_from_slice(name);
+            header.set_size(1);
+            header.set_entry_type(tar::EntryType::Regular);
+            header.set_cksum();
+            tar.append(&header, &b"x"[..]).unwrap();
+            tar.finish().unwrap();
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("fixture.tar");
+        std::fs::write(&tar_path, &bytes).unwrap();
+        let runtime = ScriptedRuntime { tar_path };
+        let err = export(&runtime, "web", &dir.path().join("export")).unwrap_err();
+        assert!(err.to_string().contains("unsafe path"), "{err}");
+        assert!(!dir.path().join("outside").exists());
+    }
+
+    #[test]
+    fn symlink_targets_stay_inside_the_container() {
+        let at = |link: &str, target: &str| resolve_link(Path::new(link), Path::new(target));
+        assert_eq!(
+            at("etc/os-release", "../usr/lib/os-release"),
+            PathBuf::from("usr/lib/os-release")
+        );
+        // An absolute target is the container's, not the host's.
+        assert_eq!(
+            at("etc/os-release", "/usr/lib/os-release"),
+            PathBuf::from("usr/lib/os-release")
+        );
+        assert_eq!(
+            at("etc/os-release", "../../../../etc/shadow"),
+            PathBuf::from("etc/shadow")
+        );
+        assert_eq!(
+            clean_member(Path::new("./etc/os-release")),
+            Some(PathBuf::from("etc/os-release"))
+        );
+        assert_eq!(clean_member(Path::new("a/../b")), None);
     }
 
     /// Appends one member with an explicit entry type to a tar under test.
