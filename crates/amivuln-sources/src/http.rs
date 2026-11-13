@@ -140,6 +140,9 @@ impl HttpClient {
             .user_agent(agent)
             .timeout(config.timeout)
             .redirect(redirect::Policy::limited(3))
+            // The first URL is checked in `execute`; this also stops a redirect
+            // from an https URL to plain http, which `Policy::limited` follows.
+            .https_only(!config.allow_insecure)
             .referer(false);
         if let Some(url) = &config.proxy {
             // The URL may carry credentials, so the error never repeats it.
@@ -447,6 +450,37 @@ mod tests {
             allow_insecure: true,
             ..HttpConfig::default()
         }
+    }
+
+    #[tokio::test]
+    async fn redirects_are_still_followed_when_plain_http_is_allowed() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/old"))
+            .respond_with(ResponseTemplate::new(302).insert_header("location", "/new"))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/new"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("moved"))
+            .mount(&server)
+            .await;
+        let client = HttpClient::new(plain()).unwrap();
+        let r = client
+            .get(&format!("{}/old", server.uri()), &Validators::default())
+            .await
+            .unwrap();
+        assert!(matches!(r, Response::Fresh { ref body, .. } if body == b"moved"));
+    }
+
+    #[tokio::test]
+    async fn a_plain_http_url_is_refused_by_default() {
+        let client = HttpClient::new(HttpConfig::default()).unwrap();
+        let err = client
+            .get("http://127.0.0.1:9/x", &Validators::default())
+            .await
+            .unwrap_err();
+        assert!(matches!(err, HttpError::Refused(_)), "{err:?}");
     }
 
     #[tokio::test]
