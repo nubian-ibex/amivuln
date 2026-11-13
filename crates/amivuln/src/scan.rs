@@ -1024,14 +1024,12 @@ pub(crate) fn owners(
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
+    // One call for all paths, so a database file is read once, not per path.
     paths
         .iter()
-        .map(|p| {
-            (
-                p.clone(),
-                backend.resolver().owner_of(p).ok().map(|pkg| pkg.name),
-            )
-        })
+        .cloned()
+        .zip(backend.resolver().owners_of(paths))
+        .map(|(path, owner)| (path, owner.ok().map(|pkg| pkg.name)))
         .collect()
 }
 

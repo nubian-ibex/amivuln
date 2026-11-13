@@ -51,11 +51,18 @@ pub(crate) fn parse_installed(installed: &str, eco: Ecosystem) -> Vec<PackageRef
     packages
 }
 
-/// The packages whose stanza lists `path` (without a leading slash).
-fn owners_of(installed: &str, path: &str) -> Vec<String> {
-    let mut owners = Vec::new();
+/// For each path (without a leading slash), the packages whose stanza lists
+/// it. One pass over the database, however many paths are asked.
+fn owners_of_many(installed: &str, paths: &[String]) -> Vec<Vec<String>> {
+    let wanted: std::collections::HashMap<&str, usize> = paths
+        .iter()
+        .enumerate()
+        .map(|(i, p)| (p.as_str(), i))
+        .collect();
+    let mut owners: Vec<Vec<String>> = paths.iter().map(|_| Vec::new()).collect();
     for stanza in installed.split("\n\n") {
-        let (mut name, mut dir, mut hit) = (None, "", false);
+        let (mut name, mut dir) = (None, "");
+        let mut hits: Vec<usize> = Vec::new();
         for line in stanza.lines() {
             match line.split_once(':') {
                 Some(("P", v)) => name = Some(v.trim()),
@@ -66,17 +73,23 @@ fn owners_of(installed: &str, path: &str) -> Vec<String> {
                     } else {
                         format!("{dir}/{}", file.trim())
                     };
-                    hit |= full == path;
+                    hits.extend(wanted.get(full.as_str()));
                 }
                 _ => {}
             }
         }
-        if let (true, Some(name)) = (hit, name) {
-            owners.push(name.to_owned());
+        if let Some(name) = name {
+            for i in hits {
+                if let Some(list) = owners.get_mut(i) {
+                    list.push(name.to_owned());
+                }
+            }
         }
     }
-    owners.sort();
-    owners.dedup();
+    for list in &mut owners {
+        list.sort();
+        list.dedup();
+    }
     owners
 }
 
@@ -110,19 +123,45 @@ impl ApkResolver {
 
 impl PackageResolver for ApkResolver {
     fn owner_of(&self, path: &str) -> Result<PackageRef, ResolveError> {
-        if path.chars().any(char::is_control) {
-            return Err(ResolveError::NotFound(path.escape_default().to_string()));
-        }
-        let text = self.text()?;
-        let owners = owners_of(&text, path.trim_start_matches('/').trim_end_matches('/'));
-        match owners.as_slice() {
-            [name] => parse_installed(&text, self.eco)
-                .into_iter()
-                .find(|p| &p.name == name)
-                .ok_or_else(|| ResolveError::NotFound(path.to_owned())),
-            [] => Err(ResolveError::NotFound(path.to_owned())),
-            many => Err(ResolveError::Ambiguous(path.to_owned(), many.join(", "))),
-        }
+        self.owners_of(&[path.to_owned()])
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| Err(ResolveError::NotFound(path.to_owned())))
+    }
+
+    fn owners_of(&self, paths: &[String]) -> Vec<Result<PackageRef, ResolveError>> {
+        let text = match self.text() {
+            Ok(t) => t,
+            Err(e) => {
+                return paths
+                    .iter()
+                    .map(|_| Err(ResolveError::Unreadable(e.to_string())))
+                    .collect();
+            }
+        };
+        let trimmed: Vec<String> = paths
+            .iter()
+            .map(|p| p.trim_start_matches('/').trim_end_matches('/').to_owned())
+            .collect();
+        let installed = parse_installed(&text, self.eco);
+        paths
+            .iter()
+            .zip(owners_of_many(&text, &trimmed))
+            .map(|(path, owners)| {
+                if path.chars().any(char::is_control) {
+                    return Err(ResolveError::NotFound(path.escape_default().to_string()));
+                }
+                match owners.as_slice() {
+                    [name] => installed
+                        .iter()
+                        .find(|p| &p.name == name)
+                        .cloned()
+                        .ok_or_else(|| ResolveError::NotFound(path.clone())),
+                    [] => Err(ResolveError::NotFound(path.clone())),
+                    many => Err(ResolveError::Ambiguous(path.clone(), many.join(", "))),
+                }
+            })
+            .collect()
     }
 
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError> {
@@ -200,6 +239,21 @@ R:libcrypto.so.3
             Err(ResolveError::NotFound(_))
         ));
         assert!(matches!(r.by_name("nope"), Err(ResolveError::NotFound(_))));
+    }
+
+    #[test]
+    fn many_paths_are_answered_in_order_from_one_pass() {
+        let dir = tree();
+        let r = ApkResolver::under(Ecosystem::Alpine(319), dir.path());
+        let paths = [
+            "/lib/libcrypto.so.3".to_owned(),
+            "/nope".to_owned(),
+            "/bin/busybox".to_owned(),
+        ];
+        let got = r.owners_of(&paths);
+        assert_eq!(got[0].as_ref().unwrap().name, "libcrypto3");
+        assert!(matches!(got[1], Err(ResolveError::NotFound(_))));
+        assert_eq!(got[2].as_ref().unwrap().name, "busybox");
     }
 
     #[test]

@@ -141,15 +141,19 @@ impl DpkgResolver {
     }
 }
 
-impl PackageResolver for DpkgResolver {
-    fn owner_of(&self, path: &str) -> Result<PackageRef, ResolveError> {
-        if path.chars().any(char::is_control) {
-            return Err(ResolveError::NotFound(path.escape_default().to_string()));
+impl DpkgResolver {
+    /// For each path, the `info/<stem>.list` names that list it. Every list
+    /// is read once, however many paths are asked.
+    fn stems_by_path(&self, paths: &[&str]) -> Result<Vec<Vec<String>>, ResolveError> {
+        let mut wanted: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+        for (i, path) in paths.iter().enumerate() {
+            for variant in path_variants(path.trim_end_matches('/')) {
+                wanted.insert(variant, i);
+            }
         }
-        let wanted = path_variants(path.trim_end_matches('/'));
         let dir = std::fs::read_dir(&self.info)
             .map_err(|e| ResolveError::Unreadable(format!("{}: {e}", self.info.display())))?;
-        let mut owners: Vec<String> = Vec::new();
+        let mut owners: Vec<Vec<String>> = paths.iter().map(|_| Vec::new()).collect();
         for item in dir.flatten() {
             let file = item.file_name();
             let Some(stem) = file.to_str().and_then(|n| n.strip_suffix(".list")) else {
@@ -158,34 +162,81 @@ impl PackageResolver for DpkgResolver {
             let Ok(list) = read_bounded(&item.path(), MAX_LIST_BYTES) else {
                 continue;
             };
-            if list.lines().any(|l| wanted.iter().any(|w| w == l)) {
-                owners.push(stem.to_owned());
+            for line in list.lines() {
+                if let Some(&i) = wanted.get(line)
+                    && let Some(stems) = owners.get_mut(i)
+                {
+                    stems.push(stem.to_owned());
+                }
             }
         }
-        owners.sort();
-        owners.dedup();
-        match owners.as_slice() {
+        for stems in &mut owners {
+            stems.sort();
+            stems.dedup();
+        }
+        Ok(owners)
+    }
+
+    /// The installed package behind the owner stems of one path.
+    fn package_of(
+        path: &str,
+        stems: &[String],
+        installed: &[Entry],
+    ) -> Result<PackageRef, ResolveError> {
+        match stems {
             [one] => {
                 // `libc6:amd64` for a multiarch package, `bash` otherwise.
                 let (name, arch) = one
                     .split_once(':')
                     .map_or((one.as_str(), None), |(n, a)| (n, Some(a)));
-                let found: Vec<Entry> = self
-                    .installed()?
-                    .into_iter()
-                    .filter(|e| {
+                installed
+                    .iter()
+                    .find(|e| {
                         e.package.name == name && arch.is_none_or(|a| e.arch.as_deref() == Some(a))
                     })
-                    .collect();
-                found
-                    .into_iter()
-                    .next()
-                    .map(|e| e.package)
+                    .map(|e| e.package.clone())
                     .ok_or_else(|| ResolveError::NotFound(path.to_owned()))
             }
             [] => Err(ResolveError::NotFound(path.to_owned())),
             many => Err(ResolveError::Ambiguous(path.to_owned(), many.join(", "))),
         }
+    }
+}
+
+impl PackageResolver for DpkgResolver {
+    fn owner_of(&self, path: &str) -> Result<PackageRef, ResolveError> {
+        self.owners_of(&[path.to_owned()])
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| Err(ResolveError::NotFound(path.to_owned())))
+    }
+
+    fn owners_of(&self, paths: &[String]) -> Vec<Result<PackageRef, ResolveError>> {
+        let fail = |e: &ResolveError| {
+            paths
+                .iter()
+                .map(|_| Err(ResolveError::Unreadable(e.to_string())))
+                .collect()
+        };
+        let asked: Vec<&str> = paths.iter().map(String::as_str).collect();
+        let stems = match self.stems_by_path(&asked) {
+            Ok(s) => s,
+            Err(e) => return fail(&e),
+        };
+        let installed = match self.installed() {
+            Ok(i) => i,
+            Err(e) => return fail(&e),
+        };
+        paths
+            .iter()
+            .zip(stems)
+            .map(|(path, stems)| {
+                if path.chars().any(char::is_control) {
+                    return Err(ResolveError::NotFound(path.escape_default().to_string()));
+                }
+                Self::package_of(path, &stems, &installed)
+            })
+            .collect()
     }
 
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError> {
@@ -329,6 +380,22 @@ Version: 2.36-9+deb12u7
             r.owner_of("/bin/\nbash"),
             Err(ResolveError::NotFound(_))
         ));
+    }
+
+    #[test]
+    fn many_paths_are_answered_in_order_from_one_pass() {
+        let dir = tree();
+        let r = DpkgResolver::under(Ecosystem::Debian(12), dir.path());
+        let paths = [
+            "/usr/bin/bash".to_owned(),
+            "/etc/unowned".to_owned(),
+            "/lib/x86_64-linux-gnu/libc.so.6".to_owned(),
+        ];
+        let got = r.owners_of(&paths);
+        assert_eq!(got.len(), 3);
+        assert_eq!(got[0].as_ref().unwrap().name, "bash");
+        assert!(matches!(got[1], Err(ResolveError::NotFound(_))));
+        assert_eq!(got[2].as_ref().unwrap().name, "libc6");
     }
 
     #[test]
