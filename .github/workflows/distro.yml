@@ -87,3 +87,36 @@ jobs:
         run: |
           chmod +x /opt/distro-test/amivuln
           PATH="/opt/distro-test:$PATH" sh /opt/distro-test/run.sh host
+
+  container:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - fedora:44
+          - registry.access.redhat.com/ubi9/ubi:9.6
+          - debian:stable
+          - ubuntu:24.04
+          - alpine:3.20
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: distro-test
+          path: out
+      # The rpm database of a Fedora or Red Hat image is read with the host's rpm.
+      - run: sudo apt-get update -qq && sudo apt-get install -qq -y rpm jq
+      - name: An image is read, and a container with no packages is an error
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          chmod +x out/amivuln
+          id=$(docker create "$IMAGE")
+          rc=0
+          out/amivuln check --container "$id" --format json >container.json || rc=$?
+          [ "$rc" = 0 ] || [ "$rc" = 1 ] || { echo "exit code $rc"; exit 1; }
+          jq -e '(.targets | length) > 10 and .complete' container.json
