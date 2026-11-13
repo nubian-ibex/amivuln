@@ -96,8 +96,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          # Fedora and Arch images are not listed: their data does not come from
-          # OSV, and this runner is Ubuntu (see the roadmap).
+          # The runner is Ubuntu, so Fedora and Arch images are also the
+          # cross-distribution case: their data is not the host's.
+          - fedora:44
+          - archlinux:base
           - registry.access.redhat.com/ubi9/ubi:9.6
           - debian:stable
           - ubuntu:24.04
