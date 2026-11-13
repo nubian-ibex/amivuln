@@ -139,6 +139,7 @@ mod tests {
                 provenance: Provenance::PackageDb,
             },
             findings,
+            resolved: Vec::new(),
         }
     }
 
