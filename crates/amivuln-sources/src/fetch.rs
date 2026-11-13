@@ -43,17 +43,7 @@ fn age(now: i64, fetched_at: i64) -> Duration {
     Duration::from_secs(u64::try_from(now.saturating_sub(fetched_at)).unwrap_or(0))
 }
 
-/// Fetches `url` with `GET`, using `cache` under `key`.
-///
-/// `now` is Unix seconds from the caller's clock. With `offline` the network
-/// is never touched.
-///
-/// # Errors
-///
-/// [`FetchError::Offline`] when offline without a usable copy,
-/// [`FetchError::Unavailable`] when the request fails and no cached copy is
-/// within `stale_max_age`.
-/// Everything [`fetch_cached`] needs.
+/// Everything [`fetch_cached_body`] needs.
 #[derive(Debug, Clone, Copy)]
 pub struct FetchCtx<'a> {
     /// HTTP client.
@@ -70,36 +60,8 @@ pub struct FetchCtx<'a> {
     pub offline_db: Option<&'a Cache>,
 }
 
-/// Fetches `url` with `GET`, using `cache` under `key`.
-///
-/// # Errors
-///
-/// [`FetchError::Offline`] when offline without a usable copy,
-/// [`FetchError::Unavailable`] when the request fails and no cached copy is
-/// within `stale_max_age`.
-#[allow(clippy::too_many_arguments)]
-pub async fn fetch_cached(
-    http: &HttpClient,
-    cache: &Cache,
-    key: &str,
-    url: &str,
-    now: i64,
-    policy: Policy,
-    offline: bool,
-) -> Result<Fetched, FetchError> {
-    let ctx = FetchCtx {
-        http,
-        cache,
-        now,
-        policy,
-        offline,
-        offline_db: None,
-    };
-    fetch_cached_body(&ctx, key, url, None).await
-}
-
-/// Fetches `url`, `POST`ing `body` when given (an API that takes a request
-/// document). The cache key must already encode the body; responses to POST
+/// Fetches `url` with `GET`, or `POST`s `body` when given (an API that takes a
+/// request document). The cache key must already encode the body; responses to POST
 /// are cached only because the key is deterministic.
 ///
 /// # Errors
@@ -220,6 +182,27 @@ mod tests {
     use std::fmt::Write as _;
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// The plain `GET` the tests exercise, without an offline database.
+    async fn fetch_cached(
+        http: &HttpClient,
+        cache: &Cache,
+        key: &str,
+        url: &str,
+        now: i64,
+        policy: Policy,
+        offline: bool,
+    ) -> Result<Fetched, FetchError> {
+        let ctx = FetchCtx {
+            http,
+            cache,
+            now,
+            policy,
+            offline,
+            offline_db: None,
+        };
+        fetch_cached_body(&ctx, key, url, None).await
+    }
 
     const POLICY: Policy = Policy {
         ttl: 100,
