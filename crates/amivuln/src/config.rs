@@ -176,6 +176,9 @@ pub struct DistroCfg {
     pub url: Option<String>,
     /// Ordered mirrors tried after the primary endpoint fails.
     pub fallback: Vec<String>,
+    /// On Gentoo, the directory with the advisories (`glsa-*.xml`). Without it
+    /// the host's own Portage tree is used.
+    pub path: Option<String>,
 }
 
 impl Default for DistroCfg {
@@ -185,6 +188,7 @@ impl Default for DistroCfg {
             required: true,
             url: None,
             fallback: Vec::new(),
+            path: None,
         }
     }
 }
@@ -587,6 +591,9 @@ enabled = true
 required = true
 # url = \"https://mirror.example/fedora/linux/updates\"
 # fallback = [\"https://mirror2.example/fedora/linux/updates\"]
+# On Gentoo the advisories are read from this directory (default: the host's
+# Portage tree, /var/db/repos/gentoo/metadata/glsa).
+# path = \"/var/db/repos/gentoo/metadata/glsa\"
 
 [sources.kev]
 enabled = true

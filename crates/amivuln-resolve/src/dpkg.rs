@@ -95,7 +95,7 @@ fn entries(status: &str, eco: Ecosystem) -> Vec<Entry> {
 
 /// The same file seen through `/bin` and `/usr/bin` (merged `/usr`): dpkg
 /// lists the path the package shipped, which may not be the one the user typed.
-fn path_variants(path: &str) -> Vec<String> {
+pub(crate) fn path_variants(path: &str) -> Vec<String> {
     let mut variants = vec![path.to_owned()];
     for dir in ["bin", "sbin", "lib", "lib64"] {
         if let Some(rest) = path.strip_prefix(&format!("/usr/{dir}/")) {

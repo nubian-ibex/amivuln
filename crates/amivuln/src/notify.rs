@@ -216,6 +216,7 @@ mod tests {
                         "1:1.26.2-1.fc43".parse().unwrap_or_else(|n| match n {}),
                     ),
                     arch: None,
+                    slot: None,
                     provenance: amivuln_core::Provenance::PackageDb,
                 },
                 findings: vec![Finding::new(

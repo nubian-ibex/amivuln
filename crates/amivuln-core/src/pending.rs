@@ -245,6 +245,7 @@ mod tests {
                 source_name: None,
                 version: rpm(version),
                 arch: None,
+                slot: None,
                 provenance: Provenance::PackageDb,
             },
             findings,

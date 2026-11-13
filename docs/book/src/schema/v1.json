@@ -158,7 +158,9 @@
             "bodhi",
             "osv",
             "kev",
-            "epss"
+            "epss",
+            "nvd",
+            "glsa"
           ]
         },
         "status": {

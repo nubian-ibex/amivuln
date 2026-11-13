@@ -12,6 +12,7 @@ use amivuln_core::{
 use amivuln_sources::arch::{ArchEntry, ArchTracker};
 use amivuln_sources::epss::EpssScores;
 use amivuln_sources::fedora::Updateinfo;
+use amivuln_sources::glsa::GlsaData;
 use amivuln_sources::kev::Kev;
 use amivuln_sources::osv::OsvData;
 
@@ -124,6 +125,63 @@ pub fn arch_assess(pkg: &PackageRef, tracker: &ArchTracker, vex: &[VexStatement]
             Some(prev) => by_cve.insert(e.cve, merge(prev, item)),
             None => by_cve.insert(e.cve, item),
         };
+    }
+    finish(by_cve, vex)
+}
+
+/// Findings for a Gentoo package from the GLSAs.
+///
+/// An advisory affects the installed version when a `vulnerable` range holds
+/// it and no `unaffected` range does (a range limited to a slot only applies to
+/// a package in that slot). A package an advisory names, in a slot it covers,
+/// outside every vulnerable range is patched. An advisory that names no CVE is
+/// reported under its own id, so a fix without one is not lost.
+#[must_use]
+pub fn glsa_assess(pkg: &PackageRef, glsa: &GlsaData, vex: &[VexStatement]) -> Assessment {
+    let (Version::Gentoo(installed), slot) = (&pkg.version, pkg.slot.as_deref()) else {
+        return Assessment::default();
+    };
+    let installed = installed.as_str();
+    let mut by_cve: BTreeMap<String, (Verdict, Severity)> = BTreeMap::new();
+    for advisory in glsa.for_package(&pkg.name) {
+        for entry in advisory.packages.iter().filter(|p| p.name == pkg.name) {
+            let covered = entry
+                .vulnerable
+                .iter()
+                .chain(&entry.unaffected)
+                .any(|r| r.covers_slot(slot));
+            if !covered {
+                continue;
+            }
+            let hit = |ranges: &[amivuln_sources::glsa::Range]| {
+                ranges.iter().any(|r| r.matches(installed, slot))
+            };
+            let verdict = if hit(&entry.vulnerable) && !hit(&entry.unaffected) {
+                Verdict::Affected {
+                    fixed_in: amivuln_sources::glsa::fixed_version(
+                        &entry.unaffected,
+                        installed,
+                        slot,
+                    )
+                    .and_then(|v| v.parse().ok())
+                    .map(Version::Gentoo),
+                }
+            } else {
+                Verdict::Patched
+            };
+            let ids: Vec<String> = if advisory.cves.is_empty() {
+                vec![format!("GLSA-{}", advisory.id)]
+            } else {
+                advisory.cves.clone()
+            };
+            for id in ids {
+                let item = (verdict.clone(), advisory.severity);
+                match by_cve.remove(&id) {
+                    Some(prev) => by_cve.insert(id, merge(prev, item)),
+                    None => by_cve.insert(id, item),
+                };
+            }
+        }
     }
     finish(by_cve, vex)
 }
@@ -350,6 +408,7 @@ pub fn enrich(findings: &mut [Finding], kev: Option<&Kev>, epss: Option<&EpssSco
 mod tests {
     use super::*;
     use amivuln_core::{Ecosystem, Provenance, VexStatement};
+    use amivuln_sources::glsa::GlsaData;
 
     const ARCH: &[u8] =
         include_bytes!("../../../tests/fixtures/http/arch-tracker/2026-11-07/all.json");
@@ -363,6 +422,7 @@ mod tests {
             source_name: None,
             version: Version::Pacman(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
+            slot: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -378,6 +438,7 @@ mod tests {
             source_name: source.map(str::to_owned),
             version: Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
+            slot: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -555,6 +616,7 @@ mod tests {
             source_name: None,
             version: Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
+            slot: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -621,5 +683,159 @@ mod tests {
             found[0].verdict,
             Verdict::Affected { fixed_in: None }
         ));
+    }
+
+    fn gentoo_pkg(name: &str, slot: Option<&str>, version: &str) -> PackageRef {
+        PackageRef {
+            ecosystem: Ecosystem::Gentoo,
+            name: name.into(),
+            source_name: None,
+            version: Version::Gentoo(version.parse().unwrap_or_else(|n| match n {})),
+            arch: None,
+            slot: slot.map(str::to_owned),
+            provenance: Provenance::PackageDb,
+        }
+    }
+
+    fn glsa_data() -> GlsaData {
+        GlsaData::load(
+            &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/glsa"),
+        )
+        .unwrap()
+    }
+
+    fn verdicts(a: &Assessment) -> Vec<(String, String)> {
+        a.findings
+            .iter()
+            .chain(&a.resolved)
+            .map(|f| {
+                let v = match &f.verdict {
+                    Verdict::Affected { fixed_in: Some(v) } => format!("affected {v}"),
+                    Verdict::Affected { fixed_in: None } => "affected".to_owned(),
+                    Verdict::Patched => "patched".to_owned(),
+                    other => format!("{other:?}"),
+                };
+                (f.id.clone(), v)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_gentoo_package_below_the_fix_is_affected_and_at_it_is_patched() {
+        let data = glsa_data();
+        let old = glsa_assess(
+            &gentoo_pkg("dev-python/joblib", None, "1.1.0"),
+            &data,
+            &no_vex(),
+        );
+        assert_eq!(
+            verdicts(&old),
+            [("CVE-2022-21797".to_owned(), "affected 1.2.0".to_owned())]
+        );
+        // The advisory is about this package, the fix is installed: patched,
+        // and kept apart from the findings.
+        let new = glsa_assess(
+            &gentoo_pkg("dev-python/joblib", None, "1.2.0-r1"),
+            &data,
+            &no_vex(),
+        );
+        assert!(new.findings.is_empty());
+        assert_eq!(
+            verdicts(&new),
+            [("CVE-2022-21797".to_owned(), "patched".to_owned())]
+        );
+        // A package no advisory names has nothing, not even resolved entries.
+        let other = glsa_assess(
+            &gentoo_pkg("dev-libs/untouched", None, "1.0"),
+            &data,
+            &no_vex(),
+        );
+        assert_eq!(other, Assessment::default());
+    }
+
+    #[test]
+    fn a_range_that_names_a_slot_applies_only_to_that_slot() {
+        let data = glsa_data();
+        // 202501-11: php 8.2 is fixed at 8.2.24, 8.3 at 8.3.12, 8.1 at 8.1.30.
+        let at = |slot: &str, version: &str| {
+            let a = glsa_assess(
+                &gentoo_pkg("dev-lang/php", Some(slot), version),
+                &data,
+                &no_vex(),
+            );
+            a.findings.first().map(|f| f.verdict.clone())
+        };
+        assert_eq!(
+            at("8.2", "8.2.20"),
+            Some(Verdict::Affected {
+                fixed_in: Some(Version::Gentoo(
+                    "8.2.24".parse().unwrap_or_else(|n| match n {})
+                )),
+            })
+        );
+        assert_eq!(at("8.2", "8.2.24"), None);
+        assert!(at("8.3", "8.3.1").is_some());
+        // 8.1 has an own fix; it is not judged against the 8.2 one.
+        assert!(
+            matches!(
+                at("8.1", "8.1.2"),
+                Some(Verdict::Affected { fixed_in: None })
+            ),
+            "no fix is published for a slot the advisory only lists as vulnerable"
+        );
+        // A slot the advisory never mentions is not covered at all.
+        assert_eq!(at("7.4", "7.4.1"), None);
+        let none = glsa_assess(
+            &gentoo_pkg("dev-lang/php", Some("7.4"), "7.4.1"),
+            &data,
+            &no_vex(),
+        );
+        assert_eq!(none, Assessment::default());
+    }
+
+    #[test]
+    fn revision_ranges_and_advisories_without_a_cve_are_handled() {
+        let data = glsa_data();
+        // dev-vcs/git: unaffected rge 2.21.1, rge 2.23.1-r1, rge 2.24.1.
+        let git = |v: &str| {
+            verdicts(&glsa_assess(
+                &gentoo_pkg("dev-vcs/git", None, v),
+                &data,
+                &no_vex(),
+            ))
+        };
+        let fixed = |v: &str| git(v).first().map(|(_, state)| state.clone());
+        assert_eq!(fixed("2.23.0").as_deref(), Some("affected 2.23.1-r1"));
+        assert_eq!(fixed("2.23.1").as_deref(), Some("affected 2.23.1-r1"));
+        assert_eq!(fixed("2.23.1-r2").as_deref(), Some("patched"));
+        assert_eq!(fixed("2.24.1").as_deref(), Some("patched"));
+        assert_eq!(fixed("2.21.1-r3").as_deref(), Some("patched"));
+        // An advisory that lists no CVE is reported under its own id.
+        let seamonkey = glsa_assess(
+            &gentoo_pkg("www-client/seamonkey", None, "2.53.0"),
+            &data,
+            &no_vex(),
+        );
+        assert_eq!(
+            verdicts(&seamonkey),
+            [("GLSA-202402-24".to_owned(), "affected 2.53.10.2".to_owned())]
+        );
+    }
+
+    #[test]
+    fn a_vex_statement_still_overrides_a_gentoo_finding() {
+        let data = glsa_data();
+        let vex = vec![VexStatement {
+            id: "CVE-2022-21797".to_owned(),
+            author: "me".to_owned(),
+            justification: Some("not used".to_owned()),
+        }];
+        let a = glsa_assess(&gentoo_pkg("dev-python/joblib", None, "1.1.0"), &data, &vex);
+        // Kept in the findings with the statement's verdict, as for every
+        // other distribution; no summary counts it.
+        assert!(
+            matches!(a.findings.as_slice(), [f] if matches!(f.verdict, Verdict::NotAffected(_))),
+            "{a:?}"
+        );
     }
 }

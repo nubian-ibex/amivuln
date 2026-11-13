@@ -48,7 +48,7 @@ contract. Flags and configuration keys may still change in a minor release
 before 1.0, and the changelog names each change.
 
 Supported, read from the installed packages of the host and from containers,
-lists and SBOMs: Fedora, Arch Linux, Debian, Ubuntu, Alpine, openSUSE, Red Hat
+lists and SBOMs: Fedora, Arch Linux, Debian, Ubuntu, Alpine, openSUSE, Gentoo, Red Hat
 Enterprise Linux, Rocky Linux and AlmaLinux. The page
 [Data sources](sources.md#supported-distributions) says exactly what each
 distribution gives you and where its blind spots are.

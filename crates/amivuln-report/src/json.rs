@@ -176,6 +176,9 @@ pub(crate) fn purl(p: &amivuln_core::PackageRef) -> String {
         .collect::<Vec<_>>()
         .join("/");
     let mut qualifiers = Vec::new();
+    if let Some(slot) = &p.slot {
+        qualifiers.push(format!("slot={}", purl_encode(slot)));
+    }
     if let Some(a) = &p.arch {
         qualifiers.push(format!("arch={}", purl_encode(a)));
     }
@@ -192,6 +195,7 @@ pub(crate) fn purl(p: &amivuln_core::PackageRef) -> String {
         Version::Pacman(v) => v.to_string(),
         Version::Deb(v) => v.to_string(),
         Version::Apk(v) => v.to_string(),
+        Version::Gentoo(v) => v.to_string(),
         Version::Semver(v) => v.to_string(),
     };
     let mut out = format!("{ns}/{name}@{}", purl_encode(&version));
@@ -377,6 +381,7 @@ pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
         Ecosystem::Crates => "crates",
         Ecosystem::Alpine(_) => "alpine",
         Ecosystem::Opensuse(_) => "opensuse",
+        Ecosystem::Gentoo => "gentoo",
     }
 }
 

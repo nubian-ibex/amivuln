@@ -24,3 +24,11 @@ path = "tests/vendor/schemas/openvex_json_schema.json"
 precedence = "override"
 SPDX-FileCopyrightText = "The OpenVEX Authors"
 SPDX-License-Identifier = "Apache-2.0"
+
+# Gentoo Linux Security Advisories, copied unmodified from the glsa repository
+# (data/glsa.git at c8ac65a): each file says "Licensed under CC-BY-SA-4.0".
+[[annotations]]
+path = "tests/fixtures/glsa/*.xml"
+precedence = "override"
+SPDX-FileCopyrightText = "Gentoo Authors"
+SPDX-License-Identifier = "CC-BY-SA-4.0"

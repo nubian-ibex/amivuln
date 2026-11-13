@@ -36,6 +36,8 @@ jobs:
         run: |
           mkdir -p out
           cp target/x86_64-unknown-linux-musl/release/amivuln tests/distro/run.sh out/
+          # A Gentoo image carries no Portage tree: these advisories stand in.
+          cp -r tests/fixtures/glsa out/glsa
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: distro-test
@@ -104,6 +106,7 @@ jobs:
           - registry.access.redhat.com/ubi9/ubi:9.6
           - registry.opensuse.org/opensuse/leap:16.0
           - registry.opensuse.org/opensuse/tumbleweed
+          - docker.io/gentoo/stage3:amd64-openrc-20261109
           - debian:stable
           - ubuntu:24.04
           - alpine:3.20
@@ -125,7 +128,9 @@ jobs:
           # amivuln prefers podman when both runtimes exist, so the container is created with it.
           id=$(podman create "$IMAGE")
           rc=0
-          out/amivuln check --container "$id" --format json >container.json 2>container.err || rc=$?
+          # A Gentoo image has no Portage tree, so its advisories come from a directory.
+          printf '[sources.distro]\npath = "%s"\n' "$PWD/out/glsa" >glsa.toml
+          out/amivuln --config glsa.toml check --container "$id" --format json >container.json 2>container.err || rc=$?
           if [ "$rc" != 0 ] && [ "$rc" != 1 ]; then
             echo "exit code $rc"
             cat container.err

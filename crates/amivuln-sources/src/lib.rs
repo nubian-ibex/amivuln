@@ -12,6 +12,7 @@ pub mod arch;
 pub mod epss;
 pub mod fedora;
 pub mod fetch;
+pub mod glsa;
 pub mod http;
 pub mod kev;
 pub mod nvd;

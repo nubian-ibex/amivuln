@@ -67,6 +67,16 @@ How a target is identified, and what the data can and cannot show:
   the Using page). Only the security updates (`SUSE-SU`, `openSUSE-SU`) count,
   and only CVEs that shipped a fix are visible. SUSE Linux Enterprise has its
   own data and is not read yet.
+- **Gentoo.** The host is read from `/var/db/pkg` (nothing is run), and
+  containers work. Data: the GLSAs in the host's own Portage tree
+  (`/var/db/repos/gentoo/metadata/glsa`), read offline; nothing is
+  downloaded. Advisories are judged per slot, and a range with a `slot` only
+  applies to a package in that slot. Only advisories that shipped a fix
+  exist, so a CVE with no fix yet is not visible. The age of the source is
+  the time of the last synchronisation of the tree; a tree that is missing,
+  unreadable or empty makes the result incomplete. For a container or another
+  machine, point `[sources.distro] path` at a directory with the `glsa-*.xml`
+  files. The `arch` attribute of an advisory is not read.
 - **Alpine 3.x.** The host is read from `/lib/apk/db/installed`; the same other inputs as Debian and Ubuntu. Edge and alpha images have no advisory data and are refused. Data: OSV, keyed by the origin package; only CVEs that shipped a fix are visible.
 - **Go modules and Rust crates** found in binaries, through OSV.
 

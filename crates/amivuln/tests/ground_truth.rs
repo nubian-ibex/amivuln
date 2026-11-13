@@ -62,6 +62,7 @@ fn package(eco: Ecosystem, case: &Case) -> PackageRef {
             Version::Deb(case.version.parse().unwrap_or_else(|n| match n {}))
         }
         Ecosystem::Alpine(_) => Version::Apk(case.version.parse().unwrap_or_else(|n| match n {})),
+        Ecosystem::Gentoo => Version::Gentoo(case.version.parse().unwrap_or_else(|n| match n {})),
         Ecosystem::Go | Ecosystem::Crates => Version::Semver(
             amivuln_version::SemverVersion::parse(&case.version).unwrap_or_default(),
         ),
@@ -72,6 +73,7 @@ fn package(eco: Ecosystem, case: &Case) -> PackageRef {
         source_name: case.source.clone(),
         version,
         arch: None,
+        slot: None,
         provenance: Provenance::PackageDb,
     }
 }

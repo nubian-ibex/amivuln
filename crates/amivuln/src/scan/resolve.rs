@@ -4,14 +4,16 @@
 
 use super::{
     ApkResolver, Cli, DpkgResolver, Duration, Ecosystem, PackageRef, PackageResolver,
-    PacmanResolver, Path, ResolveError, RpmResolver, SystemRunner, Target, Unresolved,
-    exe_for_unit, from_name_version, from_purl, language_packages, package_from_note, parse_target,
+    PacmanResolver, Path, PortageResolver, ResolveError, RpmResolver, SystemRunner, Target,
+    Unresolved, exe_for_unit, from_name_version, from_purl, language_packages, package_from_note,
+    parse_target,
 };
 
 /// The package manager lookups for a host.
 pub(super) enum Backend<'a> {
     Rpm(RpmResolver<'a, SystemRunner>),
     Pacman(PacmanResolver<'a, SystemRunner>),
+    Portage(PortageResolver),
     Dpkg(DpkgResolver),
     Apk(ApkResolver),
 }
@@ -21,6 +23,7 @@ impl Backend<'_> {
         match self {
             Self::Rpm(r) => r,
             Self::Pacman(r) => r,
+            Self::Portage(r) => r,
             Self::Dpkg(r) => r,
             Self::Apk(r) => r,
         }
@@ -167,6 +170,7 @@ pub(crate) fn owners(
         | Ecosystem::Rhel(_)
         | Ecosystem::Opensuse(_) => Backend::Rpm(RpmResolver::new(&runner, eco)),
         Ecosystem::Arch => Backend::Pacman(PacmanResolver::new(&runner)),
+        Ecosystem::Gentoo => Backend::Portage(PortageResolver::new()),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Backend::Dpkg(DpkgResolver::new(eco)),
         Ecosystem::Alpine(_) => Backend::Apk(ApkResolver::new(eco)),
         Ecosystem::Go | Ecosystem::Crates => {
@@ -203,6 +207,7 @@ pub(crate) fn resolve_all(
         | Ecosystem::Rhel(_)
         | Ecosystem::Opensuse(_) => Some(Backend::Rpm(RpmResolver::new(&runner, eco))),
         Ecosystem::Arch => Some(Backend::Pacman(PacmanResolver::new(&runner))),
+        Ecosystem::Gentoo => Some(Backend::Portage(PortageResolver::new())),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Some(Backend::Dpkg(DpkgResolver::new(eco))),
         Ecosystem::Alpine(_) => Some(Backend::Apk(ApkResolver::new(eco))),
         // A host is never a language ecosystem.
