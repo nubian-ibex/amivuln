@@ -9,6 +9,7 @@
 
 use std::io::Write;
 
+use amivuln_core::i18n::{tr, tr_args};
 use amivuln_core::{ExitCode, RunReport, score};
 use serde_json::{Value, json};
 
@@ -100,7 +101,7 @@ pub(crate) fn maybe_notify(
         Some(p) => match read_bearer(p) {
             Ok(t) => Some(t),
             Err(e) => {
-                let _ = writeln!(err, "warning: {e}");
+                let _ = writeln!(err, "{}", tr_args("warning.line", &[("message", &e)]));
                 return ExitCode::Usage;
             }
         },
@@ -108,13 +109,17 @@ pub(crate) fn maybe_notify(
     };
     let body = payload(report, violated).to_string();
     if body.len() > MAX_PAYLOAD_BYTES {
-        let _ = writeln!(err, "warning: notify payload too large; skipped");
+        let _ = writeln!(err, "{}", tr("warning.notify_too_large"));
         return ExitCode::Success;
     }
     let mut config = match crate::scan::http_config(s) {
         Ok(c) => c,
         Err(e) => {
-            let _ = writeln!(err, "warning: notify failed: {e}");
+            let _ = writeln!(
+                err,
+                "{}",
+                tr_args("warning.notify_failed", &[("error", &e)])
+            );
             return ExitCode::Success;
         }
     };
@@ -124,7 +129,11 @@ pub(crate) fn maybe_notify(
     let http = match amivuln_sources::http::HttpClient::new(config) {
         Ok(c) => c,
         Err(e) => {
-            let _ = writeln!(err, "warning: notify failed: {e}");
+            let _ = writeln!(
+                err,
+                "{}",
+                tr_args("warning.notify_failed", &[("error", &e)])
+            );
             return ExitCode::Success;
         }
     };
@@ -138,7 +147,11 @@ pub(crate) fn maybe_notify(
         Err(e) => Err(amivuln_sources::http::HttpError::Network(e.to_string())),
     };
     if let Err(e) = result {
-        let _ = writeln!(err, "warning: notify failed: {e}");
+        let _ = writeln!(
+            err,
+            "{}",
+            tr_args("warning.notify_failed", &[("error", &e)])
+        );
     }
     ExitCode::Success
 }

@@ -12,6 +12,9 @@ fn main() -> std::process::ExitCode {
     let args: Vec<String> = std::env::args_os()
         .map(|a| a.to_string_lossy().into_owned())
         .collect();
+    amivuln_core::i18n::set_language(amivuln_core::i18n::Language::from_env(|name| {
+        std::env::var(name).ok()
+    }));
     let env = Env::from_process();
     let stdout = std::io::stdout();
     let stderr = std::io::stderr();

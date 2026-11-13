@@ -23,6 +23,19 @@ CI enforces the formatting and lint rules, so a pull request that does not follo
 
 Tests must not touch the network. HTTP behavior is tested with recorded fixtures and `wiremock`. Synthetic fixtures use obviously fictional IDs such as `CVE-0000-0001`.
 
+## Messages and languages
+
+Text meant for a person is not written in the code. It lives in
+`crates/amivuln-core/locales/en.txt` as `key = text` lines with `{name}`
+placeholders, and the code asks for it with `tr("key")` or
+`tr_args("key", &[("name", &value)])`. English is the source: another language
+file may leave a key out (English is used) but may not add one or change its
+placeholders; a test checks that, and that every key the code uses exists and
+every key in `en.txt` is used. To add a language, add `locales/<code>.txt` and
+a `Language` variant in `crates/amivuln-core/src/i18n.rs`; to correct a
+translation, edit its file. Output that other programs read (JSON, SARIF, CSV,
+CycloneDX, OpenVEX, Prometheus) is never translated.
+
 ## Reporting false positives and negatives
 
 Use the issue forms. Include the distro and version, the `--format json` output and any evidence of the patch (changelog, advisory).

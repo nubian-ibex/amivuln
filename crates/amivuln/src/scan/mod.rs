@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use amivuln_cache::{Cache, Policy as CachePolicy};
 use amivuln_core::VexStatement;
+use amivuln_core::i18n::tr_args;
 use amivuln_core::{
     Ecosystem, ExitCode, Finding, PackageRef, Severity, SourceId, SourceReport, SourceStatus,
     TargetReport, Unresolved, Verdict, sort_findings,
@@ -456,14 +457,14 @@ pub(crate) fn evaluate(
     err: &mut dyn Write,
 ) -> Result<Evaluated, ExitCode> {
     let internal = |err: &mut dyn Write, msg: String| {
-        let _ = writeln!(err, "error: {msg}");
+        let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &msg)]));
         ExitCode::Internal
     };
 
     let cache = open_cache(&cli.global, s, env, err)
         .map_err(|e| internal(err, format!("cannot create a cache: {e}")))?;
     let config = http_config(s).map_err(|e| {
-        let _ = writeln!(err, "error: {e}");
+        let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &e)]));
         ExitCode::Usage
     })?;
     let http = HttpClient::new(config).map_err(|e| internal(err, e.to_string()))?;
@@ -479,7 +480,7 @@ pub(crate) fn evaluate(
             Ok(db) => db,
             Err(e) => {
                 if !cli.global.quiet {
-                    let _ = writeln!(err, "warning: offline database unusable: {e}");
+                    let _ = writeln!(err, "{}", tr_args("warning.offline_db", &[("error", &e)]));
                 }
                 None
             }
@@ -514,7 +515,7 @@ fn open_cache(g: &Global, s: &Settings, env: &Env, err: &mut dyn Write) -> Resul
         if let Some(why) = why
             && !g.quiet
         {
-            let _ = writeln!(err, "warning: {why}; using an in-memory cache for this run");
+            let _ = writeln!(err, "{}", tr_args("warning.memory_cache", &[("why", &why)]));
         }
         Cache::in_memory().map_err(|e| e.to_string())
     };

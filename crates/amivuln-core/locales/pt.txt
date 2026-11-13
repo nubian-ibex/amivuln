@@ -1,0 +1,51 @@
+# Português do Brasil. Uma chave que falta aqui usa o inglês; as chaves e os
+# {marcadores} são os de en.txt. A tradução não foi revisada por quem tem o
+# português como língua materna.
+
+counts.unverified =   {n} achado(s) não puderam ser verificados com os dados da distribuição (listados à parte, não contam acima)
+fix.fixed_in =   Corrigido em: {version}  ({hint})
+hint.rebuild = recompile ou troque o programa por um com a dependência corrigida
+footer.unresolved = não resolvido
+footer.source = fonte {name} {status}{detail}  idade {age}s{required}
+footer.required =   obrigatória
+footer.complete = resultado: completo
+footer.incomplete = resultado: INCOMPLETO (uma fonte obrigatória falhou); não trate isto como limpo
+totals.line = {packages} pacotes verificados, {with} com achados   nota do host {grade} ({points} pontos){accepted}
+totals.accepted =    {n} aceitos
+finding.no_fix = sem correção publicada
+finding.fix = correção: {fixed}
+finding.kev =   KEV(incluído em {added}{ransomware})
+finding.ransomware = , ransomware
+finding.accepted = ACEITO ({reason})
+detail.affected =   Afetados:
+detail.unverified =   Não verificados (sem declaração da distribuição):
+pending.none = nenhuma atualização pendente fecha um achado afetado
+pending.summary = {updates} atualização(ões) fecham {closed} achado(s), {kev} no KEV
+pending.more =  (+{n} pacotes)
+pending.line = {package}{more} {version} -> {target}   fecha {closes} ({severity})   KEV {kev}{epss}
+pending.without_fix = \n{n} achado(s) afetado(s) ainda não têm correção publicada, então nenhuma atualização os fecha
+cve.affected = AFETADO
+cve.fixed_in = corrigido em {version}
+cve.not_affected = {id}: nenhum pacote instalado é afetado (corrigido, não afetado ou não instalado)
+cve.unknown = {id}: os dados da distribuição não têm registro deste CVE; isso não significa que este host esteja seguro
+restart.none = nenhum processo inspecionado usa um arquivo substituído
+restart.no_service = {comm} (sem serviço)
+restart.exe =   executável substituído: {path}{owner}
+restart.lib =   biblioteca substituída:  {path}{owner}
+restart.with =   reinicie com: systemctl restart {unit}
+restart.inspected = {n} processos inspecionados
+restart.unreadable = {n} processo(s) não puderam ser inspecionados; rode como root para ver todos
+error.line = erro: {message}
+error.not_exist = erro: {path} não existe
+error.runtime = erro: não foi possível iniciar o ambiente assíncrono: {error}
+error.write_report = erro: não foi possível gravar o relatório: {error}
+error.list_services = não foi possível listar os serviços em execução: {error}
+error.tui_feature = erro: o comando tui precisa do recurso `tui`: cargo install amivuln --features tui
+error.terminal = erro: não foi possível inicializar o terminal
+warning.line = aviso: {message}
+warning.notify_failed = aviso: a notificação falhou: {error}
+warning.notify_too_large = aviso: o conteúdo da notificação é grande demais; não enviado
+warning.offline_db = aviso: o banco de dados offline não pôde ser usado: {error}
+warning.memory_cache = aviso: {why}; usando um cache em memória nesta execução
+info.manifest = banco:     {path}\ncriado:    {created}\nferramenta: {tool}\nentradas:  {entries}\nbytes:     {bytes}\nsha256:    {sha256}
+info.cache = caminho:  {path}\nentradas: {entries}\nbytes:    {bytes}
