@@ -557,7 +557,7 @@ timeout = \"10s\"
 exec_version_probe = false  # run `--version` on unowned files in a Landlock + seccomp sandbox
 
 [output]
-format = \"summary\"      # summary, detail, json, sarif, markdown, csv or prometheus
+format = \"summary\"      # summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex
 color = \"auto\"          # auto, always or never (NO_COLOR is honored)
 
 [policy]

@@ -18,7 +18,7 @@
 
 ## Options
 
-- `-f, --format`: `summary`, `detail`, `json`, `sarif`, `markdown`, `csv` or `prometheus`
+- `-f, --format`: `summary`, `detail`, `json`, `sarif`, `markdown`, `csv`, `prometheus`, `cyclonedx` or `openvex`
 - `[network] retries = 2`: retry attempts per failing call; `cooldown = "30s"`: breaker pause; `min_interval`: optional per-host spacing
 - `--output FILE`: write the result to FILE instead of stdout; the file is replaced atomically through a rename
 - `--fail-on`: `none`, `low`, `medium`, `high`, `critical` or `kev`

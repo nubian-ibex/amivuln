@@ -166,7 +166,7 @@ fn purl_encode(s: &str) -> String {
     out
 }
 
-fn purl(p: &amivuln_core::PackageRef) -> String {
+pub(crate) fn purl(p: &amivuln_core::PackageRef) -> String {
     let ns = p.ecosystem.purl_namespace();
     // Go module paths keep their slashes: they are namespace segments.
     let name = p
@@ -238,6 +238,17 @@ fn source(s: &SourceReport) -> JsonSource<'_> {
     }
 }
 
+/// The schema name of how a package was identified.
+pub(crate) fn provenance_name(p: amivuln_core::Provenance) -> &'static str {
+    match p {
+        amivuln_core::Provenance::PackageDb => "package_db",
+        amivuln_core::Provenance::UserInput => "user_input",
+        amivuln_core::Provenance::EmbeddedNote => "embedded_note",
+        amivuln_core::Provenance::EmbeddedBuildInfo => "embedded_buildinfo",
+        amivuln_core::Provenance::StringHeuristic => "string_heuristic",
+    }
+}
+
 fn target(t: &TargetReport) -> JsonTarget<'_> {
     let sum = Summary::of(&t.findings);
     let (unverified, findings): (Vec<&Finding>, Vec<&Finding>) = t
@@ -252,13 +263,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
             arch: t.package.arch.as_deref(),
             ecosystem: ecosystem_name(t.package.ecosystem),
             purl: purl(&t.package),
-            provenance: match t.package.provenance {
-                amivuln_core::Provenance::PackageDb => "package_db",
-                amivuln_core::Provenance::UserInput => "user_input",
-                amivuln_core::Provenance::EmbeddedNote => "embedded_note",
-                amivuln_core::Provenance::EmbeddedBuildInfo => "embedded_buildinfo",
-                amivuln_core::Provenance::StringHeuristic => "string_heuristic",
-            },
+            provenance: provenance_name(t.package.provenance),
         },
         summary: JsonSummary {
             critical: sum.critical,

@@ -61,6 +61,40 @@ and `amivuln cache clear` manage the cache; `--no-cache` skips the disk cache.
 prints the effective configuration and `amivuln config validate` checks it.
 Unknown keys are rejected so typos do not pass silently.
 
+## SBOM and VEX
+
+`amivuln --all -f cyclonedx` writes a CycloneDX 1.6 document: every installed
+package is a component, with its purl and how it was identified
+(`amivuln:provenance`), and every finding is a vulnerability with its analysis.
+`amivuln --all -f openvex` writes an OpenVEX 0.2.0 document with one statement
+per package and CVE. Both are for `check`; `pending`, `cve` and `restart` refuse
+them.
+
+The state comes from the distribution's own data:
+
+- affected, with the version that fixes it when one is published: `exploitable`
+  in CycloneDX, `affected` in OpenVEX;
+- fixed at or before the installed version, which includes fixes a distribution
+  backported: `resolved` and `fixed`;
+- declared not affected, by the distribution or by a VEX file you passed with
+  `--vex`: `not_affected` in both, with the reason;
+- not verifiable (no distribution statement, or versions that cannot be
+  compared): `in_triage` and `under_investigation`.
+
+Which of these appear depends on what the source lists. Fedora's `updateinfo`
+and the Arch Security Tracker list what they fixed, so fixed CVEs show up
+there. OSV is asked about the installed version, so on Debian, Ubuntu, Alpine
+and Red Hat hosts the documents list the open issues, not the ones already
+closed.
+
+The statements are this tool's assessment of this host, not an attestation
+by the distribution. A run that was incomplete is marked
+`amivuln:complete = false` in the CycloneDX metadata, and a package amivuln
+could not resolve is counted in `amivuln:unresolved`; the exit code is 2 as
+usual. The output is deterministic: components and statements are sorted by
+purl, and nothing random (no serial number) is added. The tests validate both
+documents against the official schemas.
+
 ## Prometheus and the node_exporter textfile collector
 
 `amivuln --all -f prometheus` writes text metrics: `amivuln_findings{severity,kev}`,
