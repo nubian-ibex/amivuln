@@ -117,7 +117,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
         env.home.as_deref(),
     );
     let (mut cfg, from) = config::load(g.config.as_deref(), &candidates).map_err(|e| e.0)?;
-    cfg.sources.mitigations.enabled |= g.extras.mitigations;
+    cfg.sources.mitigations.enabled |= g.annotations.mitigations;
 
     let format: Format = g.format.as_deref().unwrap_or(&cfg.output.format).parse()?;
     let color_mode = g.color.as_deref().unwrap_or(&cfg.output.color);
@@ -760,10 +760,11 @@ pub(crate) fn check_with(
         && cli.global.sbom.is_none()
         && cli.global.container.is_empty()
         && !cli.global.extras.flatpak
+        && !cli.global.extras.kernel
     {
         return usage(
             err,
-            "no target given; pass a package, a file path, name@version, a purl, --all, --packages-from, --container or --flatpak (see --help)",
+            "no target given; pass a package, a file path, name@version, a purl, --all, --packages-from, --container, --kernel or --flatpak (see --help)",
         );
     }
 
@@ -800,7 +801,7 @@ pub(crate) fn check_with(
         RenderOptions {
             color: s.color,
             hide_clean: mode.hide_clean,
-            explain: cli.global.extras.explain,
+            explain: cli.global.annotations.explain,
         },
         out,
     ) {

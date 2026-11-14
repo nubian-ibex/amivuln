@@ -1,6 +1,6 @@
 # ADR-0012: Red Hat Enterprise Linux data source
 
-- Status: Accepted, amended 2026-11-12
+- Status: Accepted, amended 2026-11-12 (the unfixed CVEs: see ADR-0014)
 - Date: 2026-11-09
 
 ## Context

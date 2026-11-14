@@ -77,6 +77,26 @@ The translation was written by the project's assistant and has not been
 reviewed by a native speaker; a correction is a pull request on one text file
 (see CONTRIBUTING).
 
+## The running kernel
+
+Several kernels are installed side by side on most hosts and one runs, so
+`amivuln kernel-core` fails as ambiguous. `amivuln --kernel` checks the package
+that owns the image of the kernel that is running (the release in
+`/proc/sys/kernel/osrelease`), whatever else is installed:
+
+```text
+$ amivuln --kernel
+kernel-core 7.2.15-200.fc44 (Fedora 44)  <- --kernel 7.2.15-200.fc44.x86_64
+  CRITICAL 0   HIGH 0   MEDIUM 1   LOW 0   KEV 0
+  Fixed in: 7.3.3-200.fc44  (dnf upgrade kernel-core)
+```
+
+It is judged by the distribution's data like any package: an upstream version
+is never matched against the kernel's own CVE records, because a distribution
+kernel carries fixes the version number does not show. `--all` still judges
+every installed kernel. Live patches (kpatch, livepatch) are not known to
+amivuln: it reports what the package version says. See ADR-0015.
+
 ## Explaining a finding
 
 `amivuln --explain -f detail` adds, under each finding, the sentences that say
