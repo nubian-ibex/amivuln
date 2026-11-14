@@ -222,6 +222,8 @@ pub struct SourceCfg {
     pub url: Option<String>,
     /// Ordered mirrors tried after the primary endpoint fails.
     pub fallback: Vec<String>,
+    /// A file holding the API key of the service (only the NVD uses one).
+    pub api_key_file: Option<String>,
 }
 
 impl Default for Config {
@@ -264,12 +266,14 @@ impl Default for Config {
                     required: false,
                     url: None,
                     fallback: Vec::new(),
+                    api_key_file: None,
                 },
                 epss: SourceCfg {
                     enabled: true,
                     required: false,
                     url: None,
                     fallback: Vec::new(),
+                    api_key_file: None,
                 },
                 // Required: a language pass that fails leaves those packages
                 // unjudged, which must not read as a clean scan.
@@ -278,6 +282,7 @@ impl Default for Config {
                     required: true,
                     url: None,
                     fallback: Vec::new(),
+                    api_key_file: None,
                 },
                 // Optional: the string heuristic targets are a bonus signal,
                 // not the primary answer.
@@ -286,6 +291,7 @@ impl Default for Config {
                     required: false,
                     url: None,
                     fallback: Vec::new(),
+                    api_key_file: None,
                 },
                 mitigations: OptInSource::default(),
             },
@@ -325,6 +331,7 @@ impl Default for SourceCfg {
             required: false,
             url: None,
             fallback: Vec::new(),
+            api_key_file: None,
         }
     }
 }
@@ -628,7 +635,8 @@ required = true
 # url = \"https://osv-mirror.example\"
 
 # NVD 2.0, for products with no distro data (string heuristic targets).
-# The optional API key raises the rate limit from 5 to 50 requests per 30 s.
+# The optional API key raises the rate limit from 5 to 50 requests per 30 s;
+# with --flatpak, hundreds of components are asked about.
 [sources.nvd]
 enabled = true
 required = false

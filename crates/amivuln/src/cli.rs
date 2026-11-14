@@ -120,6 +120,12 @@ pub struct Global {
     /// access.redhat.com.
     #[arg(long, global = true)]
     pub mitigations: bool,
+    /// Also check the components of the installed Flatpak runtimes (system and
+    /// user installations), read from each runtime's manifest.json. Nothing is
+    /// run. The NVD answers per component, at its own pace: without
+    /// `sources.nvd.api_key_file` a first run takes several minutes.
+    #[arg(long, global = true)]
+    pub flatpak: bool,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,

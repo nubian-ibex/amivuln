@@ -106,6 +106,40 @@ table does not turn it on. Answers are kept for a week.
 - A lookup that fails is named in the `redhat-cve` source (and with
   `required = true` the result is incomplete); it is never read as "no
   mitigation exists". At most 400 CVEs are looked up per run.
+## Flatpak runtimes
+
+`amivuln --flatpak` also checks the components of the installed Flatpak
+runtimes (the system installation and the user's; `FLATPAK_SYSTEM_DIR` and
+`FLATPAK_USER_DIR` are honored). Nothing is run: each runtime's
+`manifest.json` is read. The runtimes built on freedesktop-sdk (Platform,
+Sdk, GNOME, KDE) list every component with its upstream version, and an `x-cpe`
+block with the NVD product name, the CVEs the build already patched
+(`patches`) and the ones its maintainers decided do not apply (`ignored`).
+
+There is no distribution fix status for these components, so the CVEs come
+from the NVD, asked for each component's upstream version, and the builder's
+statements decide the rest the way a distribution's data does: a patched CVE is
+settled and a ignored one is "not affected", neither is a finding. What is left
+names no fixed version, because the fix is a newer runtime (`flatpak update`).
+A component is named `runtime/branch/component`.
+
+Know what this does not tell you:
+
+- A CVE the build patched but did not list in `patches` shows up as open. The
+  zlib in the 25.08 runtime is listed for CVE-2026-22184, which is in a tool
+  (`untgz`) the runtime does not build, and the manifest does not say so.
+- The NVD is slow and rate limited: 5 requests in 30 seconds without an API key
+  and 50 with one. An installation has hundreds of distinct components, so a
+  first run takes an hour or more without a key and several minutes with one
+  (`[sources.nvd] api_key_file`). Answers are kept for a day and used for a
+  week when the NVD cannot be reached, so later runs are quick.
+- A component the NVD could not answer for (a failed request, a rate limit, a
+  cut list) is named in the source's detail, the source is `failed`, and with
+  `required = true` the result is incomplete (exit 2). It is never read as
+  "no CVEs".
+- Runtimes without a `manifest.json` (extensions for locales, GL drivers and
+  codecs) are counted in one `unresolved` entry. The applications themselves
+  are not read: they bundle their own libraries and carry no such manifest.
 
 ## SBOM and VEX
 

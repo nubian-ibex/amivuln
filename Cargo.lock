@@ -110,6 +110,7 @@ version = "0.3.0"
 dependencies = [
  "amivuln-core",
  "amivuln-version",
+ "serde",
  "serde_json",
  "tar",
  "tempfile",

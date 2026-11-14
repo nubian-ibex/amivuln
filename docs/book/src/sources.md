@@ -81,6 +81,9 @@ How a target is identified, and what the data can and cannot show:
 - **Red Hat CVE data (optional, off by default).** The `mitigation` text Red
   Hat publishes per CVE, used by `--mitigations`. See the guide for what it
   sends and what it does not claim.
+- **Flatpak runtimes.** Read from each runtime's `manifest.json`, judged by the
+  NVD for the upstream version of each component with the builder's own `patches`
+  and `ignored` lists applied. Slow and rate limited; see the guide.
 - **Go modules and Rust crates** found in binaries, through OSV.
 
 ## Planned

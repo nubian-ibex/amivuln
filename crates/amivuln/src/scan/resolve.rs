@@ -173,7 +173,7 @@ pub(crate) fn owners(
         Ecosystem::Gentoo => Backend::Portage(PortageResolver::new()),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Backend::Dpkg(DpkgResolver::new(eco)),
         Ecosystem::Alpine(_) => Backend::Apk(ApkResolver::new(eco)),
-        Ecosystem::Go | Ecosystem::Crates => {
+        Ecosystem::Flatpak | Ecosystem::Go | Ecosystem::Crates => {
             return paths.iter().map(|p| (p.clone(), None)).collect();
         }
     };
@@ -210,8 +210,8 @@ pub(crate) fn resolve_all(
         Ecosystem::Gentoo => Some(Backend::Portage(PortageResolver::new())),
         Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => Some(Backend::Dpkg(DpkgResolver::new(eco))),
         Ecosystem::Alpine(_) => Some(Backend::Apk(ApkResolver::new(eco))),
-        // A host is never a language ecosystem.
-        Ecosystem::Go | Ecosystem::Crates => None,
+        // A host is never a language ecosystem or a runtime.
+        Ecosystem::Flatpak | Ecosystem::Go | Ecosystem::Crates => None,
     };
     if all {
         match backend.as_ref().map(|b| b.resolver().list_all()) {

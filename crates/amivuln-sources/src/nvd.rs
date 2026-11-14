@@ -80,6 +80,39 @@ pub fn cpe_name(package: &str, version: &str) -> Option<String> {
     ))
 }
 
+/// The CPE 2.3 name for a vendor, product and version the caller already has.
+///
+/// Each part is limited to the characters a CPE name and a URL query can carry,
+/// so a manifest cannot inject another query parameter.
+#[must_use]
+pub fn cpe_name_for(vendor: &str, product: &str, version: &str) -> Option<String> {
+    let safe = |s: &str, extra: &[u8]| {
+        !s.is_empty()
+            && s.len() <= 64
+            && s.bytes().all(|b| {
+                b.is_ascii_alphanumeric()
+                    || b == b'.'
+                    || b == b'-'
+                    || b == b'_'
+                    || extra.contains(&b)
+            })
+    };
+    (safe(vendor, b"") && safe(product, b"") && safe(version, b""))
+        .then(|| format!("cpe:2.3:a:{vendor}:{product}:{version}:*:*:*:*:*:*:*"))
+}
+
+/// How many CVEs the NVD says match, which is more than the page when the
+/// answer was cut.
+#[must_use]
+pub fn total_results(bytes: &[u8]) -> Option<usize> {
+    #[derive(Deserialize)]
+    struct Total {
+        #[serde(rename = "totalResults")]
+        total: Option<usize>,
+    }
+    serde_json::from_slice::<Total>(bytes).ok()?.total
+}
+
 #[derive(Debug, Deserialize)]
 struct NvdResponse {
     #[serde(default)]

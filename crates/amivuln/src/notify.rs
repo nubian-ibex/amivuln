@@ -217,6 +217,7 @@ mod tests {
                     ),
                     arch: None,
                     slot: None,
+                    upstream: None,
                     provenance: amivuln_core::Provenance::PackageDb,
                 },
                 findings: vec![Finding::new(

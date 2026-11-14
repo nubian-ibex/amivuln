@@ -186,6 +186,50 @@ pub fn glsa_assess(pkg: &PackageRef, glsa: &GlsaData, vex: &[VexStatement]) -> A
     finish(by_cve, vex)
 }
 
+/// Findings for a component known by its upstream version, from the NVD.
+///
+/// The NVD says which CVEs apply to the upstream version. The builder's own
+/// statements decide the rest, the way a distribution's data does: a CVE the
+/// build patched is settled (`Patched`), and one it declares does not apply is
+/// `NotAffected` with that reason. Neither is reported as a finding. What is
+/// left has no fixed version to name: the fix is a newer build.
+#[must_use]
+pub fn upstream_assess(
+    pkg: &PackageRef,
+    entries: &[amivuln_sources::nvd::NvdEntry2],
+    vex: &[VexStatement],
+) -> Assessment {
+    let (patched, ignored) = pkg
+        .upstream
+        .as_ref()
+        .map_or((&[][..], &[][..]), |u| (&u.patched[..], &u.ignored[..]));
+    let mut by_cve: BTreeMap<String, (Verdict, Severity)> = BTreeMap::new();
+    for e in entries {
+        let severity = nvd_severity(e.severity.as_deref());
+        let verdict = if patched.contains(&e.id) {
+            Verdict::Patched
+        } else if ignored.contains(&e.id) {
+            Verdict::NotAffected("ignored by the builder of the runtime".to_owned())
+        } else {
+            Verdict::Affected { fixed_in: None }
+        };
+        by_cve.insert(e.id.clone(), (verdict, severity));
+    }
+    finish(by_cve, vex)
+}
+
+/// The severity an NVD label stands for.
+#[must_use]
+pub fn nvd_severity(text: Option<&str>) -> Severity {
+    match text {
+        Some("CRITICAL") => Severity::Critical,
+        Some("HIGH") => Severity::High,
+        Some("MEDIUM" | "MODERATE") => Severity::Medium,
+        Some("LOW") => Severity::Low,
+        _ => Severity::Unknown,
+    }
+}
+
 /// Findings for a Fedora package from `updateinfo`.
 ///
 /// updateinfo lists the CVEs an update fixed. A fix newer than the installed
@@ -423,6 +467,7 @@ mod tests {
             version: Version::Pacman(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
             slot: None,
+            upstream: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -439,6 +484,7 @@ mod tests {
             version: Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
             slot: None,
+            upstream: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -617,6 +663,7 @@ mod tests {
             version: Version::Rpm(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
             slot: None,
+            upstream: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -693,6 +740,7 @@ mod tests {
             version: Version::Gentoo(version.parse().unwrap_or_else(|n| match n {})),
             arch: None,
             slot: slot.map(str::to_owned),
+            upstream: None,
             provenance: Provenance::PackageDb,
         }
     }
@@ -836,6 +884,71 @@ mod tests {
         assert!(
             matches!(a.findings.as_slice(), [f] if matches!(f.verdict, Verdict::NotAffected(_))),
             "{a:?}"
+        );
+    }
+
+    fn nvd(id: &str, severity: &str) -> amivuln_sources::nvd::NvdEntry2 {
+        amivuln_sources::nvd::NvdEntry2 {
+            id: id.to_owned(),
+            cpe_package: "bash".to_owned(),
+            severity: Some(severity.to_owned()),
+            score: None,
+            description: String::new(),
+        }
+    }
+
+    fn component(patched: &[&str], ignored: &[&str]) -> PackageRef {
+        PackageRef {
+            ecosystem: Ecosystem::Flatpak,
+            name: "org.freedesktop.Platform/25.08/bash".into(),
+            source_name: None,
+            version: Version::Upstream("5.3".parse().unwrap_or_else(|n| match n {})),
+            arch: None,
+            slot: None,
+            upstream: Some(amivuln_core::UpstreamInfo {
+                vendor: "gnu".into(),
+                product: "bash".into(),
+                patched: patched.iter().map(|s| (*s).to_owned()).collect(),
+                ignored: ignored.iter().map(|s| (*s).to_owned()).collect(),
+            }),
+            provenance: Provenance::PackageDb,
+        }
+    }
+
+    #[test]
+    fn the_builders_statements_settle_what_the_nvd_lists() {
+        let listed = [
+            nvd("CVE-2099-0001", "HIGH"),
+            nvd("CVE-2099-0002", "CRITICAL"),
+            nvd("CVE-2099-0003", "LOW"),
+        ];
+        let a = upstream_assess(
+            &component(&["CVE-2099-0002"], &["CVE-2099-0003"]),
+            &listed,
+            &no_vex(),
+        );
+        assert_eq!(
+            verdicts(&a),
+            [
+                ("CVE-2099-0001".to_owned(), "affected".to_owned()),
+                ("CVE-2099-0002".to_owned(), "patched".to_owned()),
+                (
+                    "CVE-2099-0003".to_owned(),
+                    "NotAffected(\"ignored by the builder of the runtime\")".to_owned()
+                ),
+            ]
+        );
+        assert_eq!(a.findings[0].severity, Severity::High);
+        // A patched or ignored CVE is never a finding; only the open one is.
+        assert_eq!(a.findings.len(), 1);
+        assert_eq!(a.resolved.len(), 2);
+        // Without any statement everything the NVD lists is open.
+        let open = upstream_assess(&component(&[], &[]), &listed, &no_vex());
+        assert_eq!(open.findings.len(), 3);
+        assert!(
+            upstream_assess(&component(&[], &[]), &[], &no_vex())
+                .findings
+                .is_empty()
         );
     }
 }

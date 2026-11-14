@@ -206,6 +206,7 @@ pub(crate) fn purl(p: &amivuln_core::PackageRef) -> String {
         Version::Deb(v) => v.to_string(),
         Version::Apk(v) => v.to_string(),
         Version::Gentoo(v) => v.to_string(),
+        Version::Upstream(v) => v.to_string(),
         Version::Semver(v) => v.to_string(),
     };
     let mut out = format!("{ns}/{name}@{}", purl_encode(&version));
@@ -397,6 +398,7 @@ pub(crate) fn ecosystem_name(e: Ecosystem) -> &'static str {
         Ecosystem::Alpine(_) => "alpine",
         Ecosystem::Opensuse(_) => "opensuse",
         Ecosystem::Gentoo => "gentoo",
+        Ecosystem::Flatpak => "flatpak",
     }
 }
 

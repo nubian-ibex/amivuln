@@ -36,6 +36,7 @@ _amivuln() {
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '--all[Check every installed package]' \
@@ -77,6 +78,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -107,6 +109,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -137,6 +140,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -166,6 +170,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -195,6 +200,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -224,6 +230,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -253,6 +260,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -282,6 +290,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -320,6 +329,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -352,6 +362,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -384,6 +395,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -414,6 +426,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -484,6 +497,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -521,6 +535,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -551,6 +566,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -580,6 +596,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -645,6 +662,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -682,6 +700,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -711,6 +730,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \
@@ -772,6 +792,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help (see more with '\''--help'\'')]' \
@@ -807,6 +828,7 @@ _arguments "${_arguments_options[@]}" : \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
+'--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '-q[Only print errors]' \
 '--quiet[Only print errors]' \
 '-h[Print help]' \

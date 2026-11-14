@@ -68,6 +68,25 @@ pub enum HttpError {
     CircuitOpen(String),
 }
 
+/// A secret sent with every request of one client (an API key). It never shows
+/// in `Debug` output.
+#[derive(Clone)]
+pub struct ApiKey {
+    /// The header name, for example `apiKey`.
+    pub header: String,
+    /// The key.
+    pub value: String,
+}
+
+impl core::fmt::Debug for ApiKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ApiKey")
+            .field("header", &self.header)
+            .field("value", &"<redacted>")
+            .finish()
+    }
+}
+
 /// Client configuration.
 #[derive(Debug, Clone)]
 pub struct HttpConfig {
@@ -90,6 +109,10 @@ pub struct HttpConfig {
     pub breaker: BreakerPolicy,
     /// Minimum spacing between requests to one host, when set.
     pub min_interval: Option<Duration>,
+    /// A key sent in a header with every request. Use a client of its own for
+    /// the one service the key belongs to: it goes to every URL this client
+    /// requests.
+    pub api_key: Option<ApiKey>,
 }
 
 impl Default for HttpConfig {
@@ -104,6 +127,7 @@ impl Default for HttpConfig {
             retry: RetryPolicy::default(),
             breaker: BreakerPolicy::default(),
             min_interval: None,
+            api_key: None,
         }
     }
 }
@@ -160,6 +184,18 @@ impl HttpClient {
             for cert in certs {
                 builder = builder.add_root_certificate(cert);
             }
+        }
+        if let Some(key) = &config.api_key {
+            let invalid =
+                || HttpError::Refused("the API key is not a valid header value".to_owned());
+            let name = reqwest::header::HeaderName::from_bytes(key.header.as_bytes())
+                .map_err(|_| invalid())?;
+            let mut value =
+                reqwest::header::HeaderValue::from_str(&key.value).map_err(|_| invalid())?;
+            value.set_sensitive(true);
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert(name, value);
+            builder = builder.default_headers(headers);
         }
         let inner = builder
             .build()

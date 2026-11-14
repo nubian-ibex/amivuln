@@ -33,6 +33,7 @@
 - `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb, apk and alpm purls); other components are listed as unresolved, one entry per purl type
 - `--vex FILE`: an `OpenVEX` document; a `not_affected` statement overrides the verdict and shows the author and justification
 - `--mitigations`: also look up the mitigation Red Hat publishes for each affected CVE (sends the CVE ids to access.redhat.com)
+- `--flatpak`: also check the components of the installed Flatpak runtimes (see the guide for what it costs and what it cannot tell)
 - `--container ID`: check the packages of a podman or docker container (repeatable); Alpine, Debian, Ubuntu, Fedora, openSUSE, Gentoo, Rocky, AlmaLinux and Red Hat (UBI) images are read from an exported root file system and nothing runs inside
 - `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones
 - `ignore_file` (configuration): accepted findings; expired entries are errors
