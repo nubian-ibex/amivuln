@@ -119,6 +119,16 @@ struct JsonFinding<'a> {
     distro_status: JsonStatus,
     kev: Option<JsonKev<'a>>,
     epss: Option<JsonEpss<'a>>,
+    /// Present only when mitigations were asked for and the vendor states one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mitigation: Option<JsonMitigation<'a>>,
+}
+
+#[derive(Serialize)]
+struct JsonMitigation<'a> {
+    source: &'static str,
+    text: &'a str,
+    url: &'a str,
 }
 
 #[derive(Serialize)]
@@ -225,6 +235,11 @@ fn finding(f: &Finding) -> JsonFinding<'_> {
             score: e.score,
             percentile: e.percentile,
             date: &e.date,
+        }),
+        mitigation: f.mitigation.as_ref().map(|m| JsonMitigation {
+            source: "redhat",
+            text: &m.text,
+            url: &m.url,
         }),
     }
 }

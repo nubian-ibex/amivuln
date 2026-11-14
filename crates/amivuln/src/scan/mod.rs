@@ -23,7 +23,7 @@ use amivuln_sources::arch::ArchTracker;
 use amivuln_sources::epss::EpssScores;
 use amivuln_sources::fedora::{Updateinfo, updateinfo_location};
 use amivuln_sources::fetch::{FetchCtx, FetchError, Fetched, fetch_cached_body};
-use amivuln_sources::http::{HttpClient, HttpConfig};
+use amivuln_sources::http::{HttpClient, HttpConfig, HttpError};
 use amivuln_sources::kev::Kev;
 use amivuln_sources::osv::OsvData;
 use amivuln_sources::resilience::{BreakerPolicy, RetryPolicy};
@@ -41,7 +41,7 @@ mod sources;
 pub(crate) use inputs::resolve_scope;
 use osv::{MAX_OSV_ADVISORIES, load_osv};
 pub(crate) use resolve::{expand_targets, owners, resolve_all, running_services};
-use sources::{load_and_map_nvd, load_distro, load_enrichment, load_foreign};
+use sources::{load_and_map_nvd, load_distro, load_enrichment, load_foreign, load_mitigations};
 
 /// What a scan produced.
 pub(crate) struct Evaluated {
@@ -310,6 +310,65 @@ fn nvd_severity(text: Option<&str>) -> Severity {
     }
 }
 
+/// The mitigations Red Hat publishes for the CVEs still open in `reports`,
+/// when they were asked for. Only an open CVE is worth one: a fixed one needs
+/// none. The source's report is added to `sources`.
+async fn mitigations_for(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    reports: &[TargetReport],
+    sources: &mut Vec<SourceReport>,
+) -> std::collections::BTreeMap<String, amivuln_core::Mitigation> {
+    if !cfg.sources.mitigations.enabled {
+        return std::collections::BTreeMap::new();
+    }
+    let mut open: Vec<String> = reports
+        .iter()
+        .flat_map(|t| &t.findings)
+        .filter(|f| matches!(f.verdict, Verdict::Affected { .. }))
+        .map(|f| f.id.clone())
+        .filter(|id| id.starts_with("CVE-"))
+        .collect();
+    open.sort_unstable();
+    open.dedup();
+    let (found, report) = load_mitigations(fetcher, cfg, &open).await;
+    sources.push(report);
+    found
+}
+
+/// The host's distribution data and its report, with the declared mirrors
+/// tried in order after a failed primary. Nothing is loaded when no package
+/// needs it, and a disabled source is reported as skipped.
+async fn load_host_distro(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    eco: Ecosystem,
+    resolved: &[(String, PackageRef)],
+) -> (Option<DistroData>, Option<SourceReport>) {
+    if resolved.is_empty() {
+        return (None, None);
+    }
+    if !cfg.sources.distro.enabled {
+        let skipped = report_of(
+            host_source_id(eco),
+            false,
+            SourceStatus::Skipped("disabled".into()),
+            Duration::ZERO,
+        );
+        return (None, Some(skipped));
+    }
+    let mut attempt = cfg.clone();
+    let mut latest = load_distro(fetcher, eco, &attempt, resolved).await;
+    for mirror_url in &cfg.sources.distro.fallback {
+        if !matches!(latest.1.status, SourceStatus::Failed(_)) {
+            break;
+        }
+        attempt.sources.distro.url = Some(mirror_url.clone());
+        latest = load_distro(fetcher, eco, &attempt, resolved).await;
+    }
+    (latest.0, Some(latest.1))
+}
+
 async fn gather(
     fetcher: &Fetcher<'_>,
     cfg: &Config,
@@ -327,32 +386,7 @@ async fn gather(
         };
     }
     let (distro_resolved, lang_resolved, separate_lang) = split_language(eco, resolved);
-    let (data, rep) = if distro_resolved.is_empty() {
-        (None, None)
-    } else if cfg.sources.distro.enabled {
-        let mut attempt = cfg.clone();
-        let mut latest = load_distro(fetcher, eco, &attempt, &distro_resolved).await;
-        // Then the declared mirrors, only after a failed primary.
-        for mirror_url in &cfg.sources.distro.fallback {
-            if !matches!(latest.1.status, SourceStatus::Failed(_)) {
-                break;
-            }
-            attempt.sources.distro.url = Some(mirror_url.clone());
-            latest = load_distro(fetcher, eco, &attempt, &distro_resolved).await;
-        }
-        (latest.0, Some(latest.1))
-    } else {
-        let id = host_source_id(eco);
-        (
-            None,
-            Some(report_of(
-                id,
-                false,
-                SourceStatus::Skipped("disabled".into()),
-                Duration::ZERO,
-            )),
-        )
-    };
+    let (data, rep) = load_host_distro(fetcher, cfg, eco, &distro_resolved).await;
     sources.extend(rep);
     // Packages of a Fedora or Arch image under a host of another family are
     // judged by their own distribution's data, one pass per distribution.
@@ -413,8 +447,12 @@ async fn gather(
 
     let (kev, epss, enrichment_reports) = load_enrichment(fetcher, cfg, &cves).await;
     sources.extend(enrichment_reports);
+    let mitigations = mitigations_for(fetcher, cfg, &reports, &mut sources).await;
     for t in &mut reports {
         enrich(&mut t.findings, kev.as_ref(), epss.as_ref());
+        for f in &mut t.findings {
+            f.mitigation = mitigations.get(&f.id).cloned();
+        }
         sort_findings(&mut t.findings);
     }
     Evaluated {

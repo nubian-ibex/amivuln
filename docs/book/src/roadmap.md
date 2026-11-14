@@ -51,8 +51,10 @@ above so that it sees the final code:
    decision. SUSE Linux Enterprise is in OSV and is a small step from
    openSUSE.
 2. **Flatpak runtimes,** read from the installed runtimes.
-3. **Known mitigations,** a curated list of "CVE to configuration that
-   mitigates it".
+3. **Known mitigations.** Done with Red Hat's own data (`--mitigations`)
+   instead of a list kept by this project: it covers most CVEs and states its
+   source. A mitigation from another distribution, and a check that the
+   setting is or is not in effect on the host, are not done.
 4. **More languages and the rest of the messages.** The mechanism is in
    place (message catalogs, English and Brazilian Portuguese, chosen from the
    locale). The `--help` text, the configuration errors and the messages of

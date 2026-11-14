@@ -1852,6 +1852,151 @@ fn gentoo_packages_are_judged_by_the_advisories_of_a_directory() {
     assert_eq!(none.status.code(), Some(2));
 }
 
+/// `--mitigations` shows what Red Hat publishes for an affected CVE, leaves out
+/// its "nothing to do" text, and is off unless asked for.
+#[tokio::test(flavor = "multi_thread")]
+async fn mitigations_come_from_red_hat_only_when_asked_for() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let redhat = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/hydra/rest/securitydata/cve/CVE-2026-28356.json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "name": "CVE-2026-28356",
+            "mitigation": {"value": "Do not\n accept uploads from\n anyone you do not trust.", "lang": "en:US"}
+        })))
+        .expect(1)
+        .mount(&redhat)
+        .await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("mit.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}/updates\"\n[sources.kev]\nurl = \"{}/kev.json\"\n[sources.epss]\nurl = \"{}/epss\"\n[sources.mitigations]\nurl = \"{}\"\n",
+            server.uri(), server.uri(), server.uri(), redhat.uri()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let ask = |extra: Vec<&'static str>, format: &'static str| {
+        let mut args = vec![
+            "--config",
+            cfg_arg,
+            "-f",
+            format,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ];
+        args.extend(extra);
+        run(sb.cmd_opts(false), args)
+    };
+    // Off by default: nothing is sent to Red Hat and no field appears.
+    let off = ask(vec![], "json").await;
+    let o = json(&off);
+    assert!(
+        o["targets"][0]["findings"][0].get("mitigation").is_none(),
+        "{o}"
+    );
+    assert!(
+        !o["sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["id"] == "redhat-cve")
+    );
+    assert!(redhat.received_requests().await.unwrap().is_empty());
+
+    let on = ask(vec!["--mitigations"], "json").await;
+    let v = json(&on);
+    let m = &v["targets"][0]["findings"][0]["mitigation"];
+    assert_eq!(m["source"], "redhat");
+    assert_eq!(
+        m["text"],
+        "Do not accept uploads from anyone you do not trust."
+    );
+    assert_eq!(
+        m["url"],
+        "https://access.redhat.com/security/cve/CVE-2026-28356"
+    );
+    assert!(
+        v["sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["id"] == "redhat-cve" && s["status"] == "ok")
+    );
+
+    let text = stdout(&ask(vec!["--mitigations"], "detail").await);
+    assert!(
+        text.contains("mitigation (Red Hat, not checked on this host): Do not accept uploads"),
+        "{text}"
+    );
+    let bom = json(&ask(vec!["--mitigations"], "cyclonedx").await);
+    assert!(
+        bom["vulnerabilities"][0]["workaround"]
+            .as_str()
+            .unwrap()
+            .contains("Do not accept uploads")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_mitigation_lookup_is_reported_not_read_as_none() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let redhat = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(500))
+        .mount(&redhat)
+        .await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let cfg = sb.path().join("mit2.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\nretries = 0\n[sources.distro]\nurl = \"{}/updates\"\n[sources.kev]\nurl = \"{}/kev.json\"\n[sources.epss]\nurl = \"{}/epss\"\n[sources.mitigations]\nurl = \"{}\"\nrequired = true\n",
+            server.uri(), server.uri(), server.uri(), redhat.uri()
+        ),
+    )
+    .unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let out = run(
+        sb.cmd_opts(false),
+        vec![
+            "--config",
+            cfg_arg,
+            "--mitigations",
+            "-f",
+            "json",
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ],
+    )
+    .await;
+    let v = json(&out);
+    let source = v["sources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["id"] == "redhat-cve")
+        .unwrap();
+    assert_eq!(source["status"], "failed");
+    assert!(
+        source["detail"]
+            .as_str()
+            .unwrap()
+            .contains("CVE-2026-28356"),
+        "{source}"
+    );
+    assert_eq!(v["complete"], false);
+    assert_eq!(out.status.code(), Some(2));
+}
+
 /// Runs the binary with a per-test HOME and returns its output.
 fn run_home(
     home: &std::path::Path,

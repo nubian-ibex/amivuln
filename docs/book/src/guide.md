@@ -77,6 +77,36 @@ The translation was written by the project's assistant and has not been
 reviewed by a native speaker; a correction is a pull request on one text file
 (see CONTRIBUTING).
 
+## Mitigations
+
+`amivuln --mitigations` also shows, for each CVE that still affects the host,
+what Red Hat says can be done while the fix is not installed: disable a module,
+change a setting, run a script. It is Red Hat's own text, read from its public
+security data (`access.redhat.com/hydra/rest/securitydata/cve/<id>.json`), and
+shown as such:
+
+```text
+CVE-2024-6387  HIGH  fix: 1:9.6p1-3.fc40.3
+      mitigation (Red Hat, not checked on this host): ... set LoginGraceTime to 0 ...
+```
+
+It is **off by default** because it sends the id of every open CVE to
+`access.redhat.com`; `--mitigations` turns it on for one run, and
+`[sources.mitigations] enabled = true` for every run. Naming only `url` in that
+table does not turn it on. Answers are kept for a week.
+
+- The text is written for Red Hat's own products. amivuln does not check that it
+  applies to this host or that the setting is in effect, and the line says so.
+- Red Hat fills the field for most CVEs to say there is nothing to do ("Mitigation
+  for this issue is either not available or ... criteria"). That is the absence
+  of a mitigation and is left out: on a Debian container 30 of 94 CVEs had a
+  real one.
+- It appears as the `mitigation` object of a finding in the JSON (only when
+  present), as `workaround` in the CycloneDX document and in the detail output.
+- A lookup that fails is named in the `redhat-cve` source (and with
+  `required = true` the result is incomplete); it is never read as "no
+  mitigation exists". At most 400 CVEs are looked up per run.
+
 ## SBOM and VEX
 
 `amivuln --all -f cyclonedx` writes a CycloneDX 1.6 document: every installed

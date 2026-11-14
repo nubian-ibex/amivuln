@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_amivuln_global_optspecs
-    string join \n f/format= output= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= pid= purl= baseline= vex= packages-from= sbom= container= q/quiet all h/help V/version
+    string join \n f/format= output= fail-on= fail-on-epss= strict offline no-cache config= color= distro= file= package= pid= purl= baseline= vex= packages-from= sbom= container= mitigations q/quiet all h/help V/version
 end
 
 function __fish_amivuln_needs_command
@@ -43,6 +43,7 @@ complete -c amivuln -n "__fish_amivuln_needs_command" -l container -d 'Scan a co
 complete -c amivuln -n "__fish_amivuln_needs_command" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_needs_command" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_needs_command" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_needs_command" -l all -d 'Check every installed package'
 complete -c amivuln -n "__fish_amivuln_needs_command" -s h -l help -d 'Print help (see more with \'--help\')'
@@ -80,6 +81,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l all -d 'Check 
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand check" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand check" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -101,6 +103,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l container -d 'Sc
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cve" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -122,6 +125,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l container -d
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand pending" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -143,6 +147,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l container -
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand services" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand services" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -164,6 +169,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l container -d
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand restart" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -185,6 +191,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l container -d 'Sc
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand mcp" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -206,6 +213,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -l container -d 'Sc
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand tui" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -227,6 +235,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and not __fish_seen_subcommand_from build pull verify info help" -f -a "build" -d 'Snapshot the local cache into a signed-ready `tar.zst` archive'
@@ -254,6 +263,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subc
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from build" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l key -d 'Minisign public key; the signature over the manifest is checked' -r -F
@@ -278,6 +288,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subc
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from pull" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l key -d 'Minisign public key' -r -F
@@ -301,6 +312,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subc
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from verify" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -322,6 +334,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subc
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from info" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand db; and __fish_seen_subcommand_from help" -f -a "build" -d 'Snapshot the local cache into a signed-ready `tar.zst` archive'
@@ -348,6 +361,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and not __fish_seen_subcommand_from show init validate help" -f -a "show" -d 'Print the effective configuration'
@@ -373,6 +387,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from show" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l path -d 'Where to write; defaults to the user configuration path' -r -F
@@ -395,6 +410,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from init" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -416,6 +432,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from validate" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand config; and __fish_seen_subcommand_from help" -f -a "show" -d 'Print the effective configuration'
@@ -441,6 +458,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_se
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and not __fish_seen_subcommand_from info clear help" -f -a "info" -d 'Show where the cache lives and how big it is'
@@ -465,6 +483,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from info" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -486,6 +505,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_s
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from clear" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand cache; and __fish_seen_subcommand_from help" -f -a "info" -d 'Show where the cache lives and how big it is'
@@ -510,6 +530,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l containe
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand completions" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s f -l format -d 'Output format: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex' -r
@@ -532,6 +553,7 @@ complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l json -d 'Mac
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l strict -d 'Count findings without a distro statement as violations of --fail-on'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l offline -d 'Never use the network; answer from the cache only'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l no-cache -d 'Do not keep a cache on disk for this run'
+complete -c amivuln -n "__fish_amivuln_using_subcommand version" -l mitigations -d 'Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s q -l quiet -d 'Only print errors'
 complete -c amivuln -n "__fish_amivuln_using_subcommand version" -s h -l help -d 'Print help'
 complete -c amivuln -n "__fish_amivuln_using_subcommand help; and not __fish_seen_subcommand_from check cve pending services restart mcp tui db config cache completions version help" -f -a "check" -d 'Check packages, files, versions or purls'

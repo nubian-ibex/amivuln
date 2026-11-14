@@ -115,6 +115,11 @@ pub struct Global {
     /// The container's own `os-release` decides the ecosystem.
     #[arg(long, global = true, value_name = "ID")]
     pub container: Vec<String>,
+    /// Also look up the mitigation Red Hat publishes for each affected CVE
+    /// (what to do while the fix is not installed). Sends the CVE ids to
+    /// access.redhat.com.
+    #[arg(long, global = true)]
+    pub mitigations: bool,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,

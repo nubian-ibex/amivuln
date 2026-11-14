@@ -82,6 +82,17 @@ pub struct KevInfo {
     pub ransomware: bool,
 }
 
+/// A mitigation a vendor publishes for a CVE: something to do while the fix is
+/// not installed. It is the vendor's text, for the vendor's own product; amivuln
+/// does not check that it applies to this host or that it is in effect.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mitigation {
+    /// The vendor's text, whitespace collapsed and cut to a bounded length.
+    pub text: String,
+    /// Where the vendor states it.
+    pub url: String,
+}
+
 /// EPSS details for a CVE.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EpssInfo {
@@ -106,6 +117,9 @@ pub struct Finding {
     pub kev: Option<KevInfo>,
     /// Present when EPSS has a score.
     pub epss: Option<EpssInfo>,
+    /// What Red Hat says can be done while the fix is not installed, when
+    /// mitigations were asked for and Red Hat states one.
+    pub mitigation: Option<Mitigation>,
 }
 
 impl Finding {
@@ -118,6 +132,7 @@ impl Finding {
             verdict,
             kev: None,
             epss: None,
+            mitigation: None,
         }
     }
 }

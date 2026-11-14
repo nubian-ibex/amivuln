@@ -23,6 +23,8 @@ pub enum SourceId {
     Nvd,
     /// Gentoo Linux Security Advisories, read from the Portage tree.
     Glsa,
+    /// Red Hat's CVE data, for the mitigations it publishes.
+    RedHatCve,
 }
 
 impl SourceId {
@@ -38,6 +40,7 @@ impl SourceId {
             Self::Epss => "epss",
             Self::Nvd => "nvd",
             Self::Glsa => "glsa",
+            Self::RedHatCve => "redhat-cve",
         }
     }
 }
