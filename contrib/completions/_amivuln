@@ -35,6 +35,7 @@ _amivuln() {
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -78,6 +79,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -110,6 +112,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -142,6 +145,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -173,6 +177,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -204,6 +209,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -235,6 +241,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -266,6 +273,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -297,6 +305,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -337,6 +346,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -371,6 +381,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -405,6 +416,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -437,6 +449,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -509,6 +522,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -548,6 +562,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -580,6 +595,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -611,6 +627,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -678,6 +695,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -717,6 +735,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -748,6 +767,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -811,6 +831,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \
@@ -848,6 +869,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Count findings without a distro statement as violations of --fail-on]' \
 '--offline[Never use the network; answer from the cache only]' \
 '--no-cache[Do not keep a cache on disk for this run]' \
+'--kernel[Also check the kernel that is running (the package that owns its image), even when several kernels are installed\: a kernel package named on the command line is ambiguous then]' \
 '--flatpak[Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime'\''s manifest.json. Nothing is run. The NVD answers per component, at its own pace\: without \`sources.nvd.api_key_file\` a first run takes several minutes]' \
 '--mitigations[Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com]' \
 '--explain[Under each finding of the detail output, say in plain words why it is reported. Built from the data the run already holds; nothing is sent anywhere and no model writes it]' \

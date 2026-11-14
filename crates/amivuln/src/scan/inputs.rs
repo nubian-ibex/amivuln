@@ -182,10 +182,81 @@ pub(crate) fn resolve_scope(
             }),
         }
     }
+    if cli.global.extras.kernel {
+        read_kernel(eco, &mut resolved, &mut unresolved);
+    }
     if cli.global.extras.flatpak {
         read_flatpak(&mut resolved, &mut unresolved);
     }
     Ok((resolved, unresolved))
+}
+
+/// True for a kernel release as the kernel writes it. It becomes part of a
+/// path, so only what a release is made of is accepted.
+fn is_plain_release(release: &str) -> bool {
+    !release.is_empty()
+        && release.len() <= 128
+        && release
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'))
+}
+
+/// The files whose owner is the kernel that is running, in the order they are
+/// tried: the image of the release the kernel reports (`uname -r`).
+fn kernel_images(release: &str) -> [String; 4] {
+    [
+        format!("/usr/lib/modules/{release}/vmlinuz"),
+        format!("/boot/vmlinuz-{release}"),
+        // Alpine names the image after the flavor: `6.6.52-0-lts` is `lts`.
+        format!(
+            "/boot/vmlinuz-{}",
+            release.rsplit('-').next().unwrap_or(release)
+        ),
+        format!("/lib/modules/{release}/vmlinuz"),
+    ]
+}
+
+/// Adds the package that owns the running kernel's image. Several kernels are
+/// installed side by side on most hosts, so a package name cannot say which
+/// one boots; the release the kernel reports can.
+fn read_kernel(
+    eco: Ecosystem,
+    resolved: &mut Vec<(String, PackageRef)>,
+    unresolved: &mut Vec<Unresolved>,
+) {
+    let fail = |reason: String| Unresolved {
+        input: "--kernel".to_owned(),
+        reason,
+    };
+    let release = match std::fs::read_to_string("/proc/sys/kernel/osrelease") {
+        Ok(text) => text.trim().to_owned(),
+        Err(e) => {
+            unresolved.push(fail(format!("cannot read the kernel release: {e}")));
+            return;
+        }
+    };
+    if !is_plain_release(&release) {
+        unresolved.push(fail(
+            "the kernel release is not a plain version string".to_owned(),
+        ));
+        return;
+    }
+    let Some(image) = kernel_images(&release)
+        .into_iter()
+        .find(|p| std::path::Path::new(p).is_file())
+    else {
+        unresolved.push(fail(format!(
+            "no kernel image for the running release {release} was found"
+        )));
+        return;
+    };
+    let (found, missed) = resolve_all(&[image], false, eco, false);
+    unresolved.extend(missed.into_iter().map(|u| fail(u.reason)));
+    resolved.extend(
+        found
+            .into_iter()
+            .map(|(_, pkg)| (format!("--kernel {release}"), pkg)),
+    );
 }
 
 /// Adds the components of the installed Flatpak runtimes. What cannot be read
@@ -270,4 +341,45 @@ pub(super) fn private_scratch_dir() -> std::io::Result<PathBuf> {
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
     builder.create(&dir)?;
     Ok(dir)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_images_of_a_release_are_named_for_each_distribution_layout() {
+        let images = kernel_images("6.6.52-0-lts");
+        assert_eq!(images[0], "/usr/lib/modules/6.6.52-0-lts/vmlinuz");
+        assert_eq!(images[1], "/boot/vmlinuz-6.6.52-0-lts");
+        // Alpine's image is named after the flavor.
+        assert_eq!(images[2], "/boot/vmlinuz-lts");
+        assert_eq!(
+            kernel_images("7.2.15-200.fc44.x86_64")[0],
+            "/usr/lib/modules/7.2.15-200.fc44.x86_64/vmlinuz"
+        );
+    }
+
+    #[test]
+    fn only_a_plain_release_may_become_part_of_a_path() {
+        for ok in [
+            "7.2.15-200.fc44.x86_64",
+            "6.1.0-18-amd64",
+            "6.6.52-0-lts",
+            "5.15.0+custom_1",
+        ] {
+            assert!(is_plain_release(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "../etc",
+            "6.1 0",
+            "6.1\n",
+            "a/b",
+            &"9".repeat(200),
+            "6.1;rm",
+        ] {
+            assert!(!is_plain_release(bad), "{bad:?}");
+        }
+    }
 }

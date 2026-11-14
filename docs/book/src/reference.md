@@ -32,6 +32,7 @@
 - `--pid PID`: check the executable of a running process (repeatable); a process that is gone, unreadable or whose executable was replaced on disk is reported as unresolved
 - `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb, apk and alpm purls); other components are listed as unresolved, one entry per purl type
 - `--vex FILE`: an `OpenVEX` document; a `not_affected` statement overrides the verdict and shows the author and justification
+- `--kernel`: also check the kernel that is running, whatever else is installed (see the guide)
 - `--explain`: under each finding of the detail output, say in plain words why it is reported (templates over the run's own data; no model, nothing sent)
 - `--mitigations`: also look up the mitigation Red Hat publishes for each affected CVE (sends the CVE ids to access.redhat.com)
 - `--flatpak`: also check the components of the installed Flatpak runtimes (see the guide for what it costs and what it cannot tell)

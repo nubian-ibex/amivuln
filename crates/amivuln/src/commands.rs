@@ -66,7 +66,8 @@ pub(crate) fn cve(
         cli.global.packages_from.is_none()
             && cli.global.sbom.is_none()
             && cli.global.container.is_empty()
-            && !cli.global.extras.flatpak,
+            && !cli.global.extras.flatpak
+            && !cli.global.extras.kernel,
         eco,
         false,
     ) {
@@ -96,7 +97,7 @@ pub(crate) fn cve(
         RenderOptions {
             color: s.color,
             hide_clean: false,
-            explain: cli.global.extras.explain,
+            explain: cli.global.annotations.explain,
         },
         out,
     ) {
@@ -167,7 +168,7 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         RenderOptions {
             color: s.color,
             hide_clean: false,
-            explain: cli.global.extras.explain,
+            explain: cli.global.annotations.explain,
         },
         out,
     ) {
@@ -269,7 +270,7 @@ pub(crate) fn restart(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         RenderOptions {
             color: s.color,
             hide_clean: false,
-            explain: cli.global.extras.explain,
+            explain: cli.global.annotations.explain,
         },
         out,
     ) {

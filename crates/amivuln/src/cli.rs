@@ -118,6 +118,9 @@ pub struct Global {
     /// What to add to a run: Flatpak runtimes, mitigations, explanations.
     #[command(flatten)]
     pub extras: Extras,
+    /// What to add to each finding: mitigations, explanations.
+    #[command(flatten)]
+    pub annotations: Annotations,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,
@@ -171,15 +174,25 @@ pub fn normalize_args(args: &[String]) -> Vec<String> {
     args.to_vec()
 }
 
-/// Switches that add data or detail to a run.
+/// Switches that add inputs to a run.
 #[derive(Debug, Args, Clone, Copy)]
 pub struct Extras {
+    /// Also check the kernel that is running (the package that owns its image),
+    /// even when several kernels are installed: a kernel package named on the
+    /// command line is ambiguous then.
+    #[arg(long, global = true)]
+    pub kernel: bool,
     /// Also check the components of the installed Flatpak runtimes (system and
     /// user installations), read from each runtime's manifest.json. Nothing is
     /// run. The NVD answers per component, at its own pace: without
     /// `sources.nvd.api_key_file` a first run takes several minutes.
     #[arg(long, global = true)]
     pub flatpak: bool,
+}
+
+/// Switches that add to what a finding says.
+#[derive(Debug, Args, Clone, Copy)]
+pub struct Annotations {
     /// Also look up the mitigation Red Hat publishes for each affected CVE
     /// (what to do while the fix is not installed). Sends the CVE ids to
     /// access.redhat.com.

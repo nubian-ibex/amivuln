@@ -68,11 +68,14 @@ above so that it sees the final code:
    model on the machine. It stays open if a use is shown that the templates do
    not cover.
 6. **Unfixed Red Hat CVEs.** RHEL results come from OSV, which only has
-   advisories that shipped a fix. An index built from Red Hat's CSAF VEX data
-   shows the CVEs Red Hat has not fixed. It needs an architecture decision
-   record first. See ADR-0012.
-7. **Kernel CVEs.** Matching by stable branch and awareness of live patches
-   needs its own design study first, because of the volume.
+   advisories that shipped a fix. ADR-0014 measured the options: the CSAF
+   archive is 412 MB, while Red Hat's OVAL file "including unpatched" is 11 MB
+   for RHEL 9 and 8 and lists every unfixed CVE with its state. It proposes
+   that file, read as a stream, and waits for the maintainer to accept the
+   dependency it needs (a bzip2 reader). RHEL 10 has no such file yet.
+7. **Kernel CVEs.** The design study is ADR-0015: the kernel is judged by the
+   distribution's data and `--kernel` checks the running one. Marking the
+   running kernel in a full report, and knowing about live patches, are not done.
 8. **Fleet checks over SSH.** Copy the static binary, run it, aggregate. No
    agent stays behind.
 
