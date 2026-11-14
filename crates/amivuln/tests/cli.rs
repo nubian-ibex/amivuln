@@ -2223,7 +2223,13 @@ async fn explain_says_why_a_finding_is_reported() {
         let strip = |o: &std::process::Output| {
             stdout(o)
                 .lines()
-                .filter(|l| !l.contains("generated_at") && !l.contains("timestamp"))
+                // The time of the run and the age of each source differ between
+                // two runs; nothing else may.
+                .filter(|l| {
+                    ["generated_at", "timestamp", "age_s", "age_seconds"]
+                        .iter()
+                        .all(|word| !l.contains(word))
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         };
