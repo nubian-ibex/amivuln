@@ -147,6 +147,7 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
         version: Version::Rpm(parsed),
         arch: (arch != "(none)").then(|| arch.to_owned()),
         slot: None,
+        upstream: None,
         provenance: Provenance::PackageDb,
     })
 }

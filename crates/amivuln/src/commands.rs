@@ -65,7 +65,8 @@ pub(crate) fn cve(
         &[],
         cli.global.packages_from.is_none()
             && cli.global.sbom.is_none()
-            && cli.global.container.is_empty(),
+            && cli.global.container.is_empty()
+            && !cli.global.flatpak,
         eco,
         false,
     ) {

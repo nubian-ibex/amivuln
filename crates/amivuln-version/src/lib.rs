@@ -14,6 +14,7 @@ mod gentoo;
 mod pacman;
 mod rpm;
 mod semver;
+mod upstream;
 
 pub use apk::{ApkVersion, apk_vercmp};
 pub use deb::{DebVersion, debvercmp};
@@ -21,6 +22,7 @@ pub use gentoo::{GentooVersion, gentoo_vercmp};
 pub use pacman::{PacmanVersion, alpm_vercmp, pacman_vercmp};
 pub use rpm::{RpmEvr, rpmvercmp};
 pub use semver::{SemverError, SemverVersion};
+pub use upstream::UpstreamVersion;
 
 use core::cmp::Ordering;
 

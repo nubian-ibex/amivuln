@@ -56,6 +56,9 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         Ecosystem::Gentoo => {
             Version::Gentoo(version.parse().unwrap_or_else(|never| match never {}))
         }
+        Ecosystem::Flatpak => {
+            Version::Upstream(version.parse().unwrap_or_else(|never| match never {}))
+        }
         Ecosystem::Go | Ecosystem::Crates => {
             Version::Semver(amivuln_version::SemverVersion::default())
         }
@@ -67,6 +70,7 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         version: parsed,
         arch,
         slot: None,
+        upstream: None,
         provenance: Provenance::UserInput,
     }
 }
@@ -200,6 +204,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     Ecosystem::Rhel(v) => format!("rhel:{v}"),
                     Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
                     Ecosystem::Gentoo => "gentoo".to_owned(),
+                    Ecosystem::Flatpak => "a Flatpak runtime".to_owned(),
                     Ecosystem::Opensuse(0) => "opensuse:tumbleweed".to_owned(),
                     Ecosystem::Opensuse(v) => format!("opensuse:{}.{}", v / 100, v % 100),
                     Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),

@@ -460,7 +460,7 @@ fn read_packages(
             }
             Ok(pacman_packages(&String::from_utf8_lossy(&out.stdout), eco))
         }
-        Ecosystem::Go | Ecosystem::Crates => Err(ContainerError::Unsupported(
+        Ecosystem::Flatpak | Ecosystem::Go | Ecosystem::Crates => Err(ContainerError::Unsupported(
             "a language ecosystem".to_owned(),
         )),
     }

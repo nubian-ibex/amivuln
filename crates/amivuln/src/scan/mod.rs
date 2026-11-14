@@ -11,8 +11,8 @@ use amivuln_cache::{Cache, Policy as CachePolicy};
 use amivuln_core::VexStatement;
 use amivuln_core::i18n::tr_args;
 use amivuln_core::{
-    Ecosystem, ExitCode, Finding, PackageRef, Severity, SourceId, SourceReport, SourceStatus,
-    TargetReport, Unresolved, Verdict, sort_findings,
+    Ecosystem, ExitCode, Finding, PackageRef, SourceId, SourceReport, SourceStatus, TargetReport,
+    Unresolved, Verdict, sort_findings,
 };
 use amivuln_resolve::{
     ApkResolver, DpkgResolver, PackageResolver, PacmanResolver, PortageResolver, ResolveError,
@@ -31,7 +31,10 @@ use amivuln_sources::resilience::{BreakerPolicy, RetryPolicy};
 use crate::app::{Env, Settings, cache_path, cpu_arch};
 use crate::cli::{Cli, Global};
 use crate::config::Config;
-use crate::pipeline::{Assessment, arch_assess, enrich, fedora_assess, glsa_assess, osv_assess};
+use crate::pipeline::{
+    Assessment, arch_assess, enrich, fedora_assess, glsa_assess, nvd_severity, osv_assess,
+    upstream_assess,
+};
 
 mod inputs;
 mod osv;
@@ -58,6 +61,9 @@ enum DistroData {
     Arch(ArchTracker),
     Fedora(Updateinfo),
     Glsa(amivuln_sources::glsa::GlsaData),
+    /// One entry per package, in the order of the resolved list: the CVEs the
+    /// NVD lists for its upstream version.
+    Upstream(Vec<Vec<amivuln_sources::nvd::NvdEntry2>>),
     /// One entry per package, in the order of the resolved list: an advisory
     /// found for package A must never be judged against package B.
     Osv(Vec<OsvData>),
@@ -69,6 +75,7 @@ impl DistroData {
             Self::Arch(t) => t.knows(cve),
             Self::Fedora(i) => i.knows(cve),
             Self::Glsa(g) => g.knows(cve),
+            Self::Upstream(list) => list.iter().flatten().any(|e| e.id == cve),
             Self::Osv(list) => list.iter().any(|o| o.knows(cve)),
         }
     }
@@ -109,6 +116,8 @@ struct Fetcher<'a> {
     offline: bool,
     /// The installed offline database, consulted when offline.
     offline_db: Option<&'a Cache>,
+    /// A client that carries the NVD API key, when one is configured.
+    nvd_http: Option<&'a HttpClient>,
 }
 
 impl Fetcher<'_> {
@@ -150,6 +159,7 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
     match eco {
         Ecosystem::Arch => SourceId::ArchTracker,
         Ecosystem::Gentoo => SourceId::Glsa,
+        Ecosystem::Flatpak => SourceId::Nvd,
         Ecosystem::Fedora(_) => SourceId::FedoraUpdateinfo,
         Ecosystem::Debian(_)
         | Ecosystem::Ubuntu(_)
@@ -220,6 +230,9 @@ fn assess(
         Some(DistroData::Arch(t)) => arch_assess(pkg, t, vex),
         Some(DistroData::Fedora(i)) => fedora_assess(pkg, i, vex),
         Some(DistroData::Glsa(g)) => glsa_assess(pkg, g, vex),
+        Some(DistroData::Upstream(list)) => list
+            .get(index)
+            .map_or_else(Assessment::default, |e| upstream_assess(pkg, e, vex)),
         Some(DistroData::Osv(list)) => list
             .get(index)
             .map_or_else(Assessment::default, |o| osv_assess(pkg, o, vex)),
@@ -297,17 +310,6 @@ fn build_reports(
             }
         })
         .collect()
-}
-
-/// Maps the textual severity of an NVD metric to a [`Severity`].
-fn nvd_severity(text: Option<&str>) -> Severity {
-    match text {
-        Some("CRITICAL") => Severity::Critical,
-        Some("HIGH") => Severity::High,
-        Some("MODERATE" | "MEDIUM") => Severity::Medium,
-        Some("LOW") => Severity::Low,
-        _ => Severity::Unknown,
-    }
 }
 
 async fn gather(
@@ -451,6 +453,35 @@ pub(crate) fn http_config(s: &Settings) -> Result<HttpConfig, String> {
     })
 }
 
+/// A client of its own for the NVD: its answers take seconds, so the timeout is
+/// longer, and the API key, when a file names one, must not reach any other
+/// service.
+fn nvd_client(s: &Settings, base: HttpConfig) -> Result<HttpClient, String> {
+    let api_key = match &s.config.sources.nvd.api_key_file {
+        Some(path) => {
+            let key = std::fs::read_to_string(path)
+                .map_err(|e| format!("cannot read sources.nvd.api_key_file {path}: {e}"))?;
+            let key = key.trim();
+            if key.is_empty() || key.len() > 256 {
+                return Err(format!(
+                    "sources.nvd.api_key_file {path} does not hold a key"
+                ));
+            }
+            Some(amivuln_sources::http::ApiKey {
+                header: "apiKey".to_owned(),
+                value: key.to_owned(),
+            })
+        }
+        None => None,
+    };
+    HttpClient::new(HttpConfig {
+        timeout: base.timeout.max(Duration::from_secs(90)),
+        api_key,
+        ..base
+    })
+    .map_err(|e| e.to_string())
+}
+
 /// Sets up the cache, HTTP client and runtime, then runs [`gather`].
 pub(crate) fn evaluate(
     cli: &Cli,
@@ -472,6 +503,7 @@ pub(crate) fn evaluate(
         let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &e)]));
         ExitCode::Usage
     })?;
+    let config_for_nvd = config.clone();
     let http = HttpClient::new(config).map_err(|e| internal(err, e.to_string()))?;
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_time()
@@ -493,6 +525,10 @@ pub(crate) fn evaluate(
     } else {
         None
     };
+    let nvd_http = nvd_client(s, config_for_nvd).map_err(|e| {
+        let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &e)]));
+        ExitCode::Usage
+    })?;
     let fetcher = Fetcher {
         http: &http,
         cache: &cache,
@@ -503,6 +539,7 @@ pub(crate) fn evaluate(
         },
         offline: s.offline,
         offline_db: offline_db.as_ref(),
+        nvd_http: Some(&nvd_http),
     };
     Ok(rt.block_on(gather(&fetcher, &s.config, eco, resolved, probe, &s.vex)))
 }
@@ -576,6 +613,7 @@ mod tests {
             version,
             arch: None,
             slot: None,
+            upstream: None,
             provenance: amivuln_core::Provenance::PackageDb,
         }
     }
