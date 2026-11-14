@@ -117,7 +117,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
         env.home.as_deref(),
     );
     let (mut cfg, from) = config::load(g.config.as_deref(), &candidates).map_err(|e| e.0)?;
-    cfg.sources.mitigations.enabled |= g.mitigations;
+    cfg.sources.mitigations.enabled |= g.extras.mitigations;
 
     let format: Format = g.format.as_deref().unwrap_or(&cfg.output.format).parse()?;
     let color_mode = g.color.as_deref().unwrap_or(&cfg.output.color);
@@ -759,7 +759,7 @@ pub(crate) fn check_with(
         && cli.global.packages_from.is_none()
         && cli.global.sbom.is_none()
         && cli.global.container.is_empty()
-        && !cli.global.flatpak
+        && !cli.global.extras.flatpak
     {
         return usage(
             err,
@@ -800,6 +800,7 @@ pub(crate) fn check_with(
         RenderOptions {
             color: s.color,
             hide_clean: mode.hide_clean,
+            explain: cli.global.extras.explain,
         },
         out,
     ) {

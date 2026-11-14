@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+mod explain;
 mod json;
 mod other;
 mod prometheus;
@@ -15,6 +16,7 @@ mod sanitize;
 mod sbom;
 mod text;
 
+pub use explain::explain;
 pub use json::{
     SCHEMA_VERSION, json_severity, render_cve_json, render_json, render_pending_json,
     render_restart_json,

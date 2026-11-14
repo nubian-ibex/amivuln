@@ -77,6 +77,30 @@ The translation was written by the project's assistant and has not been
 reviewed by a native speaker; a correction is a pull request on one text file
 (see CONTRIBUTING).
 
+## Explaining a finding
+
+`amivuln --explain -f detail` adds, under each finding, the sentences that say
+why it is reported:
+
+```text
+CVE-2026-111253  UNKNOWN  fix: 5.4.7.0-1.fc44  EPSS 0.00
+      why: dnf5 5.4.6.0-1.fc44 is older than 5.4.7.0-1.fc44, the build that fixes this CVE in the distribution's data. Installing 5.4.7.0-1.fc44 or later closes it.
+      why: FIRST EPSS puts the chance it is exploited in the next 30 days at 0%, above 3% of scored CVEs.
+```
+
+It is off by default, applies to the detail output only (the machine formats are
+identical with and without it), and follows the language of the locale.
+
+No language model writes it. Each sentence is a template filled from a field the
+run already holds (the installed version, the fixed version, the state the
+distribution's data gave, how the package was identified, CISA KEV, EPSS, a
+vendor mitigation), so the same finding always gives the same text and every
+sentence can be traced to its source. Nothing is sent anywhere. What it does not
+do: it does not reason about whether the vulnerable code is reachable on this
+host, and it does not summarise the CVE (the description is not stored). A
+version banner match and a file-embedded package say so, because they are weaker
+evidence.
+
 ## Mitigations
 
 `amivuln --mitigations` also shows, for each CVE that still affects the host,

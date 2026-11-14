@@ -2180,6 +2180,57 @@ async fn flatpak_runtimes_are_judged_by_the_nvd_and_the_builders_notes() {
     );
 }
 
+/// `--explain` adds a plain-language account under each finding of the detail
+/// output, in the language of the locale, and changes nothing else.
+#[tokio::test(flavor = "multi_thread")]
+async fn explain_says_why_a_finding_is_reported() {
+    let server = MockServer::start().await;
+    mount_fedora(&server).await;
+    mount_enrichment(&server).await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let ask = |format: &'static str, extra: Vec<&'static str>, lang: &'static str| {
+        let mut cmd = sb.cmd();
+        cmd.env("LC_ALL", lang);
+        let mut args = vec![
+            "-f",
+            format,
+            "python3-multipart@0:1.3.0-1.fc43",
+            "--distro",
+            "fedora:43",
+        ];
+        args.extend(extra);
+        run(cmd, args)
+    };
+    let plain = stdout(&ask("detail", vec![], "C").await);
+    assert!(!plain.contains("why:"), "{plain}");
+    let text = stdout(&ask("detail", vec!["--explain"], "C").await);
+    assert!(
+        text.contains("why: python3-multipart 1.3.0-1.fc43 is older than 1.3.1-1.fc43"),
+        "{text}"
+    );
+    let pt = stdout(&ask("detail", vec!["--explain"], "pt_BR.UTF-8").await);
+    assert!(
+        pt.contains("por quê: python3-multipart 1.3.0-1.fc43 é mais antigo que 1.3.1-1.fc43"),
+        "{pt}"
+    );
+    // The explanation is part of the human output only: the machine formats
+    // are identical with and without the flag.
+    for format in ["json", "sarif", "cyclonedx"] {
+        let (with, without) = (
+            ask(format, vec!["--explain"], "C").await,
+            ask(format, vec![], "C").await,
+        );
+        let strip = |o: &std::process::Output| {
+            stdout(o)
+                .lines()
+                .filter(|l| !l.contains("generated_at") && !l.contains("timestamp"))
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        assert_eq!(strip(&with), strip(&without), "{format}");
+    }
+}
+
 /// Runs the binary with a per-test HOME and returns its output.
 fn run_home(
     home: &std::path::Path,

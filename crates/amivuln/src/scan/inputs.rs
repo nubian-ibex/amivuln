@@ -182,7 +182,7 @@ pub(crate) fn resolve_scope(
             }),
         }
     }
-    if cli.global.flatpak {
+    if cli.global.extras.flatpak {
         read_flatpak(&mut resolved, &mut unresolved);
     }
     Ok((resolved, unresolved))
