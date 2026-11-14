@@ -19,6 +19,8 @@ pub struct RenderOptions {
     pub color: bool,
     /// Leave out targets without findings (whole-system scans).
     pub hide_clean: bool,
+    /// Add a plain-language account under each finding of the detail output.
+    pub explain: bool,
 }
 
 fn paint(opts: RenderOptions, code: &str, text: &str) -> String {
@@ -261,6 +263,7 @@ pub fn render_summary(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) -
 fn write_finding(
     out: &mut dyn Write,
     opts: RenderOptions,
+    target: &TargetReport,
     f: &Finding,
     suppressed: Option<&String>,
 ) -> io::Result<()> {
@@ -329,6 +332,11 @@ fn write_finding(
             )
         )?;
     }
+    if opts.explain {
+        for line in crate::explain(target, f) {
+            writeln!(out, "{}", tr_args("explain.line", &[("text", &line)]))?;
+        }
+    }
     Ok(())
 }
 
@@ -354,7 +362,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
         if !affected.is_empty() {
             writeln!(out, "{}", tr("detail.affected"))?;
             for f in affected {
-                write_finding(out, opts, f, r.suppressed.get(&f.id))?;
+                write_finding(out, opts, t, f, r.suppressed.get(&f.id))?;
             }
         }
         let unverified: Vec<&Finding> = t
@@ -365,7 +373,7 @@ pub fn render_detail(r: &RunReport, opts: RenderOptions, out: &mut dyn Write) ->
         if !unverified.is_empty() {
             writeln!(out, "{}", tr("detail.unverified"))?;
             for f in unverified {
-                write_finding(out, opts, f, r.suppressed.get(&f.id))?;
+                write_finding(out, opts, t, f, r.suppressed.get(&f.id))?;
             }
         }
         writeln!(out)?;
@@ -693,6 +701,7 @@ mod tests {
             RenderOptions {
                 color,
                 hide_clean: false,
+                explain: false,
             },
             &mut buf,
         )
@@ -768,6 +777,7 @@ mod tests {
             RenderOptions {
                 color: false,
                 hide_clean: true,
+                explain: false,
             },
             &mut buf,
         )

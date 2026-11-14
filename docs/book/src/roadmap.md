@@ -62,8 +62,11 @@ above so that it sees the final code:
    locale). The `--help` text, the configuration errors and the messages of
    the libraries are still English only, and Spanish, German and French
    catalogs would need a native reviewer.
-5. **An optional local explanation** of a finding, off by default, that never
-   sends data off the machine.
+5. **Local explanation.** `--explain` is done as templates over the data the
+   run holds. An explanation written by a local language model was left out on
+   purpose: it can state what is not in the data, and it needs a runtime and a
+   model on the machine. It stays open if a use is shown that the templates do
+   not cover.
 6. **Unfixed Red Hat CVEs.** RHEL results come from OSV, which only has
    advisories that shipped a fix. An index built from Red Hat's CSAF VEX data
    shows the CVEs Red Hat has not fixed. It needs an architecture decision

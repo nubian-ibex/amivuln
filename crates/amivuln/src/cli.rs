@@ -115,17 +115,9 @@ pub struct Global {
     /// The container's own `os-release` decides the ecosystem.
     #[arg(long, global = true, value_name = "ID")]
     pub container: Vec<String>,
-    /// Also look up the mitigation Red Hat publishes for each affected CVE
-    /// (what to do while the fix is not installed). Sends the CVE ids to
-    /// access.redhat.com.
-    #[arg(long, global = true)]
-    pub mitigations: bool,
-    /// Also check the components of the installed Flatpak runtimes (system and
-    /// user installations), read from each runtime's manifest.json. Nothing is
-    /// run. The NVD answers per component, at its own pace: without
-    /// `sources.nvd.api_key_file` a first run takes several minutes.
-    #[arg(long, global = true)]
-    pub flatpak: bool,
+    /// What to add to a run: Flatpak runtimes, mitigations, explanations.
+    #[command(flatten)]
+    pub extras: Extras,
     /// Only print errors.
     #[arg(short, long, global = true)]
     pub quiet: bool,
@@ -177,6 +169,27 @@ pub fn normalize_args(args: &[String]) -> Vec<String> {
         break;
     }
     args.to_vec()
+}
+
+/// Switches that add data or detail to a run.
+#[derive(Debug, Args, Clone, Copy)]
+pub struct Extras {
+    /// Also check the components of the installed Flatpak runtimes (system and
+    /// user installations), read from each runtime's manifest.json. Nothing is
+    /// run. The NVD answers per component, at its own pace: without
+    /// `sources.nvd.api_key_file` a first run takes several minutes.
+    #[arg(long, global = true)]
+    pub flatpak: bool,
+    /// Also look up the mitigation Red Hat publishes for each affected CVE
+    /// (what to do while the fix is not installed). Sends the CVE ids to
+    /// access.redhat.com.
+    #[arg(long, global = true)]
+    pub mitigations: bool,
+    /// Under each finding of the detail output, say in plain words why it is
+    /// reported. Built from the data the run already holds; nothing is sent
+    /// anywhere and no model writes it.
+    #[arg(long, global = true)]
+    pub explain: bool,
 }
 
 /// On/off switches.
