@@ -308,7 +308,28 @@ fn write_finding(
         kev,
         epss,
         note
-    )
+    )?;
+    if let Some(m) = &f.mitigation {
+        // The vendor's text is outside text: cut for a terminal and cleaned.
+        let short: String = m.text.chars().take(240).collect();
+        let more = if m.text.chars().count() > 240 {
+            "..."
+        } else {
+            ""
+        };
+        writeln!(
+            out,
+            "{}",
+            tr_args(
+                "finding.mitigation",
+                &[
+                    ("text", &format!("{}{more}", sanitize_terminal(&short))),
+                    ("url", &sanitize_terminal(&m.url)),
+                ],
+            )
+        )?;
+    }
+    Ok(())
 }
 
 /// The summary plus every finding, affected and unverified in separate lists.

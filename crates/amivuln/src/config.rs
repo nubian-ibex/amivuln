@@ -160,6 +160,23 @@ pub struct Sources {
     /// targets). The endpoint is the official API base; a mirror can be set
     /// with `url`.
     pub nvd: SourceCfg,
+    /// Red Hat's CVE data, for the mitigations it publishes. Off by default:
+    /// it sends the id of every CVE found to access.redhat.com. `--mitigations`
+    /// turns it on for one run.
+    pub mitigations: OptInSource,
+}
+
+/// A source that sends data out and so is off until asked for: a table that
+/// names only `url` does not turn it on.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct OptInSource {
+    /// Query this source.
+    pub enabled: bool,
+    /// A failure makes the result incomplete (exit 2).
+    pub required: bool,
+    /// Override the endpoint (a mirror).
+    pub url: Option<String>,
 }
 
 /// The distribution source. It is required by default: without it a result
@@ -276,6 +293,7 @@ impl Default for Config {
                     fallback: Vec::new(),
                     api_key_file: None,
                 },
+                mitigations: OptInSource::default(),
             },
         }
     }
@@ -622,6 +640,14 @@ required = true
 [sources.nvd]
 enabled = true
 required = false
+
+# Mitigations Red Hat publishes for a CVE (what to do while the fix is not
+# installed). Off by default because it sends each CVE id found to
+# access.redhat.com; --mitigations turns it on for one run.
+[sources.mitigations]
+enabled = false
+required = false
+# url = \"https://access.redhat.com\"
 # api_key_file = \"/etc/amivuln/nvd-api-key\"
 ";
 
@@ -687,6 +713,22 @@ fn check_sources(cfg: &Config) -> Result<(), ConfigError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_source_that_sends_data_out_stays_off_when_only_its_url_is_set() {
+        let cfg: Config =
+            toml::from_str("[sources.mitigations]\nurl = \"https://mirror.example\"\n").unwrap();
+        assert!(!cfg.sources.mitigations.enabled);
+        assert_eq!(
+            cfg.sources.mitigations.url.as_deref(),
+            Some("https://mirror.example")
+        );
+        assert!(!Config::default().sources.mitigations.enabled);
+        let on: Config = toml::from_str("[sources.mitigations]\nenabled = true\n").unwrap();
+        assert!(on.sources.mitigations.enabled);
+        // An unknown key is still refused.
+        assert!(toml::from_str::<Config>("[sources.mitigations]\nfallback = []\n").is_err());
+    }
 
     #[test]
     fn defaults_are_valid_and_roundtrip() {

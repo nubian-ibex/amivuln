@@ -160,7 +160,8 @@
             "kev",
             "epss",
             "nvd",
-            "glsa"
+            "glsa",
+            "redhat-cve"
           ]
         },
         "status": {
@@ -402,6 +403,29 @@
               "maximum": 1
             },
             "date": {
+              "type": "string"
+            }
+          }
+        },
+        "mitigation": {
+          "type": "object",
+          "description": "What the vendor says can be done while the fix is not installed. Present only with --mitigations and only when the vendor states one. It is the vendor's text, written for the vendor's own product; amivuln does not check that it applies to this host.",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "text",
+            "url"
+          ],
+          "properties": {
+            "source": {
+              "enum": [
+                "redhat"
+              ]
+            },
+            "text": {
+              "type": "string"
+            },
+            "url": {
               "type": "string"
             }
           }

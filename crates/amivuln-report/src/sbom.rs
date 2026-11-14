@@ -136,6 +136,10 @@ fn cyclonedx_vulnerability(f: &Finding, purl: &str, version: &str) -> Value {
     } else {
         "unaffected"
     };
+    let workaround = f
+        .mitigation
+        .as_ref()
+        .map(|m| json!(format!("{} (Red Hat, {})", m.text, m.url)));
     with(
         json!({
             "id": f.id,
@@ -145,6 +149,7 @@ fn cyclonedx_vulnerability(f: &Finding, purl: &str, version: &str) -> Value {
         }),
         [
             ("source", source(&f.id)),
+            ("workaround", workaround),
             (
                 "properties",
                 f.kev.as_ref().map(|k| {

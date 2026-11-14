@@ -78,6 +78,9 @@ How a target is identified, and what the data can and cannot show:
   machine, point `[sources.distro] path` at a directory with the `glsa-*.xml`
   files. The `arch` attribute of an advisory is not read.
 - **Alpine 3.x.** The host is read from `/lib/apk/db/installed`; the same other inputs as Debian and Ubuntu. Edge and alpha images have no advisory data and are refused. Data: OSV, keyed by the origin package; only CVEs that shipped a fix are visible.
+- **Red Hat CVE data (optional, off by default).** The `mitigation` text Red
+  Hat publishes per CVE, used by `--mitigations`. See the guide for what it
+  sends and what it does not claim.
 - **Flatpak runtimes.** Read from each runtime's `manifest.json`, judged by the
   NVD for the upstream version of each component with the builder's own `patches`
   and `ignored` lists applied. Slow and rate limited; see the guide.

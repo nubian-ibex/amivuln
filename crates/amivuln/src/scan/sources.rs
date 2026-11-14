@@ -3,9 +3,10 @@
 //! Loading each advisory and enrichment source, with its status.
 
 use super::{
-    ArchTracker, Config, DistroData, Duration, Ecosystem, EpssScores, FetchCtx, Fetcher, Kev,
-    MAX_OSV_ADVISORIES, PackageRef, SourceId, SourceReport, SourceStatus, Updateinfo, cpu_arch,
-    describe, fetch_cached_body, load_osv, report_of, updateinfo_location, worse,
+    ArchTracker, Config, DistroData, Duration, Ecosystem, EpssScores, FetchCtx, FetchError,
+    Fetcher, HttpError, Kev, MAX_OSV_ADVISORIES, PackageRef, SourceId, SourceReport, SourceStatus,
+    Updateinfo, cpu_arch, describe, fetch_cached_body, load_osv, report_of, updateinfo_location,
+    worse,
 };
 
 /// Default endpoints.
@@ -359,6 +360,117 @@ fn load_glsa(f: &Fetcher<'_>, cfg: &Config) -> (Option<DistroData>, SourceReport
         Some(DistroData::Glsa(data)),
         report_of(SourceId::Glsa, required, status, age),
     )
+}
+
+/// Most CVEs looked up for mitigations in one run.
+const MAX_MITIGATION_LOOKUPS: usize = 400;
+/// Requests in flight at once.
+const MITIGATION_IN_FLIGHT: usize = 8;
+const REDHAT_URL: &str = "https://access.redhat.com";
+
+/// One CVE's lookup: its id, the mitigation (or why it cannot be read), and
+/// where the answer came from.
+type MitigationAnswer = (
+    String,
+    Result<Option<amivuln_core::Mitigation>, String>,
+    Option<(SourceStatus, Duration)>,
+);
+
+/// The mitigations Red Hat publishes for `cves`, by CVE id.
+///
+/// A CVE Red Hat has no document for (404) simply has none. Any other failure,
+/// a document that cannot be read, and CVEs beyond the lookup limit are named
+/// in the source's detail, so a missing mitigation is never read as "none
+/// exists".
+pub(super) async fn load_mitigations(
+    f: &Fetcher<'_>,
+    cfg: &Config,
+    cves: &[String],
+) -> (
+    std::collections::BTreeMap<String, amivuln_core::Mitigation>,
+    SourceReport,
+) {
+    use amivuln_sources::redhat::{document_url, parse_mitigation};
+    use futures_util::StreamExt;
+    let required = cfg.sources.mitigations.required;
+    let base = cfg
+        .sources
+        .mitigations
+        .url
+        .clone()
+        .unwrap_or_else(|| REDHAT_URL.to_owned());
+    // A mitigation text changes rarely: keep it a week, use it for a month.
+    let ctx = FetchCtx {
+        http: f.http,
+        cache: f.cache,
+        now: f.now,
+        policy: amivuln_cache::Policy {
+            ttl: f.policy.ttl.max(7 * 24 * 3600),
+            stale_max_age: f.policy.stale_max_age.max(30 * 24 * 3600),
+        },
+        offline: f.offline,
+        offline_db: f.offline_db,
+    };
+    let asked = cves.get(..MAX_MITIGATION_LOOKUPS).unwrap_or(cves);
+    let answers: Vec<MitigationAnswer> = futures_util::stream::iter(asked.iter())
+        .map(|cve| {
+            let ctx = &ctx;
+            let base = base.as_str();
+            async move {
+                let Some(url) = document_url(base, cve) else {
+                    return (cve.clone(), Err(format!("{cve}: not a CVE id")), None);
+                };
+                match fetch_cached_body(ctx, &format!("redhat-cve:{cve}"), &url, None).await {
+                    Ok(doc) => {
+                        let meta = Some((doc.status.clone(), doc.age));
+                        match parse_mitigation(&doc.body, cve) {
+                            Ok(m) => (cve.clone(), Ok(m), meta),
+                            Err(e) => (cve.clone(), Err(format!("{cve}: {e}")), meta),
+                        }
+                    }
+                    // Red Hat has no document for this CVE.
+                    Err(FetchError::Unavailable(HttpError::Status(404))) => {
+                        (cve.clone(), Ok(None), None)
+                    }
+                    Err(e) => (cve.clone(), Err(format!("{cve}: {}", describe(&e))), None),
+                }
+            }
+        })
+        .buffered(MITIGATION_IN_FLIGHT)
+        .collect()
+        .await;
+    let mut found = std::collections::BTreeMap::new();
+    let mut problems: Vec<String> = Vec::new();
+    let (mut status, mut age) = (SourceStatus::Ok, Duration::ZERO);
+    for (cve, result, meta) in answers {
+        match result {
+            Ok(Some(m)) => {
+                found.insert(cve, m);
+            }
+            Ok(None) => {}
+            Err(e) => problems.push(e),
+        }
+        if let Some((s, a)) = meta {
+            status = worse(status, s);
+            age = age.max(a);
+        }
+    }
+    if cves.len() > asked.len() {
+        problems.push(format!(
+            "{} CVEs beyond the limit of {MAX_MITIGATION_LOOKUPS} were not looked up",
+            cves.len() - asked.len()
+        ));
+    }
+    if !problems.is_empty() {
+        let shown: Vec<&str> = problems.iter().take(3).map(String::as_str).collect();
+        status = SourceStatus::Failed(format!(
+            "{} problems ({}{})",
+            problems.len(),
+            shown.join("; "),
+            if problems.len() > 3 { "; ..." } else { "" }
+        ));
+    }
+    (found, report_of(SourceId::RedHatCve, required, status, age))
 }
 
 pub(super) async fn load_kev(f: &Fetcher<'_>, cfg: &Config) -> (Option<Kev>, SourceReport) {

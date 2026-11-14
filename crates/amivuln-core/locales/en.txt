@@ -48,3 +48,4 @@ warning.offline_db = warning: offline database unusable: {error}
 warning.memory_cache = warning: {why}; using an in-memory cache for this run
 info.manifest = database:  {path}\ncreated:   {created}\ntool:      {tool}\nentries:   {entries}\nbytes:     {bytes}\nsha256:    {sha256}
 info.cache = path:    {path}\nentries: {entries}\nbytes:   {bytes}
+finding.mitigation =       mitigation (Red Hat, not checked on this host): {text} See {url}

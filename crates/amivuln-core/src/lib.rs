@@ -25,7 +25,8 @@ pub use baseline::{Baseline, BaselineError, parse_baseline};
 pub use exit::{Condition, ExitCode, exit_code};
 pub use ignore::{IgnoreEntry, IgnoreError, parse_ignore, suppress};
 pub use matching::{
-    DistroStatus, EpssInfo, Finding, KevInfo, Severity, Verdict, classify, sort_findings,
+    DistroStatus, EpssInfo, Finding, KevInfo, Mitigation, Severity, Verdict, classify,
+    sort_findings,
 };
 pub use package::{Ecosystem, PackageRef, Provenance, UpstreamInfo, Version};
 pub use pending::{CveAnswer, CveHit, CveState, PendingUpdate, cve_answers, pending_updates};

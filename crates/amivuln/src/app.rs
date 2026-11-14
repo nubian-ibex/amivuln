@@ -116,7 +116,8 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
         env.xdg_config_home.as_deref(),
         env.home.as_deref(),
     );
-    let (cfg, from) = config::load(g.config.as_deref(), &candidates).map_err(|e| e.0)?;
+    let (mut cfg, from) = config::load(g.config.as_deref(), &candidates).map_err(|e| e.0)?;
+    cfg.sources.mitigations.enabled |= g.mitigations;
 
     let format: Format = g.format.as_deref().unwrap_or(&cfg.output.format).parse()?;
     let color_mode = g.color.as_deref().unwrap_or(&cfg.output.color);

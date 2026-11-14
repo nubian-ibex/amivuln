@@ -4,7 +4,7 @@
 .SH NAME
 amivuln \- Am I vulnerable? Backport\-aware CVE check for packages on this host
 .SH SYNOPSIS
-\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-output\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-pid\fR] [\fB\-\-purl\fR] [\fB\-\-baseline\fR] [\fB\-\-vex\fR] [\fB\-\-packages\-from\fR] [\fB\-\-sbom\fR] [\fB\-\-container\fR] [\fB\-\-flatpak\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
+\fBamivuln\fR [\fB\-f\fR|\fB\-\-format\fR] [\fB\-\-output\fR] [\fB\-\-fail\-on\fR] [\fB\-\-fail\-on\-epss\fR] [\fB\-\-strict\fR] [\fB\-\-offline\fR] [\fB\-\-no\-cache\fR] [\fB\-\-config\fR] [\fB\-\-color\fR] [\fB\-\-distro\fR] [\fB\-\-file\fR] [\fB\-\-package\fR] [\fB\-\-pid\fR] [\fB\-\-purl\fR] [\fB\-\-baseline\fR] [\fB\-\-vex\fR] [\fB\-\-packages\-from\fR] [\fB\-\-sbom\fR] [\fB\-\-container\fR] [\fB\-\-mitigations\fR] [\fB\-\-flatpak\fR] [\fB\-q\fR|\fB\-\-quiet\fR] [\fB\-\-all\fR] [\fB\-h\fR|\fB\-\-help\fR] [\fITARGET\fR] [\fIsubcommands\fR]
 .SH DESCRIPTION
 Reports which CVEs apply to an installed package, binary or version, taking the patches your distribution already shipped into account. Fedora and Arch Linux are supported.
 .SH OPTIONS
@@ -65,6 +65,9 @@ Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm purls
 .TP
 \fB\-\-container\fR \fI<ID>\fR
 Scan a container\*(Aqs installed packages (repeatable): the rootfs is exported with podman or docker, nothing inside the container runs. The container\*(Aqs own `os\-release` decides the ecosystem
+.TP
+\fB\-\-mitigations\fR
+Also look up the mitigation Red Hat publishes for each affected CVE (what to do while the fix is not installed). Sends the CVE ids to access.redhat.com
 .TP
 \fB\-\-flatpak\fR
 Also check the components of the installed Flatpak runtimes (system and user installations), read from each runtime\*(Aqs manifest.json. Nothing is run. The NVD answers per component, at its own pace: without `sources.nvd.api_key_file` a first run takes several minutes

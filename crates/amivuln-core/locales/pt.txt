@@ -49,3 +49,4 @@ warning.offline_db = aviso: o banco de dados offline não pôde ser usado: {erro
 warning.memory_cache = aviso: {why}; usando um cache em memória nesta execução
 info.manifest = banco:     {path}\ncriado:    {created}\nferramenta: {tool}\nentradas:  {entries}\nbytes:     {bytes}\nsha256:    {sha256}
 info.cache = caminho:  {path}\nentradas: {entries}\nbytes:    {bytes}
+finding.mitigation =       mitigação (Red Hat, não verificada neste host): {text} Veja {url}

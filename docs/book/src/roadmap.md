@@ -53,8 +53,10 @@ above so that it sees the final code:
 2. **Flatpak applications.** The runtimes are done (`--flatpak`); applications
    bundle their own libraries and carry no manifest of components, so they are
    not read yet.
-3. **Known mitigations,** a curated list of "CVE to configuration that
-   mitigates it".
+3. **Known mitigations.** Done with Red Hat's own data (`--mitigations`)
+   instead of a list kept by this project: it covers most CVEs and states its
+   source. A mitigation from another distribution, and a check that the
+   setting is or is not in effect on the host, are not done.
 4. **More languages and the rest of the messages.** The mechanism is in
    place (message catalogs, English and Brazilian Portuguese, chosen from the
    locale). The `--help` text, the configuration errors and the messages of

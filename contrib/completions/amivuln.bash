@@ -200,7 +200,7 @@ _amivuln() {
 
     case "${cmd}" in
         amivuln)
-            opts="-f -q -h -V --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --all --help --version check cve pending services restart mcp tui db config cache completions version help"
+            opts="-f -q -h -V --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --all --help --version check cve pending services restart mcp tui db config cache completions version help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -282,7 +282,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__cache)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help info clear help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help info clear help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -364,7 +364,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__cache__subcmd__clear)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -502,7 +502,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__cache__subcmd__info)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -584,7 +584,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__check)
-            opts="-f -q -h --all --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --all --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -666,7 +666,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__completions)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help bash zsh fish elvish powershell"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help bash zsh fish elvish powershell"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -748,7 +748,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__config)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help show init validate help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help show init validate help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -900,7 +900,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__config__subcmd__init)
-            opts="-f -q -h --path --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --path --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -986,7 +986,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__config__subcmd__show)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1068,7 +1068,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__config__subcmd__validate)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1150,7 +1150,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__cve)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1232,7 +1232,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__db)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help build pull verify info help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help build pull verify info help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1314,7 +1314,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__db__subcmd__build)
-            opts="-f -q -h --archive --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --archive --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1484,7 +1484,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__db__subcmd__info)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1566,7 +1566,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__db__subcmd__pull)
-            opts="-f -q -h --force --key --sig --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --force --key --sig --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1656,7 +1656,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__db__subcmd__verify)
-            opts="-f -q -h --key --sig --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --key --sig --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2068,7 +2068,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__mcp)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2150,7 +2150,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__pending)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2232,7 +2232,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__restart)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2314,7 +2314,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__services)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2396,7 +2396,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__tui)
-            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2478,7 +2478,7 @@ _amivuln() {
             return 0
             ;;
         amivuln__subcmd__version)
-            opts="-f -q -h --json --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --flatpak --quiet --help"
+            opts="-f -q -h --json --format --output --fail-on --fail-on-epss --strict --offline --no-cache --config --color --distro --file --package --pid --purl --baseline --vex --packages-from --sbom --container --mitigations --flatpak --quiet --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
