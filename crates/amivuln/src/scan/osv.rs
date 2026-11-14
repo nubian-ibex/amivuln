@@ -391,6 +391,7 @@ mod tests {
             },
             offline: true,
             offline_db: None,
+            nvd_http: None,
         };
         fetch_advisories(&f, "https://osv.invalid", "Debian:12", ids)
             .await

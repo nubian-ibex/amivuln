@@ -12,6 +12,7 @@ mod build;
 pub mod container;
 mod dpkg;
 pub mod embedded;
+mod flatpak;
 mod host;
 mod pacman;
 mod portage;
@@ -29,6 +30,7 @@ pub use container::{
 };
 pub use dpkg::DpkgResolver;
 pub use embedded::{Detected, Origin, detect, detect_bytes, language_packages, package_from_note};
+pub use flatpak::{Runtime, Runtimes, installations, parse_manifest, read_runtimes};
 pub use host::{HostInfo, parse_os_release};
 pub use pacman::PacmanResolver;
 pub use portage::PortageResolver;

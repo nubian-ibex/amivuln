@@ -46,6 +46,7 @@ pub(crate) fn parse_installed(installed: &str, eco: Ecosystem) -> Vec<PackageRef
             version: Version::Apk(version.parse().unwrap_or_else(|never| match never {})),
             arch: fields.get("A").map(|a| (*a).to_owned()),
             slot: None,
+            upstream: None,
             provenance: Provenance::PackageDb,
         });
     }

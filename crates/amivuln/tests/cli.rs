@@ -1852,6 +1852,189 @@ fn gentoo_packages_are_judged_by_the_advisories_of_a_directory() {
     assert_eq!(none.status.code(), Some(2));
 }
 
+/// `--flatpak` reads the runtimes of an installation, asks the NVD for each
+/// component's upstream version, and applies the builder's own statements.
+#[tokio::test(flavor = "multi_thread")]
+#[allow(clippy::too_many_lines)]
+async fn flatpak_runtimes_are_judged_by_the_nvd_and_the_builders_notes() {
+    let cve = |id: &str, severity: &str| {
+        serde_json::json!({"cve": {
+            "id": id,
+            "descriptions": [{"lang": "en", "value": "a flaw"}],
+            "metrics": {"cvssMetricV31": [{"cvssData": {"baseSeverity": severity, "baseScore": 7.5}}]}
+        }})
+    };
+    let server = MockServer::start().await;
+    let answer = |name: &'static str, vulns: Vec<serde_json::Value>| async move { (name, vulns) };
+    for (cpe, vulns) in [
+        // bash: one open CVE and one the build patched.
+        (
+            "cpe:2.3:a:gnu:bash:5.3:*:*:*:*:*:*:*",
+            vec![
+                cve("CVE-2099-0001", "HIGH"),
+                cve("CVE-2099-0002", "CRITICAL"),
+            ],
+        ),
+        // glibc: one CVE the builders ignore.
+        (
+            "cpe:2.3:a:glibc:glibc:2.42:*:*:*:*:*:*:*",
+            vec![cve("CVE-2099-0003", "LOW")],
+        ),
+    ] {
+        let _ = answer("x", vec![]).await;
+        Mock::given(method("GET"))
+            .and(path("/rest/json/cves/2.0"))
+            .and(wiremock::matchers::query_param("cpeName", cpe))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "totalResults": vulns.len(),
+                "vulnerabilities": vulns
+            })))
+            .mount(&server)
+            .await;
+    }
+    let home = tempfile::tempdir().unwrap();
+    let system = home.path().join("system");
+    let branch = system.join("runtime/org.example.Platform/x86_64/1.0");
+    std::fs::create_dir_all(branch.join("c0ffee/files")).unwrap();
+    std::fs::write(
+        branch.join("c0ffee/files/manifest.json"),
+        r#"{"modules":[
+          {"name":"components/bash.bst","x-cpe":{"vendor":"gnu","product":"bash","version":"5.3","patches":["CVE-2099-0002"]}},
+          {"name":"bootstrap/glibc.bst","x-cpe":{"product":"glibc","version":"2.42","ignored":["CVE-2099-0003"]}}
+        ]}"#,
+    )
+    .unwrap();
+    std::os::unix::fs::symlink("c0ffee", branch.join("active")).unwrap();
+    std::fs::create_dir_all(system.join("runtime/org.example.Locale/x86_64/1.0/active/files"))
+        .unwrap();
+    let cfg = home.path().join("cfg.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.nvd]\nurl = \"{}\"\n[sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let ask = |format: &str| {
+        let args = ["--flatpak", "-f", format, "--distro", "fedora:44"];
+        Command::cargo_bin("amivuln")
+            .unwrap()
+            .env_clear()
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", home.path().join("cache"))
+            .env("FLATPAK_SYSTEM_DIR", &system)
+            .env("FLATPAK_USER_DIR", home.path().join("nobody"))
+            .env("PATH", "/nonexistent")
+            .args(["--config"])
+            .arg(&cfg)
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let out = ask("json");
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let target = |name: &str| {
+        v["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["package"]["name"] == name)
+            .unwrap_or_else(|| panic!("{name} missing in {v}"))
+            .clone()
+    };
+    let bash = target("org.example.Platform/1.0/bash");
+    assert_eq!(bash["package"]["ecosystem"], "flatpak");
+    assert!(
+        bash["package"]["purl"]
+            .as_str()
+            .unwrap()
+            .starts_with("pkg:generic/flatpak/org.example.Platform/1.0/bash@5.3")
+    );
+    // Open: reported. Patched by the build: not a finding.
+    let ids: Vec<&str> = bash["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["CVE-2099-0001"], "{v}");
+    assert_eq!(bash["findings"][0]["severity"], "high");
+    assert_eq!(
+        bash["findings"][0]["distro_status"]["fixed_in"],
+        serde_json::Value::Null
+    );
+    assert_eq!(
+        target("org.example.Platform/1.0/glibc")["findings"],
+        serde_json::json!([])
+    );
+    // The extension without a manifest is named, not dropped.
+    let note = v["unresolved"][0]["reason"].as_str().unwrap();
+    assert!(
+        note.contains("1 runtimes have no manifest.json") && note.contains("org.example.Locale"),
+        "{note}"
+    );
+    assert_eq!(v["complete"], true);
+    assert_eq!(out.status.code(), Some(3), "an unresolved target is exit 3");
+
+    // The VEX and SBOM say what the builder settled.
+    let vex = ask("openvex");
+    let x: serde_json::Value = serde_json::from_slice(&vex.stdout).unwrap();
+    let statuses: Vec<(String, String)> = x["statements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| {
+            (
+                s["vulnerability"]["name"].as_str().unwrap().to_owned(),
+                s["status"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    assert!(
+        statuses.contains(&("CVE-2099-0002".to_owned(), "fixed".to_owned())),
+        "{statuses:?}"
+    );
+    assert!(
+        statuses.contains(&("CVE-2099-0003".to_owned(), "not_affected".to_owned())),
+        "{statuses:?}"
+    );
+
+    // The NVD refusing a request (its rate limit) is never read as "no CVEs".
+    let limited = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(403))
+        .mount(&limited)
+        .await;
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\nretries = 0\n[sources.nvd]\nurl = \"{}\"\nrequired = true\n[sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            limited.uri()
+        ),
+    )
+    .unwrap();
+    std::fs::remove_dir_all(home.path().join("cache")).unwrap();
+    let denied = ask("json");
+    let d: serde_json::Value = serde_json::from_slice(&denied.stdout).unwrap();
+    assert_eq!(d["complete"], false, "{d}");
+    assert_eq!(denied.status.code(), Some(2));
+    let source = d["sources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["id"] == "nvd")
+        .unwrap();
+    assert_eq!(source["status"], "failed");
+    assert!(
+        source["detail"]
+            .as_str()
+            .unwrap()
+            .contains("2 of 2 components not fully checked"),
+        "{source}"
+    );
+}
+
 /// Runs the binary with a per-test HOME and returns its output.
 fn run_home(
     home: &std::path::Path,

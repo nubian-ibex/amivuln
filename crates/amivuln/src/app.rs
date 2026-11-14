@@ -758,10 +758,11 @@ pub(crate) fn check_with(
         && cli.global.packages_from.is_none()
         && cli.global.sbom.is_none()
         && cli.global.container.is_empty()
+        && !cli.global.flatpak
     {
         return usage(
             err,
-            "no target given; pass a package, a file path, name@version, a purl, --all, --packages-from or --container (see --help)",
+            "no target given; pass a package, a file path, name@version, a purl, --all, --packages-from, --container or --flatpak (see --help)",
         );
     }
 
@@ -868,6 +869,8 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Crates => ("crates".to_owned(), "n/a".to_owned()),
         Ecosystem::Alpine(v) => ("alpine".to_owned(), format!("{}.{}", v / 100, v % 100)),
         Ecosystem::Gentoo => ("gentoo".to_owned(), "rolling".to_owned()),
+        // A host is never a Flatpak runtime; kept total for the match.
+        Ecosystem::Flatpak => ("flatpak".to_owned(), "n/a".to_owned()),
         Ecosystem::Opensuse(0) => ("opensuse-tumbleweed".to_owned(), "rolling".to_owned()),
         Ecosystem::Opensuse(v) => (
             "opensuse-leap".to_owned(),

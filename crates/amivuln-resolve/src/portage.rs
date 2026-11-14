@@ -101,6 +101,7 @@ impl PortageResolver {
                         ),
                         arch: None,
                         slot: read_slot(&entry.path()),
+                        upstream: None,
                         provenance: Provenance::PackageDb,
                     },
                     dir: entry.path(),

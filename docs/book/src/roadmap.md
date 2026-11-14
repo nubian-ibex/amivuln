@@ -50,7 +50,9 @@ above so that it sees the final code:
    rule "the distribution's data decides" cannot do without a design
    decision. SUSE Linux Enterprise is in OSV and is a small step from
    openSUSE.
-2. **Flatpak runtimes,** read from the installed runtimes.
+2. **Flatpak applications.** The runtimes are done (`--flatpak`); applications
+   bundle their own libraries and carry no manifest of components, so they are
+   not read yet.
 3. **Known mitigations,** a curated list of "CVE to configuration that
    mitigates it".
 4. **More languages and the rest of the messages.** The mechanism is in

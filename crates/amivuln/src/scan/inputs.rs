@@ -182,7 +182,59 @@ pub(crate) fn resolve_scope(
             }),
         }
     }
+    if cli.global.flatpak {
+        read_flatpak(&mut resolved, &mut unresolved);
+    }
     Ok((resolved, unresolved))
+}
+
+/// Adds the components of the installed Flatpak runtimes. What cannot be read
+/// is listed as unresolved: extensions with no manifest in one entry, a
+/// runtime with components that name no version in one entry each.
+fn read_flatpak(resolved: &mut Vec<(String, PackageRef)>, unresolved: &mut Vec<Unresolved>) {
+    let dirs = amivuln_resolve::installations(|name| std::env::var(name).ok());
+    let found = match amivuln_resolve::read_runtimes(&dirs) {
+        Ok(found) => found,
+        Err(e) => {
+            unresolved.push(Unresolved {
+                input: "--flatpak".to_owned(),
+                reason: e.to_string(),
+            });
+            return;
+        }
+    };
+    if found.runtimes.is_empty() {
+        unresolved.push(Unresolved {
+            input: "--flatpak".to_owned(),
+            reason: "no Flatpak runtime is installed".to_owned(),
+        });
+    }
+    let (bare, listed): (Vec<_>, Vec<_>) = found
+        .runtimes
+        .iter()
+        .partition(|r| r.unchecked.iter().any(|u| u == "no manifest.json"));
+    if !bare.is_empty() {
+        let names: Vec<&str> = bare.iter().take(3).map(|r| r.id.as_str()).collect();
+        unresolved.push(Unresolved {
+            input: "--flatpak".to_owned(),
+            reason: format!(
+                "{} runtimes have no manifest.json, so their components are not known ({}{})",
+                bare.len(),
+                names.join(", "),
+                if bare.len() > 3 { ", ..." } else { "" }
+            ),
+        });
+    }
+    for runtime in listed.iter().filter(|r| !r.unchecked.is_empty()) {
+        unresolved.push(Unresolved {
+            input: format!("--flatpak {}", runtime.id),
+            reason: format!(
+                "{} components name no upstream version and are not checked",
+                runtime.unchecked.len()
+            ),
+        });
+    }
+    resolved.extend(found.packages.into_iter().map(|p| (p.name.clone(), p)));
 }
 
 /// Reads a container's installed packages: export, then the package database.

@@ -6,7 +6,7 @@ use core::cmp::Ordering;
 use core::fmt;
 
 use amivuln_version::{
-    ApkVersion, DebVersion, GentooVersion, PacmanVersion, RpmEvr, SemverVersion,
+    ApkVersion, DebVersion, GentooVersion, PacmanVersion, RpmEvr, SemverVersion, UpstreamVersion,
 };
 
 /// Package ecosystem, which decides the version-comparison algorithm.
@@ -38,6 +38,9 @@ pub enum Ecosystem {
     /// Gentoo (rolling): packages are `category/name`, versions are ebuild
     /// versions, and the advisories are the GLSAs.
     Gentoo,
+    /// A component of an installed Flatpak runtime, known by its upstream
+    /// product and version (no distribution fix status exists for it).
+    Flatpak,
 }
 
 impl Ecosystem {
@@ -59,7 +62,7 @@ impl Ecosystem {
             Self::Alpine(v) => Some(format!("Alpine:v{}.{}", v / 100, v % 100)),
             Self::Opensuse(0) => Some("openSUSE:Tumbleweed".to_owned()),
             Self::Opensuse(v) => Some(format!("openSUSE:Leap {}.{}", v / 100, v % 100)),
-            Self::Fedora(_) | Self::Arch | Self::Gentoo => None,
+            Self::Fedora(_) | Self::Arch | Self::Gentoo | Self::Flatpak => None,
         }
     }
 
@@ -103,6 +106,7 @@ impl Ecosystem {
             Self::Opensuse(_) => "pkg:rpm/opensuse",
             // purl has no type for ebuilds yet.
             Self::Gentoo => "pkg:generic/gentoo",
+            Self::Flatpak => "pkg:generic/flatpak",
             Self::Go => "pkg:golang",
             Self::Crates => "pkg:cargo",
         }
@@ -138,6 +142,8 @@ pub enum Version {
     Apk(ApkVersion),
     /// Gentoo ebuild version.
     Gentoo(GentooVersion),
+    /// An upstream version as the component's authors write it.
+    Upstream(UpstreamVersion),
     /// Semantic version, for Go modules and crates.
     Semver(SemverVersion),
 }
@@ -152,6 +158,7 @@ impl Version {
             (Self::Deb(a), Self::Deb(b)) => Some(a.cmp(b)),
             (Self::Apk(a), Self::Apk(b)) => Some(a.cmp(b)),
             (Self::Gentoo(a), Self::Gentoo(b)) => Some(a.cmp(b)),
+            (Self::Upstream(a), Self::Upstream(b)) => Some(a.cmp(b)),
             (Self::Semver(a), Self::Semver(b)) => Some(a.cmp(b)),
             _ => None,
         }
@@ -166,9 +173,24 @@ impl fmt::Display for Version {
             Self::Deb(v) => v.fmt(f),
             Self::Apk(v) => v.fmt(f),
             Self::Gentoo(v) => v.fmt(f),
+            Self::Upstream(v) => v.fmt(f),
             Self::Semver(v) => v.fmt(f),
         }
     }
+}
+
+/// What the builder of a component states about it: the NVD names to look it
+/// up by, and the CVEs it has already dealt with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UpstreamInfo {
+    /// The NVD vendor.
+    pub vendor: String,
+    /// The NVD product.
+    pub product: String,
+    /// CVEs the build carries a patch for.
+    pub patched: Vec<String>,
+    /// CVEs the builder decided do not apply.
+    pub ignored: Vec<String>,
 }
 
 /// An installed (or user-specified) package.
@@ -184,6 +206,8 @@ pub struct PackageRef {
     pub version: Version,
     /// Architecture, when known.
     pub arch: Option<String>,
+    /// What the builder of an upstream-versioned component declares about it.
+    pub upstream: Option<UpstreamInfo>,
     /// The slot a Gentoo package is installed in (several versions of one
     /// package can coexist, and an advisory names the slots it covers).
     pub slot: Option<String>,
