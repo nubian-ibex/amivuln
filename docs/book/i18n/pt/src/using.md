@@ -1,8 +1,8 @@
 # Usando o amivuln
 
 Receitas para os lugares onde o amivuln costuma rodar. Cada uma está completa o
-bastante para copiar; o [guia do usuário](https://ibexwall.com/amivuln/guide.html)
-explica as opções a fundo e a [referência](https://ibexwall.com/amivuln/reference.html)
+bastante para copiar; o [guia do usuário](guide.md)
+explica as opções a fundo e a [referência](reference.md)
 lista todas.
 
 Duas coisas valem em qualquer lugar. Leia `complete` e as linhas `source`
