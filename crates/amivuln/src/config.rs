@@ -576,6 +576,8 @@ pub fn load_ignore(
 pub const TEMPLATE: &str = "\
 # amivuln configuration. Every key is optional; these are the defaults.
 schema_version = 1
+# Accepted findings, relative to this file; an expired entry is an error.
+# ignore_file = \".amivuln-ignore.toml\"
 
 [general]
 offline = false
@@ -594,7 +596,6 @@ fail_on = \"none\"        # none, low, medium, high, critical or kev
 # fail_on_epss = 0.5
 fail_on_incomplete = true
 strict = false          # count findings without a distro statement
-# ignore_file = \".amivuln-ignore.toml\"
 
 [notify]
 # webhook = \"https://ntfy.sh/example-topic\"    # POSTed a compact summary
@@ -640,6 +641,7 @@ required = true
 [sources.nvd]
 enabled = true
 required = false
+# api_key_file = \"/etc/amivuln/nvd-api-key\"
 
 # Mitigations Red Hat publishes for a CVE (what to do while the fix is not
 # installed). Off by default because it sends each CVE id found to
@@ -648,7 +650,6 @@ required = false
 enabled = false
 required = false
 # url = \"https://access.redhat.com\"
-# api_key_file = \"/etc/amivuln/nvd-api-key\"
 ";
 
 /// The `[network]` retry, cooldown and rate rules serde cannot express.
@@ -713,6 +714,58 @@ fn check_sources(cfg: &Config) -> Result<(), ConfigError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The optional keys have no default to record, but `config init` names them
+    /// in commented lines. With every one of those lines uncommented the file
+    /// must still load: a renamed or removed optional key fails here.
+    #[test]
+    fn every_optional_key_of_the_template_still_loads() {
+        let mut uncommented = Vec::new();
+        for line in TEMPLATE.lines() {
+            let key_line = line.strip_prefix("# ").is_some_and(|rest| {
+                rest.split_once(" = ").is_some_and(|(k, _)| {
+                    !k.is_empty() && k.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+                })
+            });
+            uncommented.push(if key_line {
+                line[2..].to_owned()
+            } else {
+                line.to_owned()
+            });
+        }
+        let text = uncommented.join("\n");
+        let loaded = toml::from_str::<Config>(&text);
+        assert!(loaded.is_ok(), "{loaded:?}\n{text}");
+        let cfg = loaded.unwrap();
+        assert!(cfg.general.cache_dir.is_some());
+        assert!(cfg.sources.nvd.api_key_file.is_some());
+        assert!(cfg.sources.distro.path.is_some());
+        assert!(cfg.sources.mitigations.url.is_some());
+        assert!(cfg.network.proxy.is_some());
+    }
+
+    /// The configuration keys are part of the 1.0 contract. The default
+    /// configuration, with every key it has, is kept as a golden file: a key
+    /// that disappears or changes its default shows up as a diff to review, and
+    /// a key kept only in the golden file fails to load.
+    #[test]
+    fn the_configuration_keys_match_the_golden_file() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/golden/config-default.toml");
+        let actual = Config::default().to_toml().unwrap();
+        if std::env::var_os("AMIVULN_UPDATE_GOLDEN").is_some() {
+            std::fs::write(&path, &actual).unwrap();
+        }
+        let expected = std::fs::read_to_string(&path).unwrap_or_default();
+        assert_eq!(
+            expected, actual,
+            "the configuration changed: its keys are a contract. Review the change; if it is \
+             deliberate and additive, regenerate with AMIVULN_UPDATE_GOLDEN=1."
+        );
+        // And what was recorded still loads (unknown keys are refused).
+        let loaded: Config = toml::from_str(&expected).unwrap();
+        assert_eq!(loaded, Config::default());
+    }
 
     #[test]
     fn a_source_that_sends_data_out_stays_off_when_only_its_url_is_set() {
