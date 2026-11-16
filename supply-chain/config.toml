@@ -282,7 +282,7 @@ version = "0.3.14"
 criteria = "safe-to-deploy"
 
 [[exemptions.fancy-regex]]
-version = "0.19.2"
+version = "0.20.2"
 criteria = "safe-to-run"
 
 [[exemptions.fastrand]]
@@ -458,15 +458,15 @@ version = "1.0.18"
 criteria = "safe-to-deploy"
 
 [[exemptions.jiff]]
-version = "0.2.40"
+version = "0.2.42"
 criteria = "safe-to-deploy"
 
 [[exemptions.jiff-core]]
-version = "0.1.3"
+version = "0.1.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.jiff-static]]
-version = "0.2.40"
+version = "0.2.42"
 criteria = "safe-to-deploy"
 
 [[exemptions.jni]]
@@ -494,15 +494,15 @@ version = "0.3.107"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema]]
-version = "0.60.2"
+version = "0.61.1"
 criteria = "safe-to-run"
 
 [[exemptions.jsonschema-regex]]
-version = "0.60.2"
+version = "0.61.2"
 criteria = "safe-to-run"
 
 [[exemptions.jsonschema-value]]
-version = "0.60.2"
+version = "0.61.2"
 criteria = "safe-to-run"
 
 [[exemptions.kasuari]]
@@ -522,7 +522,7 @@ version = "0.2.16"
 criteria = "safe-to-deploy"
 
 [[exemptions.libsqlite3-sys]]
-version = "0.39.1"
+version = "0.40.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.line-clipping]]
@@ -714,7 +714,7 @@ version = "1.0.27"
 criteria = "safe-to-run"
 
 [[exemptions.referencing]]
-version = "0.60.2"
+version = "0.61.2"
 criteria = "safe-to-run"
 
 [[exemptions.regex]]
@@ -754,7 +754,7 @@ version = "0.0.6"
 criteria = "safe-to-deploy"
 
 [[exemptions.rusqlite]]
-version = "0.41.1"
+version = "0.42.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustix]]
@@ -886,7 +886,7 @@ version = "0.6.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.sqlite-wasm-rs]]
-version = "0.6.2"
+version = "0.6.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.stable_deref_trait]]
@@ -1214,13 +1214,13 @@ version = "1.0.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.zstd]]
-version = "0.13.4"
+version = "0.14.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.zstd-safe]]
-version = "7.4.0"
+version = "8.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.zstd-sys]]
-version = "2.1.2+zstd.1.5.7"
+version = "2.1.3+zstd.1.5.7"
 criteria = "safe-to-deploy"
