@@ -1,6 +1,6 @@
 # ADR-0003: Multi-crate workspace, all crates published
 
-- Status: Accepted (amended 2026-11-08)
+- Status: Accepted (amended 2026-11-08 and 2026-11-16)
 - Date: 2026-11-07
 
 ## Context
@@ -16,6 +16,10 @@ Library API stability is a contract the project does not want to maintain before
 ## Decision
 
 Multi-crate workspace with **all crates published**. The first plan does not work: `cargo publish` for a crate requires every dependency to exist on crates.io, so the binary cannot be published while its internal crates are `publish = false` (confirmed on 2026-11-08, the six names returned 404 and `cargo publish -p amivuln --dry-run` failed). Accepted by the maintainer.
+
+## Amendment 2026-11-16: after 1.0
+
+The crates share one version, so they all become 1.0.0 together, and a 1.0.0 on crates.io reads as a promise of API stability. The project does not make it: keeping the public items of eight crates stable would freeze the internals for no user of the tool. The contract is the `amivuln` command. So the sentence in every crate README and description changes from "no promise before 1.0" to "no promise, at 1.0 or after", and the support policy says so. A change to a public item of a library crate is therefore not a breaking change of the project, and release-plz's semver check on the library crates is not what decides the version number: the command's contract is (a removed flag or JSON field is a major release; an added one is a minor).
 
 ## Consequences
 

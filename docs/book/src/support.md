@@ -14,6 +14,13 @@ never in a patch release, and every raise is named in the changelog.
 
 ## What is a contract
 
+The contract is the `amivuln` command. The library crates it is built from
+(`amivuln-core`, `-resolve`, `-version`, `-sources`, `-cache`, `-report`,
+`-sandbox`) are published only because the binary depends on them. They share
+its version number, including 1.0, and they carry **no** API stability promise,
+at 1.0 or after: a patch release may change or remove their public items.
+Depend on them at your own risk, or run the command and read its JSON.
+
 - **JSON output.** Documents carry `schema_version`. Within a version, fields
   are never removed, renamed or retyped; a new field or a new enum value is an
   additive change and ships in a minor release with a note in the changelog and
