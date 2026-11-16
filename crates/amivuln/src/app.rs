@@ -863,7 +863,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Fedora(v) => ("fedora".to_owned(), v.to_string()),
         Ecosystem::Arch => ("arch".to_owned(), "rolling".to_owned()),
         Ecosystem::Debian(v) => ("debian".to_owned(), v.to_string()),
-        Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{}", v / 100, v % 100)),
+        Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{:02}", v / 100, v % 100)),
         Ecosystem::Rocky(v) => ("rocky".to_owned(), v.to_string()),
         Ecosystem::Rhel(v) => ("rhel".to_owned(), v.to_string()),
         Ecosystem::Alma(v) => ("almalinux".to_owned(), v.to_string()),
@@ -922,6 +922,26 @@ fn mcp_cmd(cli: &Cli, env: &Env, stdout: &mut dyn Write) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A release written with a leading zero keeps it: this is the string a
+    /// consumer of the JSON compares with /etc/os-release.
+    #[test]
+    fn the_host_release_is_written_as_the_distribution_writes_it() {
+        for (eco, id, version) in [
+            (Ecosystem::Ubuntu(2404), "ubuntu", "24.04"),
+            (Ecosystem::Ubuntu(2010), "ubuntu", "20.10"),
+            (Ecosystem::Alpine(320), "alpine", "3.20"),
+            (Ecosystem::Alpine(319), "alpine", "3.19"),
+            (Ecosystem::Opensuse(1506), "opensuse-leap", "15.6"),
+            (Ecosystem::Debian(12), "debian", "12"),
+        ] {
+            let meta = host_meta(eco);
+            assert_eq!(
+                (meta.os_id.as_str(), meta.os_version.as_str()),
+                (id, version)
+            );
+        }
+    }
 
     #[test]
     fn opensuse_releases_are_parsed() {

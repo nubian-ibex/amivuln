@@ -91,6 +91,37 @@ jobs:
           chmod +x /opt/distro-test/amivuln
           PATH="/opt/distro-test:$PATH" sh /opt/distro-test/run.sh host
 
+  # The one place the running kernel is a package of the machine amivuln runs
+  # on: the runner itself. A container shares the host's kernel and has no image.
+  kernel:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: distro-test
+          path: out
+      - name: The running kernel is resolved to the package that owns its image
+        run: |
+          chmod +x out/amivuln
+          rc=0
+          out/amivuln --kernel --format json >kernel.json 2>kernel.err || rc=$?
+          cat kernel.err
+          # 0 or 1 whatever the findings are: what matters is that one package came back.
+          [ "$rc" = 0 ] || [ "$rc" = 1 ] || { echo "exit code $rc"; jq -c '{unresolved, sources}' kernel.json || true; exit 1; }
+          jq -e '(.targets | length) == 1 and (.targets[0].package.name | test("linux"))' kernel.json
+          jq -r '.targets[0] | "\(.package.name) \(.package.version) <- \(.input)"' kernel.json
+          # A container has no image for the host's release: unresolved, never clean.
+          rc=0
+          docker run --rm -v "$PWD/out/amivuln:/amivuln:ro" debian:stable sh -c \
+            'apt-get update -qq >/dev/null && apt-get install -qq -y ca-certificates >/dev/null && /amivuln --kernel --format json 2>/dev/null' \
+            >container.json || rc=$?
+          [ "$rc" = 3 ] || { echo "a container must report the kernel unresolved (3), got $rc"; exit 1; }
+          jq -e '.unresolved[0].reason | test("no kernel image")' container.json
+
   container:
     needs: build
     runs-on: ubuntu-24.04

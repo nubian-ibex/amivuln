@@ -202,18 +202,33 @@ fn is_plain_release(release: &str) -> bool {
 }
 
 /// The files whose owner is the kernel that is running, in the order they are
-/// tried: the image of the release the kernel reports (`uname -r`).
-fn kernel_images(release: &str) -> [String; 4] {
-    [
-        format!("/usr/lib/modules/{release}/vmlinuz"),
-        format!("/boot/vmlinuz-{release}"),
+/// tried: the image of the release the kernel reports (`uname -r`), below
+/// `root` (`/` on a host).
+fn kernel_images(root: &std::path::Path, release: &str) -> Vec<PathBuf> {
+    let below = |path: String| root.join(path.trim_start_matches('/'));
+    vec![
+        below(format!("/usr/lib/modules/{release}/vmlinuz")),
+        below(format!("/boot/vmlinuz-{release}")),
         // Alpine names the image after the flavor: `6.6.52-0-lts` is `lts`.
-        format!(
+        below(format!(
             "/boot/vmlinuz-{}",
             release.rsplit('-').next().unwrap_or(release)
-        ),
-        format!("/lib/modules/{release}/vmlinuz"),
+        )),
+        below(format!("/lib/modules/{release}/vmlinuz")),
     ]
+}
+
+/// The first kernel image of `release` that exists below `root`, as the path a
+/// package database records it (without `root`).
+fn find_kernel_image(root: &std::path::Path, release: &str) -> Option<String> {
+    kernel_images(root, release)
+        .into_iter()
+        .find(|p| p.is_file())
+        .and_then(|p| {
+            p.strip_prefix(root)
+                .ok()
+                .map(|rel| format!("/{}", rel.display()))
+        })
 }
 
 /// Adds the package that owns the running kernel's image. Several kernels are
@@ -241,10 +256,7 @@ fn read_kernel(
         ));
         return;
     }
-    let Some(image) = kernel_images(&release)
-        .into_iter()
-        .find(|p| std::path::Path::new(p).is_file())
-    else {
+    let Some(image) = find_kernel_image(std::path::Path::new("/"), &release) else {
         unresolved.push(fail(format!(
             "no kernel image for the running release {release} was found"
         )));
@@ -349,15 +361,45 @@ mod tests {
 
     #[test]
     fn the_images_of_a_release_are_named_for_each_distribution_layout() {
-        let images = kernel_images("6.6.52-0-lts");
-        assert_eq!(images[0], "/usr/lib/modules/6.6.52-0-lts/vmlinuz");
-        assert_eq!(images[1], "/boot/vmlinuz-6.6.52-0-lts");
-        // Alpine's image is named after the flavor.
-        assert_eq!(images[2], "/boot/vmlinuz-lts");
+        let root = std::path::Path::new("/");
+        let images = kernel_images(root, "6.6.52-0-lts");
         assert_eq!(
-            kernel_images("7.2.15-200.fc44.x86_64")[0],
-            "/usr/lib/modules/7.2.15-200.fc44.x86_64/vmlinuz"
+            images[0],
+            PathBuf::from("/usr/lib/modules/6.6.52-0-lts/vmlinuz")
         );
+        assert_eq!(images[1], PathBuf::from("/boot/vmlinuz-6.6.52-0-lts"));
+        // Alpine's image is named after the flavor.
+        assert_eq!(images[2], PathBuf::from("/boot/vmlinuz-lts"));
+        assert_eq!(
+            kernel_images(root, "7.2.15-200.fc44.x86_64")[0],
+            PathBuf::from("/usr/lib/modules/7.2.15-200.fc44.x86_64/vmlinuz")
+        );
+    }
+
+    #[test]
+    fn the_image_of_the_running_release_is_found_and_the_others_are_not() {
+        let dir = tempfile::tempdir().unwrap();
+        for path in [
+            "usr/lib/modules/7.2.15-200.fc44.x86_64/vmlinuz",
+            "usr/lib/modules/7.2.12-200.fc44.x86_64/vmlinuz",
+            "boot/vmlinuz-6.6.52-0-lts",
+        ] {
+            let file = dir.path().join(path);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, b"image").unwrap();
+        }
+        // Several kernels installed: the release decides, and the path comes
+        // back as a package database records it.
+        assert_eq!(
+            find_kernel_image(dir.path(), "7.2.15-200.fc44.x86_64").as_deref(),
+            Some("/usr/lib/modules/7.2.15-200.fc44.x86_64/vmlinuz")
+        );
+        assert_eq!(
+            find_kernel_image(dir.path(), "6.6.52-0-lts").as_deref(),
+            Some("/boot/vmlinuz-6.6.52-0-lts")
+        );
+        // A release with no image (a container shares the host's kernel).
+        assert_eq!(find_kernel_image(dir.path(), "9.9.9-none"), None);
     }
 
     #[test]
