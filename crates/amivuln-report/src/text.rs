@@ -47,7 +47,7 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Fedora(v) => format!("Fedora {v}"),
         Ecosystem::Arch => "Arch Linux".to_owned(),
         Ecosystem::Debian(v) => format!("Debian {v}"),
-        Ecosystem::Ubuntu(v) => format!("Ubuntu {}.{}", v / 100, v % 100),
+        Ecosystem::Ubuntu(v) => format!("Ubuntu {}.{:02}", v / 100, v % 100),
         Ecosystem::Rocky(v) => format!("Rocky Linux {v}"),
         Ecosystem::Alma(v) => format!("AlmaLinux {v}"),
         Ecosystem::Rhel(v) => format!("Red Hat Enterprise Linux {v}"),
@@ -689,6 +689,16 @@ pub(crate) mod fixtures {
 mod tests {
     use super::fixtures::report;
     use super::*;
+
+    #[test]
+    fn a_release_keeps_its_leading_zero_in_the_label() {
+        assert_eq!(ecosystem_label(Ecosystem::Ubuntu(2404)), "Ubuntu 24.04");
+        assert_eq!(ecosystem_label(Ecosystem::Alpine(320)), "Alpine 3.20");
+        assert_eq!(
+            ecosystem_label(Ecosystem::Opensuse(1506)),
+            "openSUSE Leap 15.6"
+        );
+    }
 
     fn render(
         f: fn(&RunReport, RenderOptions, &mut dyn Write) -> io::Result<()>,
