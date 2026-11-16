@@ -2,7 +2,7 @@
 
 Landlock and seccomp confinement for the amivuln version probe.
 
-> **Internal crate.** `amivuln-sandbox` is part of [amivuln](https://crates.io/crates/amivuln). It is published because the binary depends on it, and it carries **no API stability promise** before 1.0: any release may change or remove public items. If you want the tool, install `amivuln`.
+> **Internal crate.** `amivuln-sandbox` is part of [amivuln](https://crates.io/crates/amivuln). It is published because the binary depends on it, and it carries **no API stability promise, at 1.0 or after**: any release, patch releases included, may change or remove public items. The contract of the project is the `amivuln` command (its JSON output, exit codes, configuration and flags). If you want the tool, install `amivuln`.
 
 ## What is in it
 

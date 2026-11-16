@@ -40,7 +40,8 @@ domain rules perform no I/O.
 - `amivuln-report`: output formatters.
 
 All crates are published to crates.io because the binary depends on them. The
-library crates carry no API stability promise before 1.0.
+library crates share the version of the binary, and carry no API stability
+promise at 1.0 or after: the contract is the command (see the support policy).
 
 ## Invariants
 
