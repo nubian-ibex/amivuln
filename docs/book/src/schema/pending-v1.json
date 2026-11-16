@@ -229,7 +229,18 @@
         "ecosystem": {
           "enum": [
             "fedora",
-            "arch"
+            "arch",
+            "debian",
+            "ubuntu",
+            "rocky",
+            "alma",
+            "rhel",
+            "alpine",
+            "opensuse",
+            "gentoo",
+            "flatpak",
+            "go",
+            "crates"
           ]
         },
         "purl": {

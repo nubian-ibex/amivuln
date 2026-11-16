@@ -1,0 +1,54 @@
+schema_version = 1
+
+[general]
+offline = false
+cache_ttl = "6h"
+stale_max_age = "72h"
+timeout = "10s"
+exec_version_probe = false
+
+[output]
+format = "summary"
+color = "auto"
+
+[policy]
+fail_on = "none"
+fail_on_incomplete = true
+strict = false
+
+[network]
+allow_insecure_http = false
+retries = 2
+cooldown = "30s"
+
+[notify]
+on = "violation"
+
+[sources.distro]
+enabled = true
+required = true
+fallback = []
+
+[sources.kev]
+enabled = true
+required = false
+fallback = []
+
+[sources.epss]
+enabled = true
+required = false
+fallback = []
+
+[sources.osv]
+enabled = true
+required = true
+fallback = []
+
+[sources.nvd]
+enabled = true
+required = false
+fallback = []
+
+[sources.mitigations]
+enabled = false
+required = false

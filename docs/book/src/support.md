@@ -34,6 +34,25 @@ Depend on them at your own risk, or run the command and read its JSON.
 - **Command line.** Flags are not removed or repurposed within a major
   version. Text output (`summary`, `detail`) is for humans and may change.
 
+### How the contract is checked
+
+Each promise has a test that fails when it is broken by accident:
+
+- every value the tool can write (each ecosystem, source, provenance,
+  severity, state and the optional `mitigation`) is validated against the
+  published schemas of `check`, `pending` and `cve`; the lists are exhaustive
+  `match`es, so a new enum value stops compiling until the schema and the test
+  know it;
+- the golden JSON documents pin the exact `check` output;
+- the default configuration is a golden file, and every optional key that
+  `config init` names is loaded back (a renamed or removed key fails);
+- the exit codes are asserted by value;
+- the manual page and the shell completions are generated from the command line
+  and compared in CI, so a flag that is removed or renamed shows as a diff.
+
+Adding to a closed set (a new ecosystem, a new source) is an additive change
+and ships in a minor release; the schema and the changelog name it.
+
 ## Platforms
 
 Linux on x86_64 and aarch64 (static `musl` and `glibc` builds). macOS and
