@@ -65,14 +65,35 @@ pub(super) fn pid_executable(pid: u32) -> String {
     }
 }
 
+/// True for a Gentoo atom as people write it: `category/name`, optionally
+/// `:slot`, never starting like a path.
+fn is_gentoo_atom(text: &str) -> bool {
+    let name = text.split_once(':').map_or(text, |(name, _)| name);
+    !text.starts_with(['/', '.', '~'])
+        && name.matches('/').count() == 1
+        && name.split('/').all(|part| !part.is_empty())
+}
+
+/// What the user's text means on this host. Gentoo names a package
+/// `category/name`, which the generic rule (a slash means a path) would read
+/// as a file: there, a relative text of that shape that is no file is a name.
+fn target_for(input: &str, eco: Ecosystem) -> Target {
+    let exists = |p: &str| Path::new(p).exists();
+    match parse_target(input, exists) {
+        Target::Path(p) if eco == Ecosystem::Gentoo && is_gentoo_atom(&p) && !exists(&p) => {
+            Target::Name(p)
+        }
+        other => other,
+    }
+}
+
 pub(super) fn resolve_one(
     input: &str,
     eco: Ecosystem,
     backend: &Backend<'_>,
     runner: &SystemRunner,
 ) -> Result<PackageRef, ResolveError> {
-    let exists = |p: &str| Path::new(p).exists();
-    match parse_target(input, exists) {
+    match target_for(input, eco) {
         // The purl itself carries no release, so the host's --distro fills it
         // in and must agree with the purl's namespace.
         Target::Purl(p) => from_purl(&p, Some(eco)),
@@ -228,7 +249,7 @@ pub(crate) fn resolve_all(
         // A file is identified by its owner, else its own `.note.package`,
         // else the modules or crates it declares. Debian and Ubuntu have no
         // host package database, so they start at the note.
-        if let Target::Path(p) = parse_target(t, |p| Path::new(p).exists()) {
+        if let Target::Path(p) = target_for(t, eco) {
             match resolve_path(&p, eco, backend.as_ref(), probe) {
                 Ok(list) => resolved.extend(list.into_iter().map(|pkg| (t.clone(), pkg))),
                 Err(e) => unresolved.push(Unresolved {
@@ -251,4 +272,44 @@ pub(crate) fn resolve_all(
         }
     }
     (resolved, unresolved)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_gentoo_atom_is_a_name_and_a_path_is_still_a_path() {
+        let gentoo = Ecosystem::Gentoo;
+        for atom in ["sys-libs/glibc", "dev-lang/php:8.2", "x11-libs/gtk+"] {
+            assert_eq!(
+                target_for(atom, gentoo),
+                Target::Name(atom.to_owned()),
+                "{atom}"
+            );
+        }
+        for path in [
+            "/usr/bin/gzip",
+            "./gzip",
+            "../x/y",
+            "~/bin/x",
+            "a/b/c",
+            "/sys-libs/glibc",
+        ] {
+            assert!(
+                matches!(target_for(path, gentoo), Target::Path(_)),
+                "{path}"
+            );
+        }
+        // Other distributions keep the generic rule: a slash is a path.
+        assert!(matches!(
+            target_for("sys-libs/glibc", Ecosystem::Fedora(44)),
+            Target::Path(_)
+        ));
+        // A relative path that exists is a file even when it looks like an atom.
+        assert!(
+            matches!(target_for("src/scan", gentoo), Target::Path(_))
+                || !Path::new("src/scan").exists()
+        );
+    }
 }

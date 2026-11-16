@@ -209,13 +209,21 @@ impl PackageResolver for PortageResolver {
     }
 
     fn by_name(&self, name: &str) -> Result<PackageRef, ResolveError> {
-        // `openssl` or `dev-libs/openssl`.
+        // `openssl`, `dev-libs/openssl` or `dev-lang/python:3.11`: the slot
+        // picks one of several versions installed side by side.
+        let (wanted, slot) = name
+            .split_once(':')
+            .map_or((name, None), |(n, s)| (n, Some(s)));
         let found: Vec<PackageRef> = self
             .installed()?
             .into_iter()
             .map(|i| i.package)
-            .filter(|p| p.name == name || p.name.rsplit_once('/').is_some_and(|(_, n)| n == name))
+            .filter(|p| {
+                p.name == wanted || p.name.rsplit_once('/').is_some_and(|(_, n)| n == wanted)
+            })
+            .filter(|p| slot.is_none_or(|s| p.slot.as_deref() == Some(s)))
             .collect();
+
         match found.as_slice() {
             [] => Err(ResolveError::NotFound(name.to_owned())),
             [one] => Ok(one.clone()),
@@ -335,6 +343,22 @@ mod tests {
         assert!(matches!(
             r.by_name("python"),
             Err(ResolveError::Ambiguous(..))
+        ));
+        // Naming the slot picks one.
+        assert_eq!(
+            r.by_name("dev-lang/python:3.12")
+                .unwrap()
+                .version
+                .to_string(),
+            "3.12.4"
+        );
+        assert_eq!(
+            r.by_name("python:3.11").unwrap().version.to_string(),
+            "3.11.9"
+        );
+        assert!(matches!(
+            r.by_name("python:2.7"),
+            Err(ResolveError::NotFound(_))
         ));
         assert!(matches!(r.by_name("nope"), Err(ResolveError::NotFound(_))));
     }
