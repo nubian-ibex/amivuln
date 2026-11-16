@@ -239,6 +239,11 @@
                 "ubuntu",
                 "rocky",
                 "alma",
+                "rhel",
+                "alpine",
+                "opensuse",
+                "gentoo",
+                "flatpak",
                 "go",
                 "crates"
               ]

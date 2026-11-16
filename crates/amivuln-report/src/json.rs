@@ -773,6 +773,163 @@ mod tests {
         assert!(!validator.is_valid(&extra));
     }
 
+    /// Every value of the closed sets the tool can write. The matches are
+    /// exhaustive on purpose: a new variant stops compiling here until the
+    /// schema and this list know it.
+    fn every_ecosystem() -> Vec<amivuln_core::Ecosystem> {
+        use amivuln_core::Ecosystem as E;
+        let all = vec![
+            E::Fedora(44),
+            E::Arch,
+            E::Debian(12),
+            E::Ubuntu(2404),
+            E::Rocky(9),
+            E::Alma(9),
+            E::Rhel(9),
+            E::Alpine(320),
+            E::Opensuse(1506),
+            E::Gentoo,
+            E::Flatpak,
+            E::Go,
+            E::Crates,
+        ];
+        for e in &all {
+            match e {
+                E::Fedora(_)
+                | E::Arch
+                | E::Debian(_)
+                | E::Ubuntu(_)
+                | E::Rocky(_)
+                | E::Alma(_)
+                | E::Rhel(_)
+                | E::Alpine(_)
+                | E::Opensuse(_)
+                | E::Gentoo
+                | E::Flatpak
+                | E::Go
+                | E::Crates => {}
+            }
+        }
+        all
+    }
+
+    fn every_source() -> Vec<amivuln_core::SourceId> {
+        use amivuln_core::SourceId as S;
+        let all = vec![
+            S::ArchTracker,
+            S::FedoraUpdateinfo,
+            S::Osv,
+            S::Bodhi,
+            S::Kev,
+            S::Epss,
+            S::Nvd,
+            S::Glsa,
+            S::RedHatCve,
+        ];
+        for s in &all {
+            match s {
+                S::ArchTracker
+                | S::FedoraUpdateinfo
+                | S::Osv
+                | S::Bodhi
+                | S::Kev
+                | S::Epss
+                | S::Nvd
+                | S::Glsa
+                | S::RedHatCve => {}
+            }
+        }
+        all
+    }
+
+    fn every_provenance() -> Vec<amivuln_core::Provenance> {
+        use amivuln_core::Provenance as P;
+        let all = vec![
+            P::PackageDb,
+            P::UserInput,
+            P::EmbeddedNote,
+            P::EmbeddedBuildInfo,
+            P::StringHeuristic,
+        ];
+        for p in &all {
+            match p {
+                P::PackageDb
+                | P::UserInput
+                | P::EmbeddedNote
+                | P::EmbeddedBuildInfo
+                | P::StringHeuristic => {}
+            }
+        }
+        all
+    }
+
+    /// The contract: whatever the tool can write validates against the
+    /// published schema, for every ecosystem, source, provenance and verdict.
+    /// This is what a consumer of the JSON relies on.
+    #[test]
+    fn every_value_the_tool_can_write_validates_against_the_published_schema() {
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("../../../docs/book/src/schema/v1.json")).unwrap();
+        let validator = jsonschema::validator_for(&schema).unwrap();
+        let check = |what: String, r: &amivuln_core::RunReport| {
+            let mut buf = Vec::new();
+            render_json(r, &mut buf).unwrap();
+            let doc: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+            let errors: Vec<String> = validator.iter_errors(&doc).map(|e| e.to_string()).collect();
+            assert!(errors.is_empty(), "{what}: {errors:?}");
+        };
+        for eco in every_ecosystem() {
+            let mut r = report(true);
+            r.targets[0].package.ecosystem = eco;
+            check(format!("ecosystem {eco:?}"), &r);
+        }
+        for prov in every_provenance() {
+            let mut r = report(true);
+            r.targets[0].package.provenance = prov;
+            check(format!("provenance {prov:?}"), &r);
+        }
+        for source in every_source() {
+            let mut r = report(true);
+            r.sources[0].source = source;
+            check(format!("source {source:?}"), &r);
+        }
+        for status in [
+            amivuln_core::SourceStatus::Ok,
+            amivuln_core::SourceStatus::Stale,
+            amivuln_core::SourceStatus::Failed("why".into()),
+            amivuln_core::SourceStatus::Skipped("why".into()),
+        ] {
+            let mut r = report(true);
+            r.sources[0].status = status.clone();
+            check(format!("status {status:?}"), &r);
+        }
+        // Each severity and each state a finding can have, with and without a
+        // mitigation (the one optional member).
+        for severity in [
+            Severity::Critical,
+            Severity::High,
+            Severity::Medium,
+            Severity::Low,
+            Severity::Unknown,
+        ] {
+            for verdict in [Verdict::Affected { fixed_in: None }, Verdict::Unverified] {
+                for mitigation in [
+                    None,
+                    Some(amivuln_core::Mitigation {
+                        text: "do not".into(),
+                        url: "https://example.invalid".into(),
+                    }),
+                ] {
+                    let mut r = report(true);
+                    let mut f = Finding::new("CVE-0000-9999", severity, verdict.clone());
+                    f.mitigation = mitigation;
+                    r.targets[0].findings = vec![f];
+                    check(format!("{severity:?} {verdict:?}"), &r);
+                }
+            }
+        }
+    }
+
     fn validate(schema: &str, doc: &serde_json::Value) {
         let schema: serde_json::Value = serde_json::from_str(schema).unwrap();
         let validator = jsonschema::validator_for(&schema).unwrap();
@@ -795,6 +952,53 @@ mod tests {
                 &std::collections::BTreeMap::new(),
             ),
             without_fix: 2,
+        }
+    }
+
+    /// `pending` and `cve` name packages too, so every ecosystem must be in their
+    /// schemas as well (they listed only two when this was written).
+    #[test]
+    fn pending_and_cve_output_accept_every_ecosystem() {
+        for eco in every_ecosystem() {
+            let mut r = report(true);
+            r.targets[0].package.ecosystem = eco;
+            let pending = amivuln_core::PendingReport {
+                tool_version: r.tool_version.clone(),
+                generated_at: r.generated_at.clone(),
+                host: r.host.clone(),
+                complete: true,
+                suppressed: std::collections::BTreeMap::new(),
+                sources: r.sources.clone(),
+                updates: amivuln_core::pending_updates(
+                    &r.targets,
+                    &std::collections::BTreeMap::new(),
+                ),
+                without_fix: 0,
+            };
+            let mut buf = Vec::new();
+            render_pending_json(&pending, &mut buf).unwrap();
+            let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+            validate(
+                include_str!("../../../docs/book/src/schema/pending-v1.json"),
+                &v,
+            );
+            let ids = vec!["CVE-0000-0001".to_owned()];
+            let cve = amivuln_core::CveReport {
+                tool_version: r.tool_version.clone(),
+                generated_at: r.generated_at.clone(),
+                host: r.host.clone(),
+                complete: true,
+                suppressed: std::collections::BTreeMap::new(),
+                sources: r.sources.clone(),
+                answers: amivuln_core::cve_answers(&ids, &r.targets, |_| false),
+            };
+            let mut buf = Vec::new();
+            render_cve_json(&cve, &mut buf).unwrap();
+            let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+            validate(
+                include_str!("../../../docs/book/src/schema/cve-v1.json"),
+                &v,
+            );
         }
     }
 
