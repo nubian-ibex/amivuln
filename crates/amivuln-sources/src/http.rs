@@ -141,6 +141,23 @@ pub struct HttpClient {
     limiter: std::sync::Arc<Mutex<Limiter>>,
 }
 
+/// An error and the causes under it, joined: reqwest's own text for a client
+/// that cannot be built is just "builder error", and the reason (no CA
+/// certificates on a minimal container, for one) is in the source.
+fn error_chain(e: &dyn std::error::Error) -> String {
+    let mut text = e.to_string();
+    let mut cause = e.source();
+    while let Some(inner) = cause {
+        let part = inner.to_string();
+        if !text.contains(&part) {
+            text.push_str(": ");
+            text.push_str(&part);
+        }
+        cause = inner.source();
+    }
+    text
+}
+
 /// Installs the `ring` crypto provider once; later calls are no-ops.
 fn ensure_crypto_provider() {
     // Err means a provider is already installed, which is fine.
@@ -199,7 +216,7 @@ impl HttpClient {
         }
         let inner = builder
             .build()
-            .map_err(|e| HttpError::Network(e.to_string()))?;
+            .map_err(|e| HttpError::Network(error_chain(&e)))?;
         let breakers = std::sync::Arc::new(Mutex::new(Breakers::new(config.breaker)));
         let limiter = std::sync::Arc::new(Mutex::new(Limiter::new(config.min_interval)));
         Ok(Self {
@@ -721,5 +738,34 @@ mod resilience_tests {
         }
         let r = client.get(&url, &Validators::default()).await;
         assert!(matches!(r, Err(HttpError::CircuitOpen(_))), "{r:?}");
+    }
+
+    #[test]
+    fn an_error_is_shown_with_its_causes() {
+        #[derive(Debug)]
+        struct Outer(Inner);
+        #[derive(Debug)]
+        struct Inner;
+        impl core::fmt::Display for Outer {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("builder error")
+            }
+        }
+        impl core::fmt::Display for Inner {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_str("no CA certificates were loaded")
+            }
+        }
+        impl std::error::Error for Inner {}
+        impl std::error::Error for Outer {
+            fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+                Some(&self.0)
+            }
+        }
+        assert_eq!(
+            error_chain(&Outer(Inner)),
+            "builder error: no CA certificates were loaded"
+        );
+        assert_eq!(error_chain(&Inner), "no CA certificates were loaded");
     }
 }
