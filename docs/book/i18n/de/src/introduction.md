@@ -57,11 +57,11 @@ und [amivuln verwenden](using.md).
 ## Nur auf Englisch
 
 Diese Seiten sind noch nicht übersetzt: das
-[Benutzerhandbuch](https://ibexwall.com/amivuln/guide.html), die
-[Referenz](https://ibexwall.com/amivuln/reference.html), die
+[Benutzerhandbuch](guide.md), die
+[Referenz](reference.md), die
 [Architektur](https://ibexwall.com/amivuln/architecture.html), die
 [Funktionsweise des Matchings](https://ibexwall.com/amivuln/matching.html),
 die [Datenquellen](https://ibexwall.com/amivuln/sources.html), die
 [Sicherheitsrichtlinien](https://ibexwall.com/amivuln/policies.html) und
-die [FAQ zu Fehlalarmen](https://ibexwall.com/amivuln/faq.html).
+die [FAQ zu Fehlalarmen](faq.md).
 Bei Abweichungen gilt die englische Fassung.

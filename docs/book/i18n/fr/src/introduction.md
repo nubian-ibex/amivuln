@@ -58,11 +58,11 @@ et [Utiliser amivuln](using.md).
 ## Uniquement en anglais
 
 Ces pages ne sont pas encore traduites : le
-[guide de l'utilisateur](https://ibexwall.com/amivuln/guide.html), la
-[référence](https://ibexwall.com/amivuln/reference.html),
+[guide de l'utilisateur](guide.md), la
+[référence](reference.md),
 l'[architecture](https://ibexwall.com/amivuln/architecture.html), le
 [fonctionnement du matching](https://ibexwall.com/amivuln/matching.html),
 les [sources de données](https://ibexwall.com/amivuln/sources.html), les
 [politiques de sécurité](https://ibexwall.com/amivuln/policies.html) et
-la [FAQ sur les faux positifs](https://ibexwall.com/amivuln/faq.html).
+la [FAQ sur les faux positifs](faq.md).
 En cas de divergence, la version anglaise fait foi.

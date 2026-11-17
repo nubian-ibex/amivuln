@@ -56,11 +56,11 @@ Comece por [Instalação](installation.md), [Início rápido](quickstart.md) e
 ## Só em inglês
 
 Estas páginas ainda não foram traduzidas: o
-[guia do usuário](https://ibexwall.com/amivuln/guide.html), a
-[referência](https://ibexwall.com/amivuln/reference.html), a
+[guia do usuário](guide.md), a
+[referência](reference.md), a
 [arquitetura](https://ibexwall.com/amivuln/architecture.html), o
 [funcionamento do matching](https://ibexwall.com/amivuln/matching.html),
 as [fontes de dados](https://ibexwall.com/amivuln/sources.html), as
 [políticas de segurança](https://ibexwall.com/amivuln/policies.html) e
-o [FAQ de falsos positivos](https://ibexwall.com/amivuln/faq.html).
+o [FAQ de falsos positivos](faq.md).
 Em caso de divergência, vale a versão em inglês.
