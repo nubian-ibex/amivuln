@@ -44,11 +44,13 @@ above so that it sees the final code:
 
 1. **More distributions.** openSUSE (Leap and Tumbleweed, through OSV) and
    Gentoo (the GLSAs of the host's own Portage tree, with a version
-   comparator checked against Portage) are done. NixOS is not: OSV has no
-   NixOS data, the Nixpkgs security tracker is a web application with no
-   data interface to read, and Nix has no distribution fix status, which the
-   rule "the distribution's data decides" cannot do without a design
-   decision. SUSE Linux Enterprise is in OSV and is a small step from
+   comparator checked against Portage) are done. NixOS is deferred (decided
+   2026-11-17): OSV has no NixOS data, the Nixpkgs security tracker is a web
+   application with no data interface to read, and Nix has no distribution
+   fix status, which the rule "the distribution's data decides" cannot do. A
+   mode with a weaker guarantee (upstream version against the package's
+   version, always labelled as such) was considered and not chosen. It is
+   reopened when Nixpkgs publishes machine-readable security data. SUSE Linux Enterprise is in OSV and is a small step from
    openSUSE.
 2. **Flatpak applications.** The runtimes are done (`--flatpak`); applications
    bundle their own libraries and carry no manifest of components, so they are
