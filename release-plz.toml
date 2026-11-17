@@ -8,6 +8,9 @@ publish = true
 # command, and a maintainer decides the major version from that. Left on, the
 # check would ask for a major release at 1.x for a new enum variant.
 semver_check = false
+# Before 1.0 release-plz would call a feature a patch release. A new feature is
+# a minor release at every version (docs/book/src/support.md).
+features_always_increment_minor = true
 
 # All workspace crates are published (ADR-0003) and share one version. The
 # changelog is a single file at the repository root.
