@@ -290,10 +290,6 @@ criteria = "safe-to-deploy"
 version = "0.2.191"
 criteria = "safe-to-deploy"
 
-[[exemptions.libsqlite3-sys]]
-version = "0.40.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.line-clipping]]
 version = "0.3.8"
 criteria = "safe-to-deploy"
