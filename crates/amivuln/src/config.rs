@@ -164,6 +164,9 @@ pub struct Sources {
     /// it sends the id of every CVE found to access.redhat.com. `--mitigations`
     /// turns it on for one run.
     pub mitigations: OptInSource,
+    /// Red Hat's OVAL file with the CVEs it has not fixed (RHEL 8 and 9),
+    /// 11 MB read once per cache refresh. Nothing about the host is sent.
+    pub rhel_unpatched: SourceCfg,
 }
 
 /// A source that sends data out and so is off until asked for: a table that
@@ -294,6 +297,14 @@ impl Default for Config {
                     api_key_file: None,
                 },
                 mitigations: OptInSource::default(),
+                // Optional: OSV already gives the CVEs that have a fix.
+                rhel_unpatched: SourceCfg {
+                    enabled: true,
+                    required: false,
+                    url: None,
+                    fallback: Vec::new(),
+                    api_key_file: None,
+                },
             },
         }
     }
@@ -643,6 +654,14 @@ enabled = true
 required = false
 # api_key_file = \"/etc/amivuln/nvd-api-key\"
 
+# CVEs Red Hat has not fixed (RHEL 8 and 9 only; OSV lists fixed ones). One
+# 11 MB download, read again only when the cache expires. Nothing about the
+# host is sent.
+[sources.rhel_unpatched]
+enabled = true
+required = false
+# url = \"https://security.access.redhat.com\"
+
 # Mitigations Red Hat publishes for a CVE (what to do while the fix is not
 # installed). Off by default because it sends each CVE id found to
 # access.redhat.com; --mitigations turns it on for one run.
@@ -694,6 +713,7 @@ fn check_sources(cfg: &Config) -> Result<(), ConfigError> {
         (&"kev", &cfg.sources.kev),
         (&"epss", &cfg.sources.epss),
         (&"osv", &cfg.sources.osv),
+        (&"rhel_unpatched", &cfg.sources.rhel_unpatched),
     ] {
         let (name, source): (&str, &SourceCfg) = (*name, source);
         if !source.enabled && source.required {
@@ -741,6 +761,7 @@ mod tests {
         assert!(cfg.sources.nvd.api_key_file.is_some());
         assert!(cfg.sources.distro.path.is_some());
         assert!(cfg.sources.mitigations.url.is_some());
+        assert!(cfg.sources.rhel_unpatched.url.is_some());
         assert!(cfg.network.proxy.is_some());
     }
 

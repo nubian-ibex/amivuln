@@ -38,10 +38,19 @@ published fix is patched, and an older one is reported against the lowest fix.
 A host that is not on the lowest stream can therefore see a fix it cannot
 install; the finding names the version so the stream can be checked.
 
-**Blind spot.** OSV carries advisories that shipped a fix. A CVE that Red Hat
+**Unfixed CVEs.** OSV carries advisories that shipped a fix. A CVE that Red Hat
 has not fixed (`Affected`, `Fix deferred`, `Will not fix`, `Out of support
-scope`) has no advisory and is **not visible** in this data, so a RHEL result
-is a lower bound. Red Hat's CSAF VEX data would close the gap; see ADR-0012.
+scope`) has no advisory there, so on RHEL 8 and 9 amivuln also reads Red Hat's
+OVAL file "including unpatched" (ADR-0014, source `redhat-oval`): about 11 MB,
+read once per cache refresh and reduced to a small index. A package of the
+host is matched by its binary or source package name, and each CVE found is
+reported as affected with no fix version, never as clean. A CVE OSV already
+has an answer for keeps OSV's answer. `Under investigation` is not reported.
+The file has no state for RHEL 10, so the source is shown as skipped there and
+the RHEL 10 result stays a lower bound. Nothing about the host is sent; turn it
+off with `sources.rhel_unpatched.enabled = false`. The data is published by Red
+Hat under CC BY 4.0. Kernel packages are listed against hundreds of CVEs,
+most of them low and deferred: that is what Red Hat says.
 Severity comes from the rating Red Hat links in each advisory (Important maps
 to high).
 
@@ -57,7 +66,7 @@ How a target is identified, and what the data can and cannot show:
 
 - **Fedora.** The host is read through `rpm`. Data: `updateinfo`. A CVE with no published fix is not visible.
 - **Arch Linux.** The host is read through `pacman`. Data: the Arch Security Tracker, which also lists vulnerable packages with no fix.
-- **Red Hat Enterprise Linux 8, 9 and 10.** The host is read through `rpm`; UBI containers work. Data: OSV's Red Hat ecosystem, a lower bound (see below).
+- **Red Hat Enterprise Linux 8, 9 and 10.** The host is read through `rpm`; UBI containers work. Data: OSV's Red Hat ecosystem, plus the unfixed CVEs of Red Hat's OVAL file on RHEL 8 and 9 (see below); RHEL 10 stays a lower bound.
 - **Rocky Linux and AlmaLinux 8 and 9.** The host is read through `rpm`. Data: OSV; only CVEs that shipped a fix are visible.
 - **Debian and Ubuntu (LTS).** The host is read from `/var/lib/dpkg` (nothing is run); containers, `--packages-from` lists, SBOMs and `name@version` work too. Data: OSV, which also lists open issues (reported as affected with no fix version).
 - **openSUSE Leap 15.x and 16.0, and Tumbleweed.** The host is read through
@@ -89,9 +98,8 @@ How a target is identified, and what the data can and cannot show:
 ## Planned
 
 The Fedora Bodhi API as a cross-check, NVD by CPE as a fallback, and
-endoflife.date. Red Hat's own CSAF VEX archive would add the CVEs Red Hat
-has not fixed (see below); it needs a bulk index and is not planned before
-there is demand (ADR-0012).
+endoflife.date. Red Hat's CSAF VEX archive (412 MB) was weighed and not chosen:
+the OVAL file gives the unfixed CVEs in 11 MB (ADR-0014).
 
 ## Arch specifics
 

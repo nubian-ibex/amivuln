@@ -825,6 +825,7 @@ mod tests {
             S::Nvd,
             S::Glsa,
             S::RedHatCve,
+            S::RedHatOval,
         ];
         for s in &all {
             match s {
@@ -836,7 +837,8 @@ mod tests {
                 | S::Epss
                 | S::Nvd
                 | S::Glsa
-                | S::RedHatCve => {}
+                | S::RedHatCve
+                | S::RedHatOval => {}
             }
         }
         all

@@ -25,6 +25,8 @@ pub enum SourceId {
     Glsa,
     /// Red Hat's CVE data, for the mitigations it publishes.
     RedHatCve,
+    /// Red Hat's OVAL file with the CVEs it has not fixed.
+    RedHatOval,
 }
 
 impl SourceId {
@@ -41,6 +43,7 @@ impl SourceId {
             Self::Nvd => "nvd",
             Self::Glsa => "glsa",
             Self::RedHatCve => "redhat-cve",
+            Self::RedHatOval => "redhat-oval",
         }
     }
 }

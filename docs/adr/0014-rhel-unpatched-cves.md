@@ -1,6 +1,6 @@
 # ADR-0014: Red Hat CVEs that have no fix yet
 
-- Status: Proposed
+- Status: Accepted (2026-11-17)
 - Date: 2026-11-14
 - Amends: ADR-0012
 
@@ -22,7 +22,7 @@ ADR-0012 left one gap: RHEL results come from OSV's Red Hat ecosystem, which onl
 
 ## Decision
 
-Proposed: option 3 for RHEL 8 and 9, and keep the lower-bound statement for RHEL 10 until Red Hat publishes the file.
+Accepted: option 3 for RHEL 8 and 9, and keep the lower-bound statement for RHEL 10 until Red Hat publishes the file.
 
 - A package installed on the host is matched by its component name against the `Affected`, `Fix deferred`, `Will not fix` and `Out of support scope` resolutions; each is reported affected with no fixed version, and `Will not fix` and `Out of support scope` carry that reason in the evidence. They are never counted as clean.
 - OSV stays the source of fixed versions; this adds only the CVEs OSV cannot show. A CVE present in both keeps the OSV verdict (a fix exists).
@@ -36,6 +36,16 @@ Proposed: option 3 for RHEL 8 and 9, and keep the lower-bound statement for RHEL
 - The OVAL component names are binary or source package names as Red Hat writes them; the match must try both and is the first thing to verify against a real host.
 - Red Hat's terms for the data: it is published openly, but the licence for a derived index kept in this project's offline database is not established and must be checked before it is redistributed.
 
+## Acceptance, 2026-11-17
+
+The maintainer accepted the dependency and the decision. What was settled and measured when it was built:
+
+- **Licence.** Red Hat publishes its security data, OVAL files included, under CC BY 4.0 (access.redhat.com/security/data). A derived index may be redistributed, in the offline database for one, if it credits Red Hat and links the original; the documentation and the source do.
+- **Dependency.** `bzip2-rs` 0.1.2, a bzip2 decoder in 100% safe Rust (`forbid(unsafe_code)`), MIT or Apache-2.0, with two small dependencies. `libbz2-rs-sys` is maintained more actively but is a port full of `unsafe` under a different licence; a decoder for a frozen format needs no maintenance, and the input is capped (64 MB compressed, 2 GiB expanded, depth 24).
+- **Measured on the real RHEL 9 file.** 10 s in release to stream the 656 MB, 800,000 `(component, CVE)` pairs but about 12,700 distinct rows (the kernel is listed with hundreds of sub-packages), a reduced index of 18 MB read back in 0.14 s. The index is cached with the other sources' lifetime (`cache_ttl`), not daily.
+- **Matching.** By binary name, then by source package name. A CVE that OSV answers keeps OSV's answer.
+- **Not done.** The Red Hat state is not in the output (it would be a new JSON field), RHEL 10 and the clones are not covered, and Red Hat marks the OVAL v2 files as in maintenance mode, to be deprecated: when they go, the source reads CSAF or the new format instead.
+
 ## Not decided here
 
-The first open question of ADR-0012 (hundreds of MB acceptable) is answered by option 3: 11 MB. The stream question (EUS, E4S) does not arise for unfixed CVEs, which have no stream. Implementation waits for the maintainer to accept the new dependency.
+The first open question of ADR-0012 (hundreds of MB acceptable) is answered by option 3: 11 MB. The stream question (EUS, E4S) does not arise for unfixed CVEs, which have no stream. Implementation: see the acceptance above.

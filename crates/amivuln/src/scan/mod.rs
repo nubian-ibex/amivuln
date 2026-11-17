@@ -40,6 +40,7 @@ mod inputs;
 mod osv;
 mod resolve;
 mod sources;
+mod unpatched;
 
 pub(crate) use inputs::resolve_scope;
 use osv::{MAX_OSV_ADVISORIES, load_osv};
@@ -436,6 +437,14 @@ async fn gather(
         &nvd_data,
         vex,
     );
+
+    // CVEs Red Hat has not fixed are not in OSV: they come from its OVAL file.
+    if let Some((index, report)) = unpatched::load_unpatched(fetcher, cfg, eco).await {
+        sources.push(report);
+        if let Some(index) = index {
+            unpatched::add_unpatched(&mut reports, &index, data.as_ref(), vex);
+        }
+    }
 
     // KEV and EPSS know CVE ids only; a language advisory without a CVE alias
     // keeps its own id and is not looked up there.

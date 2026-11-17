@@ -1658,6 +1658,93 @@ async fn osv_advisories_stay_with_the_package_they_were_found_for() {
     assert!(ids("curl").is_empty(), "curl inherited {:?}", ids("curl"));
 }
 
+/// A RHEL host also sees the CVEs Red Hat has not fixed, from its OVAL file; the
+/// file is read once and the second run answers from the cache.
+#[tokio::test(flavor = "multi_thread")]
+async fn rhel_unfixed_cves_come_from_the_oval_file_and_are_cached() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/osv/v1/querybatch"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": [{}]})),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path(
+            "/data/oval/v2/RHEL9/rhel-9-including-unpatched.oval.xml.bz2",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(
+            include_bytes!("../../../tests/fixtures/redhat-oval/small.oval.xml.bz2").as_slice(),
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    let cfg = home.path().join("cfg.toml");
+    std::fs::write(
+        &cfg,
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{0}/osv\"\n\
+             [sources.rhel_unpatched]\nurl = \"{0}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let inv = home.path().join("inv.txt");
+    std::fs::write(&inv, "openssl@3.0.7-1.el9\n").unwrap();
+    let cfg_arg: &'static str = Box::leak(cfg.display().to_string().into_boxed_str());
+    let inv_arg: &'static str = Box::leak(inv.display().to_string().into_boxed_str());
+    let ask = |release: &'static str| {
+        let out = Command::cargo_bin("amivuln")
+            .unwrap()
+            .env("LC_ALL", "C")
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", home.path().join("cache"))
+            .env("PATH", "/nonexistent")
+            .args([
+                "--config",
+                cfg_arg,
+                "--packages-from",
+                inv_arg,
+                "--distro",
+                release,
+                "-f",
+                "json",
+            ])
+            .output()
+            .unwrap();
+        serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap()
+    };
+    for _ in 0..2 {
+        let v = ask("rhel:9");
+        let f = &v["targets"][0]["findings"];
+        assert_eq!(f[0]["id"], "CVE-2024-0001", "{v}");
+        assert_eq!(f[0]["severity"], "high");
+        assert_eq!(f[0]["distro_status"]["state"], "affected");
+        assert!(f[0]["distro_status"]["fixed_in"].is_null());
+        let src = v["sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"] == "redhat-oval")
+            .unwrap();
+        assert_eq!(src["status"], "ok");
+    }
+    // RHEL 10 has no such file: said so, never silently a clean result.
+    let v = ask("rhel:10");
+    let src = v["sources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["id"] == "redhat-oval")
+        .unwrap();
+    assert_eq!(src["status"], "skipped", "{v}");
+    assert!(src["detail"].as_str().unwrap().contains("lower bound"));
+    assert!(v["targets"][0]["findings"].as_array().unwrap().is_empty());
+}
+
 /// openSUSE advisories are filed under the source package, so a package that
 /// the host knows by its source name is found and a fixed one is not.
 #[tokio::test(flavor = "multi_thread")]

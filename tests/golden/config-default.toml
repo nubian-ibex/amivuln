@@ -52,3 +52,8 @@ fallback = []
 [sources.mitigations]
 enabled = false
 required = false
+
+[sources.rhel_unpatched]
+enabled = true
+required = false
+fallback = []
