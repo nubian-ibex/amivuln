@@ -3,7 +3,7 @@
 # Maintainer: amivuln contributors <https://github.com/nubian-ibex/amivuln>
 pkgname=amivuln-bin
 _name=amivuln
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Am I vulnerable? Backport-aware CVE check (static release binary)'
 arch=('x86_64' 'aarch64')
@@ -14,8 +14,8 @@ conflicts=('amivuln')
 options=('!strip')
 source_x86_64=("$_name-$pkgver-x86_64.tar.zst::$url/releases/download/v$pkgver/amivuln-x86_64-unknown-linux-musl.tar.zst")
 source_aarch64=("$_name-$pkgver-aarch64.tar.zst::$url/releases/download/v$pkgver/amivuln-aarch64-unknown-linux-musl.tar.zst")
-sha256sums_x86_64=('e7f4f6af23320c02c3c83ecd379462a5edc5d7ba837ac8949cb0a1c5bd060cb0')
-sha256sums_aarch64=('faea14d7505439a0666d6b88c98f2cb3ee76992f874ad7f4edb4b1391c2e6882')
+sha256sums_x86_64=('c6c4ffa195f263204365927c150551defe3394f1a2fb79e7ab776e9c85cdc2d4')
+sha256sums_aarch64=('9c520139bc0c32978aacf1ad33786c201ea09af890fbc6b2c318aaffb0ccf6af')
 noextract=("$_name-$pkgver-x86_64.tar.zst" "$_name-$pkgver-aarch64.tar.zst")
 
 # Provenance can be checked before installing:
