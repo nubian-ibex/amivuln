@@ -40,7 +40,7 @@ result: complete
 - **Nada que identifique el host sale de la máquina.** Solo se envían el
   ecosistema, el nombre del paquete y la versión. Sin telemetría.
 - **La salida es un contrato.** JSON con un
-  [esquema](https://ibexwall.com/amivuln/json-schema.html) versionado.
+  [esquema](json-schema.md) versionado.
 - **Versiones verificables.** Sumas de comprobación, atestaciones de compilación
   de GitHub, una firma cosign y un SBOM acompañan cada versión.
 
@@ -49,7 +49,7 @@ result: complete
 Se admiten Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat Enterprise
 Linux, Rocky Linux y AlmaLinux. Los resultados de RHEL no incluyen las CVE que
 Red Hat aún no ha corregido; los límites de cada distribución están en
-[Data sources](https://ibexwall.com/amivuln/sources.html).
+[Data sources](sources.md).
 
 Empiece por [Instalación](installation.md), [Inicio rápido](quickstart.md) y
 [Usar amivuln](using.md).
@@ -59,9 +59,9 @@ Empiece por [Instalación](installation.md), [Inicio rápido](quickstart.md) y
 Estas páginas aún no están traducidas: la
 [guía del usuario](guide.md), la
 [referencia](reference.md), la
-[arquitectura](https://ibexwall.com/amivuln/architecture.html), el
-[funcionamiento del matching](https://ibexwall.com/amivuln/matching.html),
-las [fuentes de datos](https://ibexwall.com/amivuln/sources.html), las
-[políticas de seguridad](https://ibexwall.com/amivuln/policies.html) y
+[arquitectura](architecture.md), el
+[funcionamiento del matching](matching.md),
+las [fuentes de datos](sources.md), las
+[políticas de seguridad](policies.md) y
 las [preguntas sobre falsos positivos](faq.md).
 Si hay discrepancias, prevalece la versión en inglés.

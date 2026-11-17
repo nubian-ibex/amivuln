@@ -80,7 +80,7 @@ Treffen mehrere zu, gilt die Rangfolge 70, 64, 2, 3, 1, 0.
 }
 ```
 
-Das JSON-Schema ist unter [JSON-Schema](https://ibexwall.com/amivuln/json-schema.html) veröffentlicht und wird in der CI gegen die echte Ausgabe geprüft. Funde und nicht verifizierte Funde sind getrennte Arrays. Der Host-Block
+Das JSON-Schema ist unter [JSON-Schema](json-schema.md) veröffentlicht und wird in der CI gegen die echte Ausgabe geprüft. Funde und nicht verifizierte Funde sind getrennte Arrays. Der Host-Block
 enthält nie einen Hostnamen, eine Adresse oder einen Benutzer. Das Hinzufügen optionaler Felder ändert
 `schema_version` nicht; das Entfernen oder Umtypisieren eines Feldes schon.
 

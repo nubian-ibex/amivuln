@@ -38,7 +38,7 @@ result: complete
   saída 2), de modo que uma queda nunca se passa por uma verificação limpa.
 - **Nada que identifique o host sai da máquina.** Só são enviados o
   ecossistema, o nome do pacote e a versão. Sem telemetria.
-- **A saída é um contrato.** JSON com [schema](https://ibexwall.com/amivuln/json-schema.html)
+- **A saída é um contrato.** JSON com [schema](json-schema.md)
   versionado.
 - **Releases verificáveis.** Checksums, atestados de build do GitHub, uma
   assinatura cosign e um SBOM acompanham cada release.
@@ -48,7 +48,7 @@ result: complete
 Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat Enterprise Linux, Rocky
 Linux e AlmaLinux são suportados. Os resultados do RHEL não incluem as CVEs que
 a Red Hat ainda não corrigiu; os limites de cada distribuição estão em
-[Data sources](https://ibexwall.com/amivuln/sources.html).
+[Fontes de dados](sources.md).
 
 Comece por [Instalação](installation.md), [Início rápido](quickstart.md) e
 [Usando o amivuln](using.md).
@@ -56,11 +56,6 @@ Comece por [Instalação](installation.md), [Início rápido](quickstart.md) e
 ## Só em inglês
 
 Estas páginas ainda não foram traduzidas: o
-[guia do usuário](guide.md), a
-[referência](reference.md), a
-[arquitetura](https://ibexwall.com/amivuln/architecture.html), o
-[funcionamento do matching](https://ibexwall.com/amivuln/matching.html),
-as [fontes de dados](https://ibexwall.com/amivuln/sources.html), as
-[políticas de segurança](https://ibexwall.com/amivuln/policies.html) e
-o [FAQ de falsos positivos](faq.md).
+[roadmap](https://ibexwall.com/amivuln/roadmap.html) e as
+[evidências do selo OpenSSF](https://ibexwall.com/amivuln/osp-badging.html).
 Em caso de divergência, vale a versão em inglês.

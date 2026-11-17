@@ -40,7 +40,7 @@ result: complete
 - **Nichts, was den Host identifiziert, verlässt den Rechner.** Gesendet werden
   nur Ökosystem, Paketname und Version. Keine Telemetrie.
 - **Die Ausgabe ist ein Vertrag.** JSON mit versioniertem
-  [Schema](https://ibexwall.com/amivuln/json-schema.html).
+  [Schema](json-schema.md).
 - **Überprüfbare Releases.** Prüfsummen, GitHub-Build-Attestierungen, eine
   cosign-Signatur und ein SBOM begleiten jedes Release.
 
@@ -49,7 +49,7 @@ result: complete
 Unterstützt werden Fedora, Arch Linux, Debian, Ubuntu, Alpine, Red Hat
 Enterprise Linux, Rocky Linux und AlmaLinux. RHEL-Ergebnisse enthalten die
 CVEs nicht, die Red Hat noch nicht behoben hat; die Grenzen jeder Distribution
-stehen unter [Data sources](https://ibexwall.com/amivuln/sources.html).
+stehen unter [Datenquellen](sources.md).
 
 Beginnen Sie mit [Installation](installation.md), [Schnellstart](quickstart.md)
 und [amivuln verwenden](using.md).
@@ -59,9 +59,9 @@ und [amivuln verwenden](using.md).
 Diese Seiten sind noch nicht übersetzt: das
 [Benutzerhandbuch](guide.md), die
 [Referenz](reference.md), die
-[Architektur](https://ibexwall.com/amivuln/architecture.html), die
-[Funktionsweise des Matchings](https://ibexwall.com/amivuln/matching.html),
-die [Datenquellen](https://ibexwall.com/amivuln/sources.html), die
-[Sicherheitsrichtlinien](https://ibexwall.com/amivuln/policies.html) und
+[Architektur](architecture.md), die
+[Funktionsweise des Matchings](matching.md),
+die [Datenquellen](sources.md), die
+[Sicherheitsrichtlinien](policies.md) und
 die [FAQ zu Fehlalarmen](faq.md).
 Bei Abweichungen gilt die englische Fassung.
