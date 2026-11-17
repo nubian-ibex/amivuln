@@ -18,6 +18,7 @@ pub mod kev;
 pub mod nvd;
 pub mod osv;
 pub mod redhat;
+pub mod redhat_oval;
 pub mod resilience;
 
 /// True for identifiers shaped like `CVE-YYYY-NNNN...`. Identifiers from the
