@@ -3,6 +3,11 @@ changelog_config = "cliff.toml"
 git_release_enable = false
 git_tag_enable = false
 publish = true
+# The library crates carry no API promise (ADR-0003), so their public items
+# changing is not a breaking change of the project: the contract is the
+# command, and a maintainer decides the major version from that. Left on, the
+# check would ask for a major release at 1.x for a new enum variant.
+semver_check = false
 
 # All workspace crates are published (ADR-0003) and share one version. The
 # changelog is a single file at the repository root.
