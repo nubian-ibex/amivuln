@@ -8,7 +8,6 @@ default-members = ["crates/amivuln"]
 minisign = "0.10.0"
 minisign-verify = "0.3.0"
 tar = "0.4.44"
-zstd = "0.14.3"
 
 [workspace.package]
 version = "0.5.0"

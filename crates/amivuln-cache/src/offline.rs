@@ -290,12 +290,11 @@ pub fn pack(
     }
     let db = std::fs::read(db_path)
         .map_err(|e| OfflineError::Io(format!("{}: {e}", db_path.display())))?;
-    let file = std::fs::File::create(output)
-        .map_err(|e| OfflineError::Io(format!("{}: {e}", output.display())))?;
-    let mut zstd = zstd::Encoder::new(std::io::BufWriter::new(file), 6)
-        .map_err(|e| OfflineError::Io(e.to_string()))?;
+    // The archive is a few MB and `db` is already in memory, so the tar is
+    // built in memory and compressed in one pass.
+    let mut tar_bytes = Vec::new();
     {
-        let mut tar = tar::Builder::new(&mut zstd);
+        let mut tar = tar::Builder::new(&mut tar_bytes);
         let mut header = tar::Header::new_gnu();
         header.set_size(db.len() as u64);
         header.set_mode(0o600);
@@ -311,7 +310,16 @@ pub fn pack(
             .map_err(|e| OfflineError::Io(e.to_string()))?;
         tar.finish().map_err(|e| OfflineError::Io(e.to_string()))?;
     }
-    zstd.finish().map_err(|e| OfflineError::Io(e.to_string()))?;
+    let file = std::fs::File::create(output)
+        .map_err(|e| OfflineError::Io(format!("{}: {e}", output.display())))?;
+    // `Fastest` is the only level the encoder implements (the others panic with
+    // "not implemented"). The result is 5% larger than zstd level 6 on the
+    // Fedora database and 86% on the small Debian one; any zstd reads it.
+    ruzstd::encoding::compress(
+        tar_bytes.as_slice(),
+        std::io::BufWriter::new(file),
+        ruzstd::encoding::CompressionLevel::Fastest,
+    );
     Ok(manifest)
 }
 
@@ -353,7 +361,7 @@ pub fn verify_archive(
     sig: Option<&Path>,
 ) -> Result<Verified, OfflineError> {
     let file = std::fs::File::open(archive).map_err(not_found(archive))?;
-    let zstd = zstd::Decoder::new(std::io::BufReader::new(file))
+    let zstd = ruzstd::decoding::StreamingDecoder::new(std::io::BufReader::new(file))
         .map_err(|e| OfflineError::Io(e.to_string()))?;
     let mut tar = tar::Archive::new(zstd);
     let mut db: Option<Vec<u8>> = None;
@@ -513,6 +521,17 @@ pub fn default_dir(xdg_data_home: Option<&Path>, home: Option<&Path>) -> Option<
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Archives published before the encoder was replaced were written by
+    /// zstd at level 6 (this one is the Debian database of the nightly release).
+    /// They must keep verifying.
+    #[test]
+    fn an_archive_written_by_the_c_zstd_still_verifies() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/offline-db/published-by-zstd-6.tar.zst");
+        let v = verify_archive(&path, None, None).unwrap();
+        assert!(v.db.starts_with(b"SQLite format 3"));
+    }
     use crate::Policy;
 
     fn warm_cache(dir: &Path, now: i64) -> PathBuf {
@@ -578,9 +597,9 @@ mod tests {
         lying.db_sha256 = "0".repeat(64);
         lying.db_bytes = 16;
         let file = std::fs::File::create(&archive).unwrap();
-        let mut zstd = zstd::Encoder::new(std::io::BufWriter::new(file), 1).unwrap();
+        let mut tar_bytes = Vec::new();
         {
-            let mut tar = tar::Builder::new(&mut zstd);
+            let mut tar = tar::Builder::new(&mut tar_bytes);
             let mut header = tar::Header::new_gnu();
             header.set_size(16);
             header.set_mode(0o600);
@@ -596,7 +615,11 @@ mod tests {
                 .unwrap();
             tar.finish().unwrap();
         }
-        zstd.finish().unwrap();
+        ruzstd::encoding::compress(
+            tar_bytes.as_slice(),
+            std::io::BufWriter::new(file),
+            ruzstd::encoding::CompressionLevel::Fastest,
+        );
         let err = verify_archive(&archive, None, None).unwrap_err();
         assert!(
             matches!(err, OfflineError::Checksum | OfflineError::Manifest(_)),
