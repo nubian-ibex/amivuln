@@ -357,12 +357,6 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
-[[publisher.jobserver]]
-version = "0.1.35"
-when = "2026-07-06"
-user-id = 55123
-user-login = "rust-lang-owner"
-
 [[publisher.lazy_static]]
 version = "1.5.1"
 when = "2026-10-01"
