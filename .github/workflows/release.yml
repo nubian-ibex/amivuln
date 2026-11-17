@@ -428,7 +428,16 @@ jobs:
           # Write and read notes from a file to avoid quoting breaking things
           echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
 
-          gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+          tag="${{ needs.plan.outputs.tag }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # A draft of this tag already existed when v0.4.1 got a 403 from a
+            # plain create (after 17 hours waiting for approval). Fill the draft
+            # and publish it instead of creating a second release.
+            gh release upload "$tag" --clobber artifacts/*
+            gh release edit "$tag" --draft=false --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" $PRERELEASE_FLAG
+          else
+            gh release create "$tag" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+          fi
       - name: Diagnose a failed release creation
         if: ${{ failure() }}
         env:
