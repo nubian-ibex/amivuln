@@ -161,7 +161,8 @@
             "epss",
             "nvd",
             "glsa",
-            "redhat-cve"
+            "redhat-cve",
+            "redhat-oval"
           ]
         },
         "status": {
