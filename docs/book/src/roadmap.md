@@ -4,6 +4,14 @@ What amivuln intends to do, and not to do, over the next year. Dates are
 intentions, not promises: the project has one maintainer today and the order
 below follows what blocks a 1.0 first.
 
+## Where 1.0 stands
+
+The code and the contract are done and tested: 1.0.0-rc.1 is that contract,
+published for anyone who wants to try it before it is final. 1.0.0 follows
+when the people items below exist. The date depends on other people, so it is
+not promised: the estimate is February or March 2027, and each release moves
+it if it has to.
+
 ## Before 1.0
 
 1.0 means the JSON output, the exit codes, the configuration keys and the

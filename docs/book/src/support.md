@@ -2,7 +2,8 @@
 
 ## Versions
 
-Before 1.0 only the latest release receives fixes, security or otherwise. From
+Before 1.0 only the latest release receives fixes, security or otherwise, and
+a release candidate (1.0.0-rc.N) is a release for this purpose. From
 1.0 the latest minor release receives security fixes, and a security fix is
 backported to the previous minor for 90 days after a new minor ships.
 
