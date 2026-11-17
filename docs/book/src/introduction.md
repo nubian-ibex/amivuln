@@ -43,9 +43,10 @@ result: complete
 
 ## Status
 
-Beta (0.x). The JSON output (schema version 1) and the exit codes are the
-contract. Flags and configuration keys may still change in a minor release
-before 1.0, and the changelog names each change.
+1.0 release candidate. The contract is frozen and tested: the JSON output
+(schema version 1), the exit codes, the configuration keys and the flags. It
+changes before 1.0.0 only if the candidate shows a mistake in it, and the
+changelog says so. 1.0.0 itself waits for the people items of the roadmap.
 
 Supported, read from the installed packages of the host and from containers,
 lists and SBOMs: Fedora, Arch Linux, Debian, Ubuntu, Alpine, openSUSE, Gentoo, Red Hat

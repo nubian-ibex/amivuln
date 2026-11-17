@@ -32,7 +32,7 @@ source epss               ok  age 0s
 result: complete
 ```
 
-**Status:** beta (0.x). The JSON output (schema version 1) and the exit codes are the contract and are tested against golden documents. Flags and configuration keys may still change in a minor release before 1.0; the changelog names every such change. See [Supported distributions](https://ibexwall.com/amivuln/sources.html#supported-distributions) for exactly what each distribution gives you.
+**Status:** 1.0 release candidate. The contract is frozen and tested: the JSON output (schema version 1), the exit codes, the configuration keys and the flags. It changes before 1.0.0 only if the candidate shows a mistake in it, and the changelog says so. 1.0.0 waits for the people items of the [roadmap](https://ibexwall.com/amivuln/roadmap.html) (a second maintainer, an independent security review). Install a candidate with `cargo install amivuln --version 1.0.0-rc.1` or from the release page; the default install stays the latest stable release. See [Supported distributions](https://ibexwall.com/amivuln/sources.html#supported-distributions) for exactly what each distribution gives you.
 
 ## Highlights
 
