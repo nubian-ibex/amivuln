@@ -7,11 +7,20 @@ version = "0.10"
 [imports.bytecode-alliance]
 url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-chain/audits.toml"
 
+[imports.embark]
+url = "https://raw.githubusercontent.com/EmbarkStudios/rust-ecosystem/main/audits.toml"
+
 [imports.google]
 url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
 
+[imports.isrg]
+url = "https://raw.githubusercontent.com/divviup/libprio-rs/main/supply-chain/audits.toml"
+
 [imports.mozilla]
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+
+[imports.zcash]
+url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/audits.toml"
 
 [policy.amivuln]
 audit-as-crates-io = false
@@ -45,10 +54,6 @@ criteria = "safe-to-run"
 version = "0.5.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.assert-json-diff]]
-version = "2.0.2"
-criteria = "safe-to-run"
-
 [[exemptions.async-compression]]
 version = "0.4.52"
 criteria = "safe-to-deploy"
@@ -59,10 +64,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.bitflags]]
 version = "2.13.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.block-buffer]]
-version = "0.10.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.block-buffer]]
@@ -173,10 +174,6 @@ criteria = "safe-to-deploy"
 version = "0.11.3"
 criteria = "safe-to-deploy"
 
-[[exemptions.document-features]]
-version = "0.2.12"
-criteria = "safe-to-deploy"
-
 [[exemptions.email_address]]
 version = "0.2.9"
 criteria = "safe-to-run"
@@ -217,36 +214,16 @@ criteria = "safe-to-deploy"
 version = "0.2.15"
 criteria = "safe-to-deploy"
 
-[[exemptions.getrandom]]
-version = "0.3.4"
-criteria = "safe-to-run"
-
-[[exemptions.getrandom]]
-version = "0.4.3"
-criteria = "safe-to-deploy"
-
 [[exemptions.hermit-abi]]
 version = "0.5.3"
 criteria = "safe-to-run"
-
-[[exemptions.hmac]]
-version = "0.11.0"
-criteria = "safe-to-deploy"
 
 [[exemptions.hybrid-array]]
 version = "0.4.15"
 criteria = "safe-to-deploy"
 
-[[exemptions.ident_case]]
-version = "1.0.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.idna_adapter]]
 version = "1.2.2"
-criteria = "safe-to-deploy"
-
-[[exemptions.inout]]
-version = "0.1.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.instability]]
@@ -351,10 +328,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.miniz_oxide]]
 version = "0.9.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.num-conv]]
-version = "0.2.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.num_threads]]
@@ -490,10 +463,6 @@ version = "2.17.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sha2]]
-version = "0.10.9"
-criteria = "safe-to-deploy"
-
-[[exemptions.sha2]]
 version = "0.11.1"
 criteria = "safe-to-deploy"
 
@@ -537,10 +506,6 @@ criteria = "safe-to-deploy"
 version = "0.28.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.subtle]]
-version = "2.6.1"
-criteria = "safe-to-deploy"
-
 [[exemptions.synstructure]]
 version = "0.14.0"
 criteria = "safe-to-deploy"
@@ -561,10 +526,6 @@ criteria = "safe-to-deploy"
 version = "0.3.55"
 criteria = "safe-to-deploy"
 
-[[exemptions.time-core]]
-version = "0.1.9"
-criteria = "safe-to-deploy"
-
 [[exemptions.tower-service]]
 version = "0.3.1"
 criteria = "safe-to-deploy"
@@ -583,10 +544,6 @@ criteria = "safe-to-run"
 
 [[exemptions.unicode-truncate]]
 version = "2.0.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.untrusted]]
-version = "0.7.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.uuid-simd]]
