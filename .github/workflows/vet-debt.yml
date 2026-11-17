@@ -1,0 +1,43 @@
+name: vet-debt
+# Reports the supply-chain audit debt each week, and fails when it can be
+# reduced without any audit of ours: the imported audits (Mozilla, Google,
+# Bytecode Alliance, ISRG, Zcash, Embark) gained entries that make some
+# exemptions unnecessary. The failure is the notification; it changes nothing.
+on:
+  schedule:
+    - cron: "41 6 * * 1"
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  debt:
+    runs-on: ubuntu-24.04
+    permissions: { contents: read }
+    steps:
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with: { egress-policy: audit }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with: { tool: "cargo-vet" }
+      - name: Count the exemptions before and after refreshing the imports
+        run: |
+          count() { grep -c '^\[\[exemptions' supply-chain/config.toml || true; }
+          before=$(count)
+          cargo vet regenerate imports
+          cargo vet regenerate exemptions
+          after=$(count)
+          {
+            echo "### Supply-chain audit debt"
+            echo
+            echo "- Exemption entries now: $before"
+            echo "- After refreshing the imported audits: $after"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$after" -lt "$before" ]; then
+            echo "- **$((before - after)) exemptions can be dropped:** run \`cargo vet regenerate imports\` and \`cargo vet regenerate exemptions\`, review, and open a PR." >> "$GITHUB_STEP_SUMMARY"
+            git diff --stat supply-chain >> "$GITHUB_STEP_SUMMARY" || true
+            exit 1
+          fi
+          echo "- Nothing to drop this week." >> "$GITHUB_STEP_SUMMARY"
