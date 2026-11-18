@@ -44,7 +44,6 @@ html:not(.js) {
   --fg: var(--color-ink-2);
   --sidebar-bg: var(--color-paper-2);
   --sidebar-fg: var(--color-ink-2);
-  --sidebar-non-existant: var(--color-muted);
   --sidebar-active: var(--color-accent);
   --sidebar-spacer: var(--color-rule);
   --scrollbar: var(--color-rule-2);
@@ -95,7 +94,6 @@ html:not(.js) {
   --fg: var(--color-ink-2);
   --sidebar-bg: var(--color-paper-2);
   --sidebar-fg: var(--color-ink-2);
-  --sidebar-non-existant: var(--color-muted);
   --sidebar-active: var(--color-accent);
   --sidebar-spacer: var(--color-rule);
   --scrollbar: var(--color-rule-2);
