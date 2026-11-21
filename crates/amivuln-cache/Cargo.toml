@@ -14,7 +14,7 @@ keywords = ["security", "cve", "vulnerability", "linux"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-rusqlite = { version = "0.42.0", features = ["bundled"] }
+rusqlite = { version = "0.43.0", features = ["bundled"] }
 thiserror = "2.0.21"
 sha2 = { version = "0.11.1", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
