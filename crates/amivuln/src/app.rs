@@ -293,8 +293,9 @@ pub(crate) fn host_ecosystem(g: &Global, env: &Env) -> Result<Ecosystem, String>
         .and_then(parse_os_release)
         .map(|h| h.ecosystem)
         .ok_or_else(|| {
-            "this distribution is not supported yet (Fedora and Arch Linux are); \
-             use --distro fedora:NN or --distro arch to query for one of them"
+            "this distribution is not supported yet; see the supported distributions in the \
+             documentation, or use --distro (for example fedora:NN, debian:NN or arch) \
+             to query for one of them"
                 .to_owned()
         })
 }
