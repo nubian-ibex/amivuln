@@ -372,6 +372,27 @@ version = "1.0.3"
 when = "2026-11-24"
 trusted-publisher = "github:BurntSushi/jiff"
 
+[[publisher.jsonschema]]
+version = "0.62.0"
+when = "2026-11-21"
+user-id = 82692
+user-login = "Stranger6667"
+user-name = "Dmitry Dygalo"
+
+[[publisher.jsonschema-regex]]
+version = "0.62.0"
+when = "2026-11-21"
+user-id = 82692
+user-login = "Stranger6667"
+user-name = "Dmitry Dygalo"
+
+[[publisher.jsonschema-value]]
+version = "0.62.0"
+when = "2026-11-21"
+user-id = 82692
+user-login = "Stranger6667"
+user-name = "Dmitry Dygalo"
+
 [[publisher.lazy_static]]
 version = "1.5.1"
 when = "2026-10-01"
@@ -503,23 +524,30 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
+[[publisher.referencing]]
+version = "0.62.0"
+when = "2026-11-21"
+user-id = 82692
+user-login = "Stranger6667"
+user-name = "Dmitry Dygalo"
+
 [[publisher.regex]]
-version = "1.13.1"
-when = "2026-07-15"
+version = "1.13.2"
+when = "2026-11-18"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.regex-automata]]
-version = "0.4.18"
-when = "2026-08-04"
+version = "0.4.19"
+when = "2026-11-18"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.regex-syntax]]
-version = "0.8.11"
-when = "2026-06-09"
+version = "0.8.12"
+when = "2026-11-18"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"

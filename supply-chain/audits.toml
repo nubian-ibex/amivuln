@@ -438,6 +438,27 @@ start = "2019-03-04"
 end = "2027-11-16"
 notes = "trusted by mozilla and bytecode-alliance"
 
+[[trusted.jsonschema]]
+criteria = "safe-to-run"
+user-id = 82692 # Dmitry Dygalo (Stranger6667)
+start = "2020-03-29"
+end = "2027-11-24"
+notes = "test-only dependency; publisher trusted by decision of the maintainer"
+
+[[trusted.jsonschema-regex]]
+criteria = "safe-to-run"
+user-id = 82692 # Dmitry Dygalo (Stranger6667)
+start = "2026-07-02"
+end = "2027-11-24"
+notes = "test-only dependency; publisher trusted by decision of the maintainer"
+
+[[trusted.jsonschema-value]]
+criteria = "safe-to-run"
+user-id = 82692 # Dmitry Dygalo (Stranger6667)
+start = "2026-07-22"
+end = "2027-11-24"
+notes = "test-only dependency; publisher trusted by decision of the maintainer"
+
 [[trusted.lazy_static]]
 criteria = "safe-to-deploy"
 user-id = 55123 # rust-lang-owner
@@ -591,6 +612,13 @@ user-id = 3618 # David Tolnay (dtolnay)
 start = "2019-05-05"
 end = "2027-11-16"
 notes = "trusted by mozilla and bytecode-alliance"
+
+[[trusted.referencing]]
+criteria = "safe-to-run"
+user-id = 82692 # Dmitry Dygalo (Stranger6667)
+start = "2024-09-29"
+end = "2027-11-24"
+notes = "test-only dependency; publisher trusted by decision of the maintainer"
 
 [[trusted.regex]]
 criteria = "safe-to-deploy"
