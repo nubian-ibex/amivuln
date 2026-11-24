@@ -45,12 +45,15 @@ above so that it sees the final code:
   probe);
 - the public benchmark run against more targets, with a ground truth that does
   not share its source with the tools, and with cve-bin-tool measured;
-- OpenSSF Scorecard of 8.5 or more. Without a second person it is reachable
-  by about February 2027: the Maintained check starts scoring once the
-  repository is 90 days old, and Signed-Releases reaches 10 once every recent
-  release carries provenance;
-- the OpenSSF Silver badge, which needs the second person above and the
-  translatable messages of item 4 in the 1.x list.
+- OpenSSF Scorecard of 8.5 or more (7.7 on 2026-11-23). Without a second
+  person it is reachable by about February 2027: the Maintained check starts
+  scoring once the repository is 90 days old, and the Vulnerabilities check
+  needs the advisory of the dependency tree closed. Signed-Releases is already
+  10. A second person would also lift Code-Review and Contributors;
+- the OpenSSF Silver badge (87% on 2026-11-23), which needs the second person
+  above (the criteria `bus_factor` and `access_continuity`) and the answers
+  still open on the form. The translatable messages are not what holds it
+  back: the internationalization criterion is met.
 
 ## After 1.0 (1.x), in rough order
 
@@ -73,9 +76,12 @@ above so that it sees the final code:
    setting is or is not in effect on the host, are not done.
 4. **More languages and the rest of the messages.** The mechanism is in
    place (message catalogs, English and Brazilian Portuguese, chosen from the
-   locale). The `--help` text, the configuration errors and the messages of
-   the libraries are still English only, and Spanish, German and French
-   catalogs would need a native reviewer.
+   locale), and it now covers the `--help` text and the errors about options,
+   input files and configuration values. Still English only: the messages clap
+   prints for a mistyped command line, the parser errors of the configuration
+   file and the messages of the libraries. The Portuguese text was written by
+   the project's assistant and has no native review yet, and Spanish, German
+   and French catalogs would need a native reviewer.
 5. **Local explanation.** `--explain` is done as templates over the data the
    run holds. An explanation written by a local language model was left out on
    purpose: it can state what is not in the data, and it needs a runtime and a

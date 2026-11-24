@@ -64,15 +64,19 @@ Unknown keys are rejected so typos do not pass silently.
 ## Language
 
 The text a person reads (the summary and detail output, `pending`, `cve`,
-`restart`, and the usual errors and warnings) follows the locale: the first of
+`restart`, the `--help` text, and the errors and warnings about options, input
+files and configuration values) follows the locale: the first of
 `LC_ALL`, `LC_MESSAGES` and `LANG` that is set, as for any command line tool.
 English and Brazilian Portuguese (`pt`) exist; anything else, including `C`,
 is English. For one run: `LC_ALL=pt_BR.UTF-8 amivuln --all`.
 
 The JSON, SARIF, CSV, Markdown, Prometheus, CycloneDX and OpenVEX output stay
-in English whatever the locale, because other programs read them, and so do
-the `--help` text, the configuration errors and the messages of the libraries
-the tool is built from. Severity names, `KEV` and `EPSS` are not translated.
+in English whatever the locale, because other programs read them. Three things
+are still English: the messages clap prints for a mistyped command line (an
+unknown option, a missing value), the parser errors of the configuration file
+(they quote the TOML parser), and the messages of the libraries the tool is
+built from, which also quote the operating system. Option names, severity
+names, `KEV` and `EPSS` are not translated.
 The translation was written by the project's assistant and has not been
 reviewed by a native speaker; a correction is a pull request on one text file
 (see CONTRIBUTING).

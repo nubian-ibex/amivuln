@@ -31,7 +31,7 @@ Only the ecosystem, package name and version ever leave the host.";
     version,
     about = "Am I vulnerable? Backport-aware CVE check for packages on this host",
     long_about = "Reports which CVEs apply to an installed package, binary or version, \
-taking the patches your distribution already shipped into account. Fedora and Arch Linux \
+taking the patches your distribution already shipped into account. Fedora, Arch Linux, Red Hat Enterprise Linux, Rocky Linux, AlmaLinux, Debian, Ubuntu, Alpine, openSUSE and Gentoo \
 are supported.",
     after_help = AFTER_HELP,
     args_conflicts_with_subcommands = true

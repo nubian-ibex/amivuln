@@ -11,6 +11,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use amivuln_core::i18n::tr_args;
 use serde::{Deserialize, Serialize};
 
 /// Largest configuration file accepted.
@@ -354,24 +355,20 @@ impl Default for SourceCfg {
 /// Fails on any other shape or a zero value.
 pub fn parse_duration(s: &str) -> Result<Duration, ConfigError> {
     let (num, unit) = s.split_at(s.len().saturating_sub(1));
-    let n: u64 = num.parse().map_err(|_| {
-        ConfigError(format!(
-            "invalid duration {s:?}; use forms like 10s, 5m, 6h or 3d"
-        ))
-    })?;
+    let n: u64 = num
+        .parse()
+        .map_err(|_| ConfigError(tr_args("duration.invalid", &[("value", &format!("{s:?}"))])))?;
     let secs = match unit {
         "s" => n,
         "m" => n.saturating_mul(60),
         "h" => n.saturating_mul(3600),
         "d" => n.saturating_mul(86_400),
         _ => {
-            return err(format!(
-                "invalid duration {s:?}; use forms like 10s, 5m, 6h or 3d"
-            ));
+            return err(tr_args("duration.invalid", &[("value", &format!("{s:?}"))]));
         }
     };
     if secs == 0 {
-        return err(format!("duration {s:?} must be greater than zero"));
+        return err(tr_args("duration.zero", &[("value", &format!("{s:?}"))]));
     }
     Ok(Duration::from_secs(secs))
 }
@@ -562,9 +559,9 @@ pub fn load_ignore(
     };
     let meta = std::fs::metadata(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     if meta.len() > MAX_CONFIG_BYTES {
-        return Err(format!(
-            "{} is larger than {MAX_CONFIG_BYTES} bytes",
-            path.display()
+        return Err(tr_args(
+            "file.too_large",
+            &[("path", &path.display()), ("limit", &MAX_CONFIG_BYTES)],
         ));
     }
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -572,11 +569,13 @@ pub fn load_ignore(
         amivuln_core::parse_ignore(&text).map_err(|e| format!("{}: {e}", path.display()))?;
     for e in &entries {
         if !e.active_on(today) {
-            return Err(format!(
-                "{}: entry {} expired on {}; remove it or extend the expiry",
-                path.display(),
-                e.id,
-                e.expires
+            return Err(tr_args(
+                "ignore.expired",
+                &[
+                    ("path", &path.display()),
+                    ("id", &e.id),
+                    ("date", &e.expires),
+                ],
             ));
         }
     }

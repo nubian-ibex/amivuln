@@ -31,9 +31,13 @@ placeholders, and the code asks for it with `tr("key")` or
 `tr_args("key", &[("name", &value)])`. English is the source: another language
 file may leave a key out (English is used) but may not add one or change its
 placeholders; a test checks that, and that every key the code uses exists and
-every key in `en.txt` is used. To add a language, add `locales/<code>.txt` and
-a `Language` variant in `crates/amivuln-core/src/i18n.rs`; to correct a
-translation, edit its file. Output that other programs read (JSON, SARIF, CSV,
+every key in `en.txt` is used. The `--help` text is kept apart: English is the
+doc comments of `crates/amivuln/src/cli.rs`, and `crates/amivuln/locales/help.<code>.txt`
+replaces each text by command path (`amivuln.db.pull/force`); a test checks that
+a catalog has no unknown key and no missing one. To add a language, add
+`locales/<code>.txt` and `help.<code>.txt` and a `Language` variant in
+`crates/amivuln-core/src/i18n.rs` (and in `crates/amivuln/src/help.rs`); to
+correct a translation, edit its file. Output that other programs read (JSON, SARIF, CSV,
 CycloneDX, OpenVEX, Prometheus) is never translated.
 
 ## Reporting false positives and negatives
