@@ -6,11 +6,11 @@ below follows what blocks a 1.0 first.
 
 ## Where 1.0 stands
 
-The code and the contract are done and tested: 1.0.0-rc.1 is that contract,
-published for anyone who wants to try it before it is final. 1.0.0 follows
-when the people items below exist. The date depends on other people, so it is
-not promised: the estimate is February or March 2027, and each release moves
-it if it has to.
+The code, the feature scope and the contract are done and tested: 1.0.0-rc.1
+is that contract, published for anyone who wants to try it before it is final.
+1.0.0 follows when the people items below exist. The date depends on other
+people, so it is not promised: the estimate is February or March 2027, and each
+release moves it if it has to.
 
 ## Before 1.0
 
@@ -26,9 +26,13 @@ reported where the cut happens, the cache is pruned, OSV queries are batched
 and advisories fetched in parallel (a Debian container went from 39 s to 5 s
 cold), and file owners are looked up in one pass.
 
-The feature scope of 1.0 is one item, because it changes the output formats
-the contract covers: **SBOM and VEX output** for the host, as CycloneDX and
-OpenVEX (`-f cyclonedx`, `-f openvex`). Everything else is 1.x work.
+The feature scope of 1.0 was one item, because it changes the output formats
+the contract covers, and it is done: **SBOM and VEX output** for the host, as
+CycloneDX 1.6 and OpenVEX 0.2.0 (`-f cyclonedx`, `-f openvex`). The state of
+each CVE comes from the distribution's own data, the output is deterministic,
+and the tests validate both documents against the official schemas. See
+[SBOM and VEX](guide.md#sbom-and-vex). The scope of 1.0 is now closed, and
+everything else is 1.x work.
 
 The rest is trust and people, and the security review comes after the code
 above so that it sees the final code:
