@@ -39,5 +39,5 @@ substantive objection.
 
 The project does not yet meet the goal of two maintainers with release
 permission. Recruiting a second one is the first item of the
-[roadmap](https://ibexwall.com/amivuln/roadmap.html), and 1.0 waits
-for it.
+[roadmap](https://ibexwall.com/amivuln/roadmap.html). 1.0.0 was released
+without it, so the project depends on one person until it exists.

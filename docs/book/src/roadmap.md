@@ -2,17 +2,21 @@
 
 What amivuln intends to do, and not to do, over the next year. Dates are
 intentions, not promises: the project has one maintainer today and the order
-below follows what blocks a 1.0 first.
+below follows what matters most now that 1.0 is out.
 
 ## Where 1.0 stands
 
-The code, the feature scope and the contract are done and tested: 1.0.0-rc.1
-is that contract, published for anyone who wants to try it before it is final.
-1.0.0 follows when the people items below exist. The date depends on other
-people, so it is not promised: the estimate is February or March 2027, and each
-release moves it if it has to.
+1.0.0 was released on 2026-11-24. The code, the feature scope and the contract
+are done and tested, and the contract is the one 1.0.0-rc.1 published.
 
-## Before 1.0
+It was released before the people items below, which were meant to precede it
+and are still open: a second maintainer with release permission and an
+independent security review. Until they exist the project depends on one
+person and its `unsafe` code has had no outside review. They are the first
+work of the 1.x series. Their dates depend on other people, so they are not
+promised; the Scorecard estimate is February or March 2027.
+
+## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
 command line are a contract for a major version. An internal audit in
@@ -35,7 +39,7 @@ and the tests validate both documents against the official schemas. See
 everything else is 1.x work.
 
 The rest is trust and people, and the security review comes after the code
-above so that it sees the final code:
+above so that it sees the final code. All of it is still open:
 
 - a second maintainer with release permission, so that the project survives
   the absence of one person (this also unlocks the OpenSSF Silver criteria
