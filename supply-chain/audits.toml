@@ -7,6 +7,12 @@ criteria = "safe-to-deploy"
 version = "0.1.2"
 notes = "Pure Rust bzip2 decoder, 1,657 lines. forbid(unsafe_code); no build script; no file, network, process or environment access beyond the Read it wraps (the only std::fs and include_bytes are in tests and docs). Not read line by line: checked by grep, and by feeding 300 truncated and bit-flipped copies of Red Hat's 10 MB OVAL file, all returned an error without a panic."
 
+[[audits.form_urlencoded]]
+who = "Esli Silva <13988295+Esl1h@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+delta = "1.2.2 -> 1.2.3"
+notes = "Reviewed the diff: a panic on an out-of-range start position becomes a clamp, and the percent-encoding requirement is raised to 2.3.2. No unsafe code, no I/O, no new imports."
+
 [[audits.libsqlite3-sys]]
 who = "Esl1h <13988295+Esl1h@users.noreply.github.com>"
 criteria = "safe-to-deploy"
