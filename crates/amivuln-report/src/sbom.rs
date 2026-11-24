@@ -133,6 +133,19 @@ fn wont_fix(f: &Finding) -> bool {
     )
 }
 
+/// The properties of a component: how it was identified and, for the package
+/// that owns the running kernel, that it is the one that runs.
+fn component_properties(t: &TargetReport) -> Vec<Value> {
+    let mut properties = vec![json!({
+        "name": "amivuln:provenance",
+        "value": provenance_name(t.package.provenance),
+    })];
+    if t.running_kernel {
+        properties.push(json!({"name": "amivuln:running_kernel", "value": "true"}));
+    }
+    properties
+}
+
 fn cyclonedx_vulnerability(f: &Finding, purl: &str, version: &str) -> Value {
     let m = meaning(&f.verdict);
     let analysis = with(
@@ -210,9 +223,7 @@ pub fn render_cyclonedx(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
                 "name": t.package.name,
                 "version": t.package.version.to_string(),
                 "purl": purl,
-                "properties": [
-                    {"name": "amivuln:provenance", "value": provenance_name(t.package.provenance)},
-                ],
+                "properties": component_properties(t),
             })
         })
         .collect();
@@ -389,6 +400,22 @@ mod tests {
                 .unwrap()
                 .contains("vendor state")
         );
+    }
+
+    #[test]
+    fn the_running_kernel_is_a_property_of_its_component() {
+        let mut r = report(true);
+        let prop = |r: &RunReport| {
+            let bom = render(render_cyclonedx, r);
+            bom["components"][0]["properties"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p["name"] == "amivuln:running_kernel")
+        };
+        assert!(!prop(&r));
+        r.targets.first_mut().unwrap().running_kernel = true;
+        assert!(prop(&r));
     }
 
     #[test]

@@ -99,8 +99,8 @@ above so that it sees the final code. All of it is still open:
    deferred`) is shown in the output (`distro_status.vendor_state`, an
    additive field).
 7. **Kernel CVEs.** The design study is ADR-0015: the kernel is judged by the
-   distribution's data and `--kernel` checks the running one. Marking the
-   running kernel in a full report, and knowing about live patches, are not done.
+   distribution's data, `--kernel` checks the running one, and a full report
+   marks the package that owns it. Knowing about live patches is not done.
 8. **Fleet checks over SSH.** Copy the static binary, run it, aggregate. No
    agent stays behind.
 

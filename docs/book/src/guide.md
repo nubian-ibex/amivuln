@@ -98,8 +98,13 @@ kernel-core 7.2.15-200.fc44 (Fedora 44)  <- --kernel 7.2.15-200.fc44.x86_64
 It is judged by the distribution's data like any package: an upstream version
 is never matched against the kernel's own CVE records, because a distribution
 kernel carries fixes the version number does not show. `--all` still judges
-every installed kernel. Live patches (kpatch, livepatch) are not known to
-amivuln: it reports what the package version says. See ADR-0015.
+every installed kernel, and says which one runs: the package that owns the
+running kernel's image is marked `[running kernel]` in the text output, has
+`package.running_kernel: true` in the JSON (present only on that package, an
+additive field of schema version 1) and the property `amivuln:running_kernel`
+in the CycloneDX component. When the running kernel cannot be identified,
+nothing is marked. Live patches (kpatch, livepatch) are not known to amivuln:
+it reports what the package version says. See ADR-0015.
 
 ## Explaining a finding
 

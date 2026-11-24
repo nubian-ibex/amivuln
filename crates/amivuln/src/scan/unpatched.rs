@@ -188,6 +188,7 @@ mod tests {
             },
             findings,
             resolved: Vec::new(),
+            running_kernel: false,
         }
     }
 

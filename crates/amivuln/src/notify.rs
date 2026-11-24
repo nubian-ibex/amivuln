@@ -224,6 +224,7 @@ mod tests {
                     Verdict::Affected { fixed_in: None },
                 )],
                 resolved: Vec::new(),
+                running_kernel: false,
             }],
             unresolved: Vec::new(),
         }

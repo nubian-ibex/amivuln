@@ -88,6 +88,9 @@ pub struct TargetReport {
     /// no summary, score or exit code counts them; they are kept because a VEX
     /// document states them.
     pub resolved: Vec<Finding>,
+    /// True for the package that owns the kernel that is running. Several
+    /// kernels are installed side by side and only one runs.
+    pub running_kernel: bool,
 }
 
 /// A target that could not be resolved.

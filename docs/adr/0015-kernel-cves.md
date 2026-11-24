@@ -17,7 +17,7 @@ The Linux kernel is the largest source of CVEs (the kernel team assigns CVE ids 
 
 1. The kernel is judged by the distribution's data, exactly as every other package. The upstream Linux ecosystem is not used for matching.
 2. The question people ask is "is the kernel I am running affected", so `--kernel` checks the package that owns the image of the running release (`/proc/sys/kernel/osrelease`, then `/usr/lib/modules/RELEASE/vmlinuz`, `/boot/vmlinuz-RELEASE`, or Alpine's flavor image). It needs no package name, so several installed kernels do not make it ambiguous.
-3. `--all` keeps judging every installed kernel: dropping the others would hide the advisory against the kernel the next reboot selects. Telling the running one from the rest in the full report is left for later.
+3. `--all` keeps judging every installed kernel: dropping the others would hide the advisory against the kernel the next reboot selects. The full report marks the package that owns the running kernel (`package.running_kernel` in the JSON, `[running kernel]` in the text output), added afterwards.
 4. Live patches (kpatch, livepatch, canonical-livepatch) are not modelled: amivuln reports what the package version says and does not know a patch is loaded. This is stated as a limit, not hidden.
 
 ## Consequences
