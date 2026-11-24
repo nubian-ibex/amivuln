@@ -7,7 +7,7 @@
 $ amivuln --all --fail-on high
 ```
 
-amivuln tells you which CVEs apply to a package, a file, a systemd service or a version on *this* host, using your distribution's own security data, so backported fixes are not reported and pending security updates are. Fedora and Arch Linux are supported.
+amivuln tells you which CVEs apply to a package, a file, a systemd service or a version on *this* host, using your distribution's own security data, so backported fixes are not reported and pending security updates are. Fedora, Arch Linux, Red Hat Enterprise Linux, Rocky Linux, AlmaLinux, Debian, Ubuntu, Alpine, openSUSE and Gentoo are supported.
 
 ## Install
 

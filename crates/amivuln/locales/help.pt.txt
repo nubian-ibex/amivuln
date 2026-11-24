@@ -1,0 +1,79 @@
+# Português do Brasil: o texto do --help. O inglês é a fonte e fica nos
+# comentários de cli.rs. Uma chave que falta aqui deixa o texto em inglês.
+# A chave é o caminho do comando e o que o texto descreve; nomes de opções,
+# comandos e valores (`fedora:44`, `OpenVEX`, `--fail-on`) não se traduzem.
+
+builtin/help = Mostra a ajuda (use `-h` para o resumo)
+builtin/version = Mostra a versão
+builtin/usage = Uso:
+builtin/commands = Comandos
+builtin/options = Opções
+builtin/arguments = Argumentos
+builtin/help_command = Mostra esta mensagem ou a ajuda do(s) subcomando(s) indicado(s)
+
+amivuln/about = Estou vulnerável? Verificação de CVEs ciente de backports para os pacotes deste host
+amivuln/long_about = Informa quais CVEs se aplicam a um pacote instalado, a um binário ou a uma versão, levando em conta as correções que a sua distribuição já publicou. Há suporte a Fedora, Arch Linux, Red Hat Enterprise Linux, Rocky Linux, AlmaLinux, Debian, Ubuntu, Alpine, openSUSE e Gentoo.
+amivuln/after_help = EXEMPLOS:\n  amivuln nginx                      pacote instalado, pelo nome\n  amivuln /usr/sbin/nginx            pacote dono de um arquivo\n  amivuln openssl@3.2.2-1.fc44       uma versão específica, sem ler o host\n  amivuln --all --fail-on high       todos os pacotes instalados, falha o build com HIGH ou pior\n  amivuln check openssl@3.5.1-1 --distro arch -f json\n                                     consulta outra distribuição (útil em contêineres de CI)\n\nCÓDIGOS DE SAÍDA:\n  0   nenhum achado no nível de --fail-on ou acima\n  1   achados no nível de --fail-on ou acima\n  2   resultado incompleto: uma fonte obrigatória estava indisponível\n  3   um alvo não pôde ser resolvido\n  64  erro de uso ou de configuração\n  65  dados inválidos no banco offline (adulterado ou mais antigo)\n  70  erro interno\n\nSó o ecossistema, o nome do pacote e a versão saem do host.
+amivuln/format = Formato de saída: summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx ou openvex
+amivuln/output = Grava o resultado em FILE em vez da saída padrão, substituindo o arquivo de forma atômica
+amivuln/fail_on = Sai com 1 quando um achado chega a este nível: none, low, medium, high, critical ou kev
+amivuln/fail_on_epss = Sai com 1 quando um achado afetado tem pelo menos este escore EPSS (0.0 a 1.0)
+amivuln/strict = Conta como violação de --fail-on os achados sem declaração da distribuição
+amivuln/offline = Nunca usa a rede; responde só com o cache
+amivuln/no_cache = Não mantém cache em disco nesta execução
+amivuln/config = Arquivo de configuração (dispensa o caminho de busca padrão)
+amivuln/color = Cores: auto, always ou never (`NO_COLOR` é respeitado)
+amivuln/distro = Trata o host como outra distribuição: `fedora:44` ou `arch`
+amivuln/file = Trata este caminho como alvo (repetível)
+amivuln/package = Trata este valor como nome de pacote instalado ou `name@version` (repetível)
+amivuln/pid = Verifica o executável deste processo em execução (repetível)
+amivuln/purl = Trata este valor como um package URL (repetível)
+amivuln/baseline = Um relatório anterior de `-f json`; só os achados novos violam --fail-on
+amivuln/vex = Documentos `OpenVEX` que declaram que um produto não é afetado (repetível)
+amivuln/packages_from = Verifica os pacotes listados em FILE (um `name@version` por linha) em vez dos instalados; por exemplo, uma lista exportada de outro host
+amivuln/sbom = Verifica os pacotes do sistema listados em um SBOM `CycloneDX` em JSON (purls rpm, deb e alpm). Os demais componentes aparecem como não resolvidos, agrupados por tipo
+amivuln/container = Verifica os pacotes instalados em um contêiner (repetível): o rootfs é exportado com podman ou docker e nada roda dentro do contêiner. O `os-release` do próprio contêiner define o ecossistema
+amivuln/kernel = Verifica também o kernel em execução (o pacote dono da sua imagem), mesmo com vários kernels instalados: um pacote de kernel nomeado na linha de comando fica ambíguo nesse caso
+amivuln/flatpak = Verifica também os componentes dos runtimes Flatpak instalados (instalações do sistema e do usuário), lidos do manifest.json de cada runtime. Nada é executado. O NVD responde por componente, no seu próprio ritmo: sem `sources.nvd.api_key_file`, a primeira execução leva vários minutos
+amivuln/mitigations = Busca também a mitigação que a Red Hat publica para cada CVE afetada (o que fazer enquanto a correção não está instalada). Envia os ids das CVEs para access.redhat.com
+amivuln/explain = Sob cada achado da saída detalhada, explica em palavras simples por que ele é reportado. É montado a partir dos dados que a execução já tem; nada é enviado e nenhum modelo o escreve
+amivuln/quiet = Imprime só os erros
+amivuln/targets = Alvos a verificar: nome de pacote, caminho de arquivo, `name@version` ou purl
+amivuln/all = Verifica todos os pacotes instalados
+
+amivuln.check/about = Verifica pacotes, arquivos, versões ou purls
+amivuln.check/targets = Alvos a verificar
+amivuln.check/all = Verifica todos os pacotes instalados
+amivuln.cve/about = Este host é afetado por uma CVE? Verifica todos os pacotes instalados
+amivuln.cve/ids = Ids de CVE, por exemplo CVE-2024-6387
+amivuln.pending/about = Quais atualizações reduzem mais o risco? Ordena as atualizações que corrigem achados afetados
+amivuln.services/about = Verifica todos os serviços systemd em execução. Os serviços sem pacote são listados, sem erro fatal
+amivuln.restart/about = Quais processos em execução ainda usam arquivos que uma atualização substituiu? Sai com 1 quando é preciso reiniciar
+amivuln.mcp/about = Oferece ferramentas somente leitura a agentes de IA pelo Model Context Protocol na entrada e saída padrão
+amivuln.tui/about = Interface interativa de terminal (recurso `tui`). Sem o recurso, sai com 64
+amivuln.db/about = Cria, baixa, verifica ou inspeciona o banco offline de avisos
+amivuln.db.build/about = Tira um instantâneo do cache local em um arquivo `tar.zst` pronto para assinar
+amivuln.db.build/archive = Onde gravar o arquivo
+amivuln.db.pull/about = Verifica um arquivo e o instala como banco offline
+amivuln.db.pull/source = Caminho do arquivo ou URL `https://`
+amivuln.db.pull/force = Instala mesmo que o arquivo seja mais antigo que o banco instalado
+amivuln.db.pull/key = Chave pública minisign; a assinatura do manifesto é conferida
+amivuln.db.pull/sig = Assinatura minisign do `manifest.json`
+amivuln.db.verify/about = Confere um arquivo: manifesto, checksum do banco e, com `--key`/`--sig`, a assinatura
+amivuln.db.verify/archive = Caminho do arquivo
+amivuln.db.verify/key = Chave pública minisign
+amivuln.db.verify/sig = Assinatura minisign do `manifest.json`
+amivuln.db.info/about = Mostra o manifesto de um arquivo (depois de conferir a integridade)
+amivuln.db.info/archive = Caminho do arquivo
+amivuln.config/about = Mostra, cria ou valida a configuração
+amivuln.config.show/about = Mostra a configuração efetiva
+amivuln.config.init/about = Grava um arquivo de configuração padrão, comentado
+amivuln.config.init/path = Onde gravar; por padrão, o caminho da configuração do usuário
+amivuln.config.validate/about = Carrega a configuração e informa os problemas
+amivuln.cache/about = Inspeciona ou limpa o cache em disco
+amivuln.cache.info/about = Mostra onde fica o cache e o tamanho dele
+amivuln.cache.clear/about = Apaga todas as respostas em cache
+amivuln.completions/about = Imprime as completions do shell
+amivuln.completions/shell = Shell de destino
+amivuln.version/about = Mostra a versão e as informações da compilação
+amivuln.version/json = Saída legível por máquina

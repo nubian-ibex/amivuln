@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The inputs a run reads besides the host: inventories, SBOMs and containers.
 
+use amivuln_core::i18n::tr_args;
+
 use super::{
     Cli, Ecosystem, PackageRef, Path, PathBuf, Scope, SystemRunner, Unresolved, from_name_version,
     resolve_all,
@@ -19,9 +21,9 @@ pub(super) fn read_inventory(
 ) -> Result<Vec<(String, PackageRef)>, String> {
     let meta = std::fs::metadata(path).map_err(|e| format!("{}: {e}", path.display()))?;
     if meta.len() > MAX_INVENTORY_BYTES {
-        return Err(format!(
-            "{} is larger than {MAX_INVENTORY_BYTES} bytes",
-            path.display()
+        return Err(tr_args(
+            "file.too_large",
+            &[("path", &path.display()), ("limit", &MAX_INVENTORY_BYTES)],
         ));
     }
     let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -66,9 +68,7 @@ pub(super) fn collect_purls(
     for c in list {
         *seen += 1;
         if *seen > MAX_SBOM_COMPONENTS {
-            return Err(format!(
-                "the SBOM has more than {MAX_SBOM_COMPONENTS} components"
-            ));
+            return Err(tr_args("sbom.too_many", &[("limit", &MAX_SBOM_COMPONENTS)]));
         }
         match c.get("purl").and_then(serde_json::Value::as_str) {
             Some(p) => {
@@ -96,15 +96,15 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
         .read_to_end(&mut buf)
         .map_err(|e| format!("{}: {e}", path.display()))?;
     if buf.len() as u64 > MAX_SBOM_BYTES {
-        return Err(format!(
-            "{} is larger than {MAX_SBOM_BYTES} bytes",
-            path.display()
+        return Err(tr_args(
+            "file.too_large",
+            &[("path", &path.display()), ("limit", &MAX_SBOM_BYTES)],
         ));
     }
     let doc: serde_json::Value = serde_json::from_slice(&buf)
-        .map_err(|e| format!("{}: not valid JSON: {e}", path.display()))?;
+        .map_err(|e| tr_args("sbom.not_json", &[("path", &path.display()), ("error", &e)]))?;
     if doc.get("bomFormat").and_then(serde_json::Value::as_str) != Some("CycloneDX") {
-        return Err(format!("{}: not a CycloneDX JSON document", path.display()));
+        return Err(tr_args("sbom.not_cyclonedx", &[("path", &path.display())]));
     }
     let mut purls = std::collections::BTreeSet::new();
     let (mut seen, mut without) = (0, 0);
