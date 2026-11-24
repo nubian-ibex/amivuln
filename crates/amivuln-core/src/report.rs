@@ -214,8 +214,9 @@ impl FromStr for FailOn {
             "high" => Ok(Self::Severity(Severity::High)),
             "critical" => Ok(Self::Severity(Severity::Critical)),
             "kev" => Ok(Self::Kev),
-            other => Err(format!(
-                "invalid --fail-on value {other:?}; use none, low, medium, high, critical or kev"
+            other => Err(crate::i18n::tr_args(
+                "arg.fail_on",
+                &[("value", &format!("{other:?}"))],
             )),
         }
     }

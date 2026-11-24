@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use amivuln_cache::Cache;
-use amivuln_core::i18n::tr_args;
+use amivuln_core::i18n::{tr, tr_args};
 use amivuln_core::{
     Condition, Ecosystem, ExitCode, FailOn, Finding, HostMeta, Policy, RunReport, exit_code,
     is_complete,
 };
 use amivuln_report::{Format, RenderOptions, render};
 use amivuln_resolve::parse_os_release;
-use clap::{CommandFactory, Parser};
+use clap::{CommandFactory, FromArgMatches};
 
 use crate::cli::{CacheAction, Cli, Command, ConfigAction, DbAction, Global, Shell};
 use crate::config::{self, Config, parse_duration};
@@ -126,9 +126,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
         "never" => false,
         "auto" => env.stdout_is_tty && !env.no_color,
         other => {
-            return Err(format!(
-                "invalid --color value {other:?}; use auto, always or never"
-            ));
+            return Err(tr_args("arg.color", &[("value", &format!("{other:?}"))]));
         }
     };
     let fail_on: FailOn = g
@@ -140,7 +138,7 @@ pub(crate) fn settings(g: &Global, env: &Env) -> Result<(Settings, Option<PathBu
     if let Some(e) = fail_on_epss
         && !(0.0..=1.0).contains(&e)
     {
-        return Err("--fail-on-epss must be between 0.0 and 1.0".into());
+        return Err(tr("arg.fail_on_epss"));
     }
     let ignores = config::load_ignore(&cfg, from.as_deref().and_then(|p| p.parent()), &today(env))
         .map_err(|e| format!("ignore file: {e}"))?;
@@ -205,30 +203,30 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
         Some(("fedora", v)) => v
             .parse()
             .map(Ecosystem::Fedora)
-            .map_err(|_| format!("invalid Fedora release {v:?} in --distro")),
+            .map_err(|_| tr_args("distro.fedora", &[("value", &format!("{v:?}"))])),
         Some(("rocky", v)) => v
             .parse::<u16>()
             .ok()
             .filter(|n| (8..=9).contains(n))
             .map(Ecosystem::Rocky)
-            .ok_or_else(|| format!("invalid Rocky release {v:?} in --distro (use 8 or 9)")),
+            .ok_or_else(|| tr_args("distro.rocky", &[("value", &format!("{v:?}"))])),
         Some(("alma" | "almalinux", v)) => v
             .parse::<u16>()
             .ok()
             .filter(|n| (8..=9).contains(n))
             .map(Ecosystem::Alma)
-            .ok_or_else(|| format!("invalid AlmaLinux release {v:?} in --distro (use 8 or 9)")),
+            .ok_or_else(|| tr_args("distro.alma", &[("value", &format!("{v:?}"))])),
         Some(("rhel", v)) => v
             .split('.')
             .next()
             .and_then(|m| m.parse::<u16>().ok())
             .filter(|n| (8..=10).contains(n))
             .map(Ecosystem::Rhel)
-            .ok_or_else(|| format!("invalid RHEL release {v:?} in --distro (use 8, 9 or 10)")),
+            .ok_or_else(|| tr_args("distro.rhel", &[("value", &format!("{v:?}"))])),
         Some(("debian", v)) => v
             .parse()
             .map(Ecosystem::Debian)
-            .map_err(|_| format!("invalid Debian release {v:?} in --distro")),
+            .map_err(|_| tr_args("distro.debian", &[("value", &format!("{v:?}"))])),
         // Ubuntu releases are "24.04" or "24.10"; the OSV ecosystem keeps the
         // decimal form. Only LTS releases have OSV data.
         Some(("ubuntu", v)) => {
@@ -238,9 +236,7 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
                 Ok(n) if (404..=9904).contains(&n) && (n % 100 == 4 || n % 100 == 10) => {
                     Ok(Ecosystem::Ubuntu(n))
                 }
-                _ => Err(format!(
-                    "invalid Ubuntu release {v:?}; use a form like ubuntu:24.04"
-                )),
+                _ => Err(tr_args("distro.ubuntu", &[("value", &format!("{v:?}"))])),
             }
         }
         // Alpine releases are "3.20"; the OSV ecosystem is `Alpine:v3.20`.
@@ -254,9 +250,7 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
                 (Some(maj), Some(min), None) if maj >= 3 && min < 100 => {
                     Ok(Ecosystem::Alpine(maj * 100 + min))
                 }
-                _ => Err(format!(
-                    "invalid Alpine release {v:?}; use a form like alpine:3.20"
-                )),
+                _ => Err(tr_args("distro.alpine", &[("value", &format!("{v:?}"))])),
             }
         }
         // Leap releases are "15.6"; Tumbleweed has no release.
@@ -271,15 +265,14 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
                 (Some(maj), Some(min), None) if maj >= 15 && min < 100 => {
                     Ok(Ecosystem::Opensuse(maj * 100 + min))
                 }
-                _ => Err(format!(
-                    "invalid openSUSE release {v:?}; use opensuse:15.6 or opensuse:tumbleweed"
-                )),
+                _ => Err(tr_args("distro.opensuse", &[("value", &format!("{v:?}"))])),
             }
         }
         None if s == "arch" => Ok(Ecosystem::Arch),
         None if s == "gentoo" => Ok(Ecosystem::Gentoo),
-        _ => Err(format!(
-            "unsupported --distro {s:?}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, gentoo, rhel:N, rocky:NN or alma:NN"
+        _ => Err(tr_args(
+            "distro.unsupported",
+            &[("value", &format!("{s:?}"))],
         )),
     }
 }
@@ -292,11 +285,7 @@ pub(crate) fn host_ecosystem(g: &Global, env: &Env) -> Result<Ecosystem, String>
         .as_deref()
         .and_then(parse_os_release)
         .map(|h| h.ecosystem)
-        .ok_or_else(|| {
-            "this distribution is not supported yet (Fedora and Arch Linux are); \
-             use --distro fedora:NN or --distro arch to query for one of them"
-                .to_owned()
-        })
+        .ok_or_else(|| tr("distro.host"))
 }
 
 pub(crate) fn cpu_arch() -> &'static str {
@@ -308,7 +297,11 @@ pub(crate) fn cpu_arch() -> &'static str {
 
 /// Runs the program and returns the process exit code.
 pub fn run(args: &[String], env: &Env, stdout: &mut dyn Write, stderr: &mut dyn Write) -> ExitCode {
-    let cli = match Cli::try_parse_from(crate::cli::normalize_args(args)) {
+    let mut command = crate::help::localize(Cli::command());
+    let parsed = command
+        .try_get_matches_from_mut(crate::cli::normalize_args(args))
+        .and_then(|m| Cli::from_arg_matches(&m));
+    let cli = match parsed {
         Ok(c) => c,
         Err(e) => {
             // clap prints help and version to stdout and errors to stderr.
@@ -331,7 +324,14 @@ pub fn run(args: &[String], env: &Env, stdout: &mut dyn Write, stderr: &mut dyn 
     if !buf.is_empty()
         && let Err(e) = write_atomic(&target, &buf)
     {
-        let _ = writeln!(stderr, "amivuln: cannot write {}: {e}", target.display());
+        let _ = writeln!(
+            stderr,
+            "{}",
+            tr_args(
+                "error.write_file",
+                &[("path", &target.display()), ("error", &e)]
+            )
+        );
         return ExitCode::Internal;
     }
     code
@@ -644,14 +644,14 @@ fn fetch_archive(
             .map_err(|e| e.to_string())?;
         writer
             .flush()
-            .map_err(|e| format!("download failed: {e}"))?;
+            .map_err(|e| tr_args("download.failed", &[("error", &e)]))?;
         Ok(n)
     });
     match result {
         Ok(_) => Ok((staged, true)),
         Err(msg) => {
             let _ = std::fs::remove_file(&staged);
-            let _ = writeln!(err, "error: {msg}");
+            let _ = writeln!(err, "{}", tr_args("error.line", &[("message", &msg)]));
             Err(ExitCode::Internal)
         }
     }

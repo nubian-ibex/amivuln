@@ -25,9 +25,7 @@ fn read_bearer(path: &str) -> Result<String, String> {
         std::fs::read_to_string(path).map_err(|e| format!("notify.bearer_file {path:?}: {e}"))?;
     let line = text.lines().next().unwrap_or("").trim();
     if line.is_empty() || line.len() > 4096 {
-        return Err(format!(
-            "notify.bearer_file {path:?} must hold a 1 to 4096 byte token"
-        ));
+        return Err(tr_args("bearer.size", &[("path", &format!("{path:?}"))]));
     }
     Ok(line.to_owned())
 }

@@ -749,6 +749,53 @@ async fn messages_follow_the_locale_and_machine_formats_do_not() {
     assert!(String::from_utf8_lossy(&failed.stderr).starts_with("erro:"));
 }
 
+/// The `--help` text follows the locale, for the command and its subcommands,
+/// and stays English for `C` and for languages without a catalog.
+#[tokio::test(flavor = "multi_thread")]
+async fn help_follows_the_locale() {
+    let server = MockServer::start().await;
+    let sb = Sandbox::new(&server.uri(), "/updates");
+    let help = |locale: &'static str, args: Vec<&'static str>| {
+        let mut c = sb.cmd_opts(false);
+        c.env("LC_ALL", locale);
+        async move { stdout(&run(c, args).await) }
+    };
+
+    let pt = help("pt_BR.UTF-8", vec!["--help"]).await;
+    assert!(pt.contains("Uso: amivuln"), "{pt}");
+    assert!(pt.contains("Opções:"), "{pt}");
+    assert!(pt.contains("CÓDIGOS DE SAÍDA:"), "{pt}");
+    assert!(
+        pt.contains("--fail-on"),
+        "option names are not translated: {pt}"
+    );
+    assert!(!pt.contains("Usage:"), "{pt}");
+
+    let sub = help("pt_BR.UTF-8", vec!["db", "pull", "--help"]).await;
+    assert!(
+        sub.contains("Instala mesmo que o arquivo seja mais antigo"),
+        "{sub}"
+    );
+    assert!(sub.contains("Mostra a ajuda"), "{sub}");
+
+    // The messages of the options are translated too; the exit code is not.
+    let mut bad = sb.cmd_opts(false);
+    bad.env("LC_ALL", "pt_BR.UTF-8");
+    let failed = run(bad, vec!["check", "--color", "red", "nginx"]).await;
+    assert_eq!(failed.status.code(), Some(64));
+    let message = String::from_utf8_lossy(&failed.stderr).into_owned();
+    assert!(
+        message.starts_with("erro: valor inválido de --color"),
+        "{message}"
+    );
+
+    for locale in ["C", "de_DE.UTF-8"] {
+        let en = help(locale, vec!["--help"]).await;
+        assert!(en.contains("Usage: amivuln"), "{locale}: {en}");
+        assert!(en.contains("EXIT CODES:"), "{locale}: {en}");
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn cyclonedx_and_openvex_state_what_the_distribution_says() {
     let server = MockServer::start().await;
