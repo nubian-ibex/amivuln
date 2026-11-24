@@ -66,8 +66,9 @@ impl core::str::FromStr for Format {
             "prometheus" => Ok(Self::Prometheus),
             "cyclonedx" => Ok(Self::CycloneDx),
             "openvex" => Ok(Self::OpenVex),
-            other => Err(format!(
-                "invalid --format value {other:?}; use summary, detail, json, sarif, markdown, csv, prometheus, cyclonedx or openvex"
+            other => Err(amivuln_core::i18n::tr_args(
+                "arg.format",
+                &[("value", &format!("{other:?}"))],
             )),
         }
     }

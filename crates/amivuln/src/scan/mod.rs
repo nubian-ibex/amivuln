@@ -507,12 +507,10 @@ fn nvd_client(s: &Settings, base: HttpConfig) -> Result<HttpClient, String> {
     let api_key = match &s.config.sources.nvd.api_key_file {
         Some(path) => {
             let key = std::fs::read_to_string(path)
-                .map_err(|e| format!("cannot read sources.nvd.api_key_file {path}: {e}"))?;
+                .map_err(|e| tr_args("nvd.key_unreadable", &[("path", path), ("error", &e)]))?;
             let key = key.trim();
             if key.is_empty() || key.len() > 256 {
-                return Err(format!(
-                    "sources.nvd.api_key_file {path} does not hold a key"
-                ));
+                return Err(tr_args("nvd.key_empty", &[("path", path)]));
             }
             Some(amivuln_sources::http::ApiKey {
                 header: "apiKey".to_owned(),
@@ -639,7 +637,7 @@ fn read_ca_file(path: &str) -> Result<Vec<u8>, String> {
         .read_to_end(&mut buf)
         .map_err(|e| format!("network.ca_file {path:?}: {e}"))?;
     if buf.len() as u64 > MAX_CA_FILE_BYTES {
-        return Err(format!("network.ca_file {path:?} is larger than 1 MiB"));
+        return Err(tr_args("ca.too_large", &[("path", &format!("{path:?}"))]));
     }
     Ok(buf)
 }
