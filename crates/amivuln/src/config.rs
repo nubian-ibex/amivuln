@@ -653,7 +653,8 @@ enabled = true
 required = false
 # api_key_file = \"/etc/amivuln/nvd-api-key\"
 
-# CVEs Red Hat has not fixed (RHEL 8 and 9 only; OSV lists fixed ones). One
+# CVEs Red Hat has not fixed (RHEL, Rocky Linux and AlmaLinux 8 and 9; OSV
+# lists fixed ones). One
 # 11 MB download, read again only when the cache expires. Nothing about the
 # host is sent.
 [sources.rhel_unpatched]

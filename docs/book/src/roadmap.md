@@ -91,12 +91,13 @@ above so that it sees the final code. All of it is still open:
    purpose: it can state what is not in the data, and it needs a runtime and a
    model on the machine. It stays open if a use is shown that the templates do
    not cover.
-6. **Unfixed Red Hat CVEs.** Done for RHEL 8 and 9 (ADR-0014): Red Hat's OVAL
+6. **Unfixed Red Hat CVEs.** Done for RHEL 8 and 9, and for Rocky Linux and
+   AlmaLinux 8 and 9, which rebuild the same sources (ADR-0014): Red Hat's OVAL
    file "including unpatched" is streamed once per cache refresh and its
    unfixed CVEs are reported as affected with no fix. RHEL 10 has no such file
    yet and stays a lower bound. The Red Hat state (`Will not fix`, `Fix
    deferred`) is shown in the output (`distro_status.vendor_state`, an
-   additive field). Rocky and AlmaLinux are not covered.
+   additive field).
 7. **Kernel CVEs.** The design study is ADR-0015: the kernel is judged by the
    distribution's data and `--kernel` checks the running one. Marking the
    running kernel in a full report, and knowing about live patches, are not done.

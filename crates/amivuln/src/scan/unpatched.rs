@@ -25,7 +25,13 @@ fn age_of(now: i64, fetched_at: i64) -> Duration {
     Duration::from_secs(u64::try_from(now.saturating_sub(fetched_at)).unwrap_or(0))
 }
 
-/// The index for a RHEL host, with its report. `None` for any other host.
+/// The index for a RHEL host or one of its rebuilds (Rocky Linux and
+/// `AlmaLinux`), with its report. `None` for any other host.
+///
+/// A rebuild ships Red Hat's sources, so a CVE Red Hat has not fixed has no fix
+/// in the rebuild either, and the file of the same major release applies. The
+/// reverse does not: a fix Red Hat has shipped and the rebuild has not yet is
+/// not in this file and stays invisible until the rebuild's advisory exists.
 ///
 /// The reduced index is cached under a key of its own: the 650 MB of XML is
 /// read only when it is older than the cache lifetime, not on every run.
@@ -34,7 +40,8 @@ pub(super) async fn load_unpatched(
     cfg: &Config,
     eco: Ecosystem,
 ) -> Option<(Option<UnpatchedIndex>, SourceReport)> {
-    let Ecosystem::Rhel(release) = eco else {
+    let (Ecosystem::Rhel(release) | Ecosystem::Rocky(release) | Ecosystem::Alma(release)) = eco
+    else {
         return None;
     };
     let source = &cfg.sources.rhel_unpatched;
@@ -105,7 +112,8 @@ pub(super) async fn load_unpatched(
     Some((Some(index), report(SourceStatus::Ok, Duration::ZERO)))
 }
 
-/// Adds to each RHEL package the CVEs Red Hat lists as unfixed for it. A CVE
+/// Adds to each RHEL, Rocky or `AlmaLinux` package the CVEs Red Hat lists as
+/// unfixed for it. A CVE
 /// the distribution data already has an answer for keeps that answer (a fix
 /// exists); only the ones it cannot show are added, as affected with no fix.
 pub(super) fn add_unpatched(
@@ -115,7 +123,10 @@ pub(super) fn add_unpatched(
     vex: &[VexStatement],
 ) {
     for target in reports {
-        if !matches!(target.package.ecosystem, Ecosystem::Rhel(_)) {
+        if !matches!(
+            target.package.ecosystem,
+            Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
+        ) {
             continue;
         }
         let mut added = false;
@@ -202,6 +213,20 @@ mod tests {
     }
 
     #[test]
+    fn rocky_and_alma_get_the_unfixed_cves_of_their_rhel() {
+        let mut reports = vec![
+            target("openssl", Ecosystem::Rocky(9), Vec::new()),
+            target("openssl", Ecosystem::Alma(9), Vec::new()),
+        ];
+        add_unpatched(&mut reports, &index(), None, &[]);
+        for r in &reports {
+            assert_eq!(r.findings.len(), 1, "{:?}", r.package.ecosystem);
+            assert_eq!(r.findings[0].id, "CVE-2024-0001");
+            assert_eq!(r.findings[0].verdict, Verdict::Affected { fixed_in: None });
+        }
+    }
+
+    #[test]
     fn the_source_package_name_is_tried_too() {
         let mut t = target("openssl-libs", Ecosystem::Rhel(9), Vec::new());
         t.package.source_name = Some("openssl".into());
@@ -215,7 +240,7 @@ mod tests {
         let patched = Finding::new("CVE-2024-0001", Severity::High, Verdict::Patched);
         let mut reports = vec![
             target("openssl", Ecosystem::Rhel(9), vec![patched.clone()]),
-            target("openssl", Ecosystem::Rocky(9), Vec::new()),
+            target("openssl", Ecosystem::Debian(12), Vec::new()),
             target("nginx", Ecosystem::Rhel(9), Vec::new()),
         ];
         add_unpatched(&mut reports, &index(), None, &[]);
