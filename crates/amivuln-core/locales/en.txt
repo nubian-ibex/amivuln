@@ -12,6 +12,7 @@ footer.incomplete = result: INCOMPLETE (a required source failed); do not treat 
 totals.line = checked {packages} packages, {with} with findings   host score {grade} ({points} points){accepted}
 totals.accepted =    {n} accepted
 finding.no_fix = no fix published
+finding.no_fix_state = no fix published ({state})
 finding.fix = fix: {fixed}
 finding.kev =   KEV(added {added}{ransomware})
 finding.ransomware = , ransomware

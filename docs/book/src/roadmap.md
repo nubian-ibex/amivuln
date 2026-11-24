@@ -95,8 +95,8 @@ above so that it sees the final code. All of it is still open:
    file "including unpatched" is streamed once per cache refresh and its
    unfixed CVEs are reported as affected with no fix. RHEL 10 has no such file
    yet and stays a lower bound. The Red Hat state (`Will not fix`, `Fix
-   deferred`) is not shown in the output yet, and Rocky and AlmaLinux are not
-   covered.
+   deferred`) is shown in the output (`distro_status.vendor_state`, an
+   additive field). Rocky and AlmaLinux are not covered.
 7. **Kernel CVEs.** The design study is ADR-0015: the kernel is judged by the
    distribution's data and `--kernel` checks the running one. Marking the
    running kernel in a full report, and knowing about live patches, are not done.

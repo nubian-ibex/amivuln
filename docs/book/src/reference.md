@@ -80,6 +80,8 @@ When several apply, the precedence is 70, 64, 2, 3, 1, 0.
 }
 ```
 
+`distro_status.vendor_state` is present only when a vendor list of unfixed CVEs (Red Hat's, on RHEL) says why there is no fix: `Affected`, `Fix deferred`, `Will not fix` or `Out of support scope`. It is an additive field of schema version 1.
+
 The JSON Schema is published at [schema/v1.json](schema/v1.json) and is checked against the real output in CI. Findings and unverified findings are separate arrays. The host block never
 contains a host name, address or user. Adding optional fields does not change
 `schema_version`; removing or retyping one does.

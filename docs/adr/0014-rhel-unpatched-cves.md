@@ -44,7 +44,8 @@ The maintainer accepted the dependency and the decision. What was settled and me
 - **Dependency.** `bzip2-rs` 0.1.2, a bzip2 decoder in 100% safe Rust (`forbid(unsafe_code)`), MIT or Apache-2.0, with two small dependencies. `libbz2-rs-sys` is maintained more actively but is a port full of `unsafe` under a different licence; a decoder for a frozen format needs no maintenance, and the input is capped (64 MB compressed, 2 GiB expanded, depth 24).
 - **Measured on the real RHEL 9 file.** 10 s in release to stream the 656 MB, 800,000 `(component, CVE)` pairs but about 12,700 distinct rows (the kernel is listed with hundreds of sub-packages), a reduced index of 18 MB read back in 0.14 s. The index is cached with the other sources' lifetime (`cache_ttl`), not daily.
 - **Matching.** By binary name, then by source package name. A CVE that OSV answers keeps OSV's answer.
-- **Not done.** The Red Hat state is not in the output (it would be a new JSON field), RHEL 10 and the clones are not covered, and Red Hat marks the OVAL v2 files as in maintenance mode, to be deprecated: when they go, the source reads CSAF or the new format instead.
+- **Done afterwards.** The Red Hat state is in the output as the additive field `distro_status.vendor_state` of schema version 1, in the text output, and in the analysis of CycloneDX and OpenVEX.
+- **Not done.** RHEL 10 and the clones are not covered, and Red Hat marks the OVAL v2 files as in maintenance mode, to be deprecated: when they go, the source reads CSAF or the new format instead.
 
 ## Not decided here
 

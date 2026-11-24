@@ -1771,6 +1771,8 @@ async fn rhel_unfixed_cves_come_from_the_oval_file_and_are_cached() {
         assert_eq!(f[0]["severity"], "high");
         assert_eq!(f[0]["distro_status"]["state"], "affected");
         assert!(f[0]["distro_status"]["fixed_in"].is_null());
+        // Red Hat's state for the CVE is in the output, as an additive field.
+        assert!(f[0]["distro_status"]["vendor_state"].is_string(), "{v}");
         let src = v["sources"]
             .as_array()
             .unwrap()

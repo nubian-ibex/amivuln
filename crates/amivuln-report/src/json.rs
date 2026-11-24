@@ -116,7 +116,7 @@ struct JsonSummary {
 struct JsonFinding<'a> {
     id: &'a str,
     severity: &'static str,
-    distro_status: JsonStatus,
+    distro_status: JsonStatus<'a>,
     kev: Option<JsonKev<'a>>,
     epss: Option<JsonEpss<'a>>,
     /// Present only when mitigations were asked for and the vendor states one.
@@ -132,9 +132,12 @@ struct JsonMitigation<'a> {
 }
 
 #[derive(Serialize)]
-struct JsonStatus {
+struct JsonStatus<'a> {
     state: &'static str,
     fixed_in: Option<String>,
+    /// Present only when the vendor lists the CVE as unfixed and says why.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    vendor_state: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -227,7 +230,11 @@ fn finding(f: &Finding) -> JsonFinding<'_> {
     JsonFinding {
         id: &f.id,
         severity: json_severity(f.severity),
-        distro_status: JsonStatus { state, fixed_in },
+        distro_status: JsonStatus {
+            state,
+            fixed_in,
+            vendor_state: f.vendor_state.as_deref(),
+        },
         kev: f.kev.as_ref().map(|k| JsonKev {
             added: &k.added,
             ransomware: k.ransomware,
@@ -636,6 +643,31 @@ mod tests {
         assert_eq!(v["sources"][0]["id"], "fedora-updateinfo");
         assert_eq!(v["sources"][1]["status"], "failed");
         assert_eq!(v["unresolved"][0]["input"], "ghost");
+    }
+
+    #[test]
+    fn the_vendor_state_is_there_only_when_the_vendor_gave_one() {
+        let mut r = report(true);
+        let t = r.targets.first_mut().unwrap();
+        t.findings = vec![
+            Finding::new(
+                "CVE-2026-0001",
+                Severity::High,
+                Verdict::Affected { fixed_in: None },
+            ),
+            Finding::new(
+                "CVE-2026-0002",
+                Severity::High,
+                Verdict::Affected { fixed_in: None },
+            ),
+        ];
+        t.findings[1].vendor_state = Some("Will not fix".to_owned());
+        let mut buf = Vec::new();
+        render_json(&r, &mut buf).unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        let f = &v["targets"][0]["findings"];
+        assert!(f[0]["distro_status"].get("vendor_state").is_none(), "{f}");
+        assert_eq!(f[1]["distro_status"]["vendor_state"], "Will not fix");
     }
 
     #[test]
