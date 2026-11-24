@@ -13,6 +13,12 @@ criteria = "safe-to-deploy"
 version = "0.40.0"
 notes = "Scope, stated plainly. VERIFIED: sqlite3/sqlite3.c, sqlite3.h and sqlite3ext.h are byte-identical (cmp) to the sqlite-amalgamation-3540100 (SQLite 3.54.1) published at sqlite.org/2026. READ: build.rs for the bundled path: it only drives the cc crate (sqlite3.c plus -D flags chosen by features and the LIBSQLITE3_FLAGS, SQLITE_MAX_* environment variables); no process is spawned, nothing is downloaded. CHECKED BY GREP: src/ (236 lines, FFI constants and a transmute for SQLITE_TRANSIENT); the generated bindings (331 extern declarations, no function bodies). NOT EXAMINED: the C code beyond its identity with upstream (SQLite's own quality is the assumption), wasm32-wasi-vfs.c (wasi only), and the sqlcipher, bindgen and loadable_extension paths (features this project does not enable). Not an audit of rusqlite, which stays exempted."
 
+[[audits.rusqlite]]
+who = "Esli Silva <13988295+Esl1h@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+delta = "0.42.0 -> 0.43.0"
+notes = "Reviewed the whole delta (79 lines added, 71 removed). The unsafe changes copy the CStr column metadata into owned CStrings and make the null statement an Option instead of a pointer check. An empty SQL string now returns Error::Empty. No new imports, no I/O, no build script change."
+
 [[trusted.aho-corasick]]
 criteria = "safe-to-deploy"
 user-id = 189 # Andrew Gallant (BurntSushi)
