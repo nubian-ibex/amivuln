@@ -357,6 +357,21 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
+[[publisher.jiff]]
+version = "1.0.3"
+when = "2026-11-24"
+trusted-publisher = "github:BurntSushi/jiff"
+
+[[publisher.jiff-core]]
+version = "1.0.2"
+when = "2026-11-24"
+trusted-publisher = "github:BurntSushi/jiff"
+
+[[publisher.jiff-static]]
+version = "1.0.3"
+when = "2026-11-24"
+trusted-publisher = "github:BurntSushi/jiff"
+
 [[publisher.lazy_static]]
 version = "1.5.1"
 when = "2026-10-01"
