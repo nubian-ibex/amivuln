@@ -335,26 +335,28 @@ pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Asse
 /// Every fix OSV records for `cve` that applies to this package, in the
 /// package's own version scheme.
 ///
-/// An advisory lists a fix per binary package, so the entries are matched on
-/// the installed name and the source name. When none name the package (an
-/// older record shape) the advisory's lowest fix is used instead.
+/// One advisory can cover several packages, so a fix counts only when it names
+/// this one: by the name OSV files it under, and on the RPM distributions also
+/// by the source package, whose records sit beside the binary ones. A fix
+/// that names no package at all belongs to the whole advisory. When nothing
+/// matches there is no fix for this package: another package's version says
+/// nothing about it.
 fn fixes_for_package(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Vec<Version> {
     let parse = |fix: &str| match &pkg.version {
         Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
         Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
         _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
     };
-    let named: Vec<Version> = osv
-        .fixes_for(cve)
+    let by_source = matches!(pkg.version, Version::Rpm(_));
+    osv.fixes_for(cve)
         .iter()
-        .filter(|(name, _)| *name == pkg.name || Some(name) == pkg.source_name.as_ref())
+        .filter(|(name, _)| {
+            name.is_empty()
+                || name == pkg.osv_name()
+                || (by_source && Some(name) == pkg.source_name.as_ref())
+        })
         .map(|(_, fix)| parse(fix))
-        .collect();
-    if named.is_empty() {
-        osv.fix_for(cve).map(parse).into_iter().collect()
-    } else {
-        named
-    }
+        .collect()
 }
 
 /// Maps the textual severity of an advisory database to a [`Severity`].
@@ -487,6 +489,72 @@ mod tests {
             upstream: None,
             provenance: Provenance::PackageDb,
         }
+    }
+
+    /// One advisory for two source packages of which only `klibc` has a fix,
+    /// the shape of UBUNTU-CVE-2016-9843.
+    fn two_packages_one_fix() -> OsvData {
+        let affected = |name: &str, events: serde_json::Value| {
+            serde_json::json!({
+                "package": {"name": name, "ecosystem": "Ubuntu:24.04:LTS"},
+                "ranges": [{"type": "ECOSYSTEM", "events": events}]
+            })
+        };
+        let doc = serde_json::json!({
+            "id": "UBUNTU-CVE-2016-9843",
+            "upstream": ["CVE-2016-9843"],
+            "affected": [
+                affected("klibc", serde_json::json!([
+                    {"introduced": "0"}, {"fixed": "2.0.13-4ubuntu0.2"}
+                ])),
+                affected("zsync", serde_json::json!([{"introduced": "0"}])),
+            ]
+        });
+        OsvData::parse_advisory(doc.to_string().as_bytes(), "Ubuntu:24.04:LTS").unwrap()
+    }
+
+    fn ubuntu_pkg(name: &str, source: &str, version: &str) -> PackageRef {
+        PackageRef {
+            ecosystem: Ecosystem::Ubuntu(2404),
+            source_name: Some(source.to_owned()),
+            version: Version::Deb(version.parse().unwrap_or_else(|n| match n {})),
+            ..arch_pkg(name, "0")
+        }
+    }
+
+    #[test]
+    fn a_fix_of_another_package_is_never_applied() {
+        let osv = two_packages_one_fix();
+        // Below and above the other package's fix: affected, nothing to
+        // upgrade to, and never settled.
+        for version in ["0.6.2-5build1", "2.0.14-1"] {
+            let a = osv_assess(&ubuntu_pkg("zsync", "zsync", version), &osv, &no_vex());
+            assert_eq!(a.resolved, [], "{version}");
+            assert_eq!(a.findings.len(), 1, "{version}");
+            assert_eq!(
+                a.findings[0].verdict,
+                Verdict::Affected { fixed_in: None },
+                "{version}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_binary_package_takes_the_fix_of_its_source_package() {
+        let osv = two_packages_one_fix();
+        let pkg = ubuntu_pkg("klibc-utils", "klibc", "2.0.13-4ubuntu0.1");
+        let found = osv_findings(&pkg, &osv, &no_vex());
+        assert!(
+            matches!(&found[0].verdict, Verdict::Affected { fixed_in: Some(v) } if v.to_string() == "2.0.13-4ubuntu0.2"),
+            "{found:?}"
+        );
+        // A binary that happens to carry another source package's name is
+        // judged by its own source.
+        let odd = ubuntu_pkg("klibc", "zsync", "0.6.2-5build1");
+        assert_eq!(
+            osv_findings(&odd, &osv, &no_vex())[0].verdict,
+            Verdict::Affected { fixed_in: None }
+        );
     }
 
     #[test]
