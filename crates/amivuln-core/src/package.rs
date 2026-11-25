@@ -54,8 +54,18 @@ impl Ecosystem {
             // Red Hat splits a release by repository; the BaseOS stream is the
             // primary one, `osv_ecosystems` lists the rest.
             Self::Rhel(v) => Some(format!("Red Hat:enterprise_linux:{v}::baseos")),
-            // The OSV ecosystem keeps the decimal form (Ubuntu:24.04:LTS).
-            Self::Ubuntu(v) => Some(format!("Ubuntu:{}.{:02}:LTS", v / 100, v % 100)),
+            // The OSV ecosystem keeps the decimal form, and only the LTS
+            // releases (April of an even year) carry a suffix:
+            // Ubuntu:24.04:LTS, Ubuntu:26.10.
+            Self::Ubuntu(v) => {
+                let (year, month) = (v / 100, v % 100);
+                let lts = if month == 4 && year.is_multiple_of(2) {
+                    ":LTS"
+                } else {
+                    ""
+                };
+                Some(format!("Ubuntu:{year}.{month:02}{lts}"))
+            }
             Self::Go => Some("Go".to_owned()),
             Self::Crates => Some("crates.io".to_owned()),
             // OSV names Alpine releases `Alpine:v3.20`, with no zero padding.
@@ -64,6 +74,24 @@ impl Ecosystem {
             Self::Opensuse(v) => Some(format!("openSUSE:Leap {}.{}", v / 100, v % 100)),
             Self::Fedora(_) | Self::Arch | Self::Gentoo | Self::Flatpak => None,
         }
+    }
+
+    /// True for an interim Ubuntu release whose nine months of support are
+    /// over in `year` and `month`: it ends in January for an April release and
+    /// in July of the next year for an October one, and counts as ended from
+    /// the month after. LTS releases and other ecosystems are never reported.
+    #[must_use]
+    pub fn interim_support_ended(&self, year: i16, month: i8) -> bool {
+        let Self::Ubuntu(v) = self else {
+            return false;
+        };
+        let (release_year, release_month) = (v / 100, v % 100);
+        if release_month == 4 && release_year.is_multiple_of(2) {
+            return false;
+        }
+        let released = (2000 + i32::from(release_year)) * 12 + i32::from(release_month) - 1;
+        let now = i32::from(year) * 12 + i32::from(month) - 1;
+        now >= released + 10
     }
 
     /// Every OSV ecosystem a package of this release can be filed under.
@@ -215,6 +243,22 @@ pub struct PackageRef {
     pub provenance: Provenance,
 }
 
+impl PackageRef {
+    /// The name OSV files this package's advisories under: the source package
+    /// on Alpine, Debian, Ubuntu and openSUSE, so a binary such as `libssl3` is
+    /// asked about as `openssl`, and the installed name elsewhere.
+    #[must_use]
+    pub fn osv_name(&self) -> &str {
+        match self.ecosystem {
+            Ecosystem::Alpine(_)
+            | Ecosystem::Debian(_)
+            | Ecosystem::Ubuntu(_)
+            | Ecosystem::Opensuse(_) => self.source_name.as_deref().unwrap_or(&self.name),
+            _ => &self.name,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -240,6 +284,21 @@ mod tests {
     }
 
     #[test]
+    fn an_interim_ubuntu_release_ends_nine_months_after_it_ships() {
+        let ended =
+            |release, year, month| Ecosystem::Ubuntu(release).interim_support_ended(year, month);
+        // 25.04 is supported through January 2026.
+        assert!(!ended(2504, 2026, 1));
+        assert!(ended(2504, 2026, 2));
+        // 25.10 through July 2026.
+        assert!(!ended(2510, 2026, 7));
+        assert!(ended(2510, 2026, 8));
+        // LTS releases and other distributions are not judged by this rule.
+        assert!(!ended(2204, 2099, 1));
+        assert!(!Ecosystem::Debian(11).interim_support_ended(2099, 1));
+    }
+
+    #[test]
     fn namespaces() {
         assert_eq!(Ecosystem::Fedora(41).purl_namespace(), "pkg:rpm/fedora");
         assert_eq!(Ecosystem::Arch.purl_namespace(), "pkg:alpm/arch");
@@ -253,6 +312,19 @@ mod tests {
             Ecosystem::Ubuntu(2404).osv_ecosystem().as_deref(),
             Some("Ubuntu:24.04:LTS")
         );
+        // Only the LTS releases (April of an even year) carry the suffix.
+        for (release, name) in [
+            (2204, "Ubuntu:22.04:LTS"),
+            (2410, "Ubuntu:24.10"),
+            (2504, "Ubuntu:25.04"),
+            (2604, "Ubuntu:26.04:LTS"),
+            (2610, "Ubuntu:26.10"),
+        ] {
+            assert_eq!(
+                Ecosystem::Ubuntu(release).osv_ecosystem().as_deref(),
+                Some(name)
+            );
+        }
         assert_eq!(Ecosystem::Fedora(41).osv_ecosystem(), None);
         assert_eq!(Ecosystem::Arch.osv_ecosystem(), None);
         assert_eq!(
