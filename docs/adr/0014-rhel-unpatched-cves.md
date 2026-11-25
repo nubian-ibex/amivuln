@@ -45,7 +45,8 @@ The maintainer accepted the dependency and the decision. What was settled and me
 - **Measured on the real RHEL 9 file.** 10 s in release to stream the 656 MB, 800,000 `(component, CVE)` pairs but about 12,700 distinct rows (the kernel is listed with hundreds of sub-packages), a reduced index of 18 MB read back in 0.14 s. The index is cached with the other sources' lifetime (`cache_ttl`), not daily.
 - **Matching.** By binary name, then by source package name. A CVE that OSV answers keeps OSV's answer.
 - **Done afterwards.** The Red Hat state is in the output as the additive field `distro_status.vendor_state` of schema version 1, in the text output, and in the analysis of CycloneDX and OpenVEX.
-- **Not done.** RHEL 10 and the clones are not covered, and Red Hat marks the OVAL v2 files as in maintenance mode, to be deprecated: when they go, the source reads CSAF or the new format instead.
+- **Done afterwards.** Rocky Linux and AlmaLinux 8 and 9 rebuild Red Hat's sources, so a CVE Red Hat has not fixed has no fix in them either: they read the file of the same major release. A fix Red Hat shipped that the rebuild has not is in neither source and stays invisible until the rebuild's advisory exists.
+- **Not done.** RHEL 10 is not covered, and Red Hat marks the OVAL v2 files as in maintenance mode, to be deprecated: when they go, the source reads CSAF or the new format instead.
 
 ## Not decided here
 

@@ -1781,6 +1781,15 @@ async fn rhel_unfixed_cves_come_from_the_oval_file_and_are_cached() {
             .unwrap();
         assert_eq!(src["status"], "ok");
     }
+    // Rocky Linux and AlmaLinux are rebuilds of the same sources: the file of
+    // their RHEL applies, and it is the one already cached.
+    for clone in ["rocky:9", "alma:9"] {
+        let v = ask(clone);
+        let f = &v["targets"][0]["findings"];
+        assert_eq!(f[0]["id"], "CVE-2024-0001", "{clone}: {v}");
+        assert_eq!(f[0]["distro_status"]["state"], "affected");
+        assert!(f[0]["distro_status"]["fixed_in"].is_null());
+    }
     // RHEL 10 has no such file: said so, never silently a clean result.
     let v = ask("rhel:10");
     let src = v["sources"]

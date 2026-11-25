@@ -40,7 +40,8 @@ install; the finding names the version so the stream can be checked.
 
 **Unfixed CVEs.** OSV carries advisories that shipped a fix. A CVE that Red Hat
 has not fixed (`Affected`, `Fix deferred`, `Will not fix`, `Out of support
-scope`) has no advisory there, so on RHEL 8 and 9 amivuln also reads Red Hat's
+scope`) has no advisory there, so on RHEL 8 and 9, and on Rocky Linux and
+AlmaLinux 8 and 9, which rebuild the same sources, amivuln also reads Red Hat's
 OVAL file "including unpatched" (ADR-0014, source `redhat-oval`): about 11 MB,
 read once per cache refresh and reduced to a small index. A package of the
 host is matched by its binary or source package name, and each CVE found is
@@ -70,7 +71,7 @@ How a target is identified, and what the data can and cannot show:
 - **Fedora.** The host is read through `rpm`. Data: `updateinfo`. A CVE with no published fix is not visible.
 - **Arch Linux.** The host is read through `pacman`. Data: the Arch Security Tracker, which also lists vulnerable packages with no fix.
 - **Red Hat Enterprise Linux 8, 9 and 10.** The host is read through `rpm`; UBI containers work. Data: OSV's Red Hat ecosystem, plus the unfixed CVEs of Red Hat's OVAL file on RHEL 8 and 9 (see below); RHEL 10 stays a lower bound.
-- **Rocky Linux and AlmaLinux 8 and 9.** The host is read through `rpm`. Data: OSV; only CVEs that shipped a fix are visible.
+- **Rocky Linux and AlmaLinux 8 and 9.** The host is read through `rpm`. Data: OSV, plus the unfixed CVEs of Red Hat's OVAL file for the same release (see below), because both rebuild Red Hat's sources. A fix Red Hat shipped that the rebuild has not yet is in neither, so it stays invisible until the rebuild's own advisory exists.
 - **Debian and Ubuntu (LTS).** The host is read from `/var/lib/dpkg` (nothing is run); containers, `--packages-from` lists, SBOMs and `name@version` work too. Data: OSV, which also lists open issues (reported as affected with no fix version).
 - **openSUSE Leap 15.x and 16.0, and Tumbleweed.** The host is read through
   `rpm`, and containers work. Data: OSV, keyed by the *source* package (the
