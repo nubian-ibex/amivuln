@@ -258,18 +258,6 @@ criteria = "safe-to-deploy"
 version = "0.3.107"
 criteria = "safe-to-deploy"
 
-[[exemptions.jsonschema]]
-version = "0.61.1"
-criteria = "safe-to-run"
-
-[[exemptions.jsonschema-regex]]
-version = "0.61.2"
-criteria = "safe-to-run"
-
-[[exemptions.jsonschema-value]]
-version = "0.61.2"
-criteria = "safe-to-run"
-
 [[exemptions.kasuari]]
 version = "0.4.13"
 criteria = "safe-to-deploy"
@@ -393,10 +381,6 @@ criteria = "safe-to-deploy"
 [[exemptions.redox_syscall]]
 version = "0.5.18"
 criteria = "safe-to-deploy"
-
-[[exemptions.referencing]]
-version = "0.61.2"
-criteria = "safe-to-run"
 
 [[exemptions.rpassword]]
 version = "7.5.4"
