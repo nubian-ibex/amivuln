@@ -22,6 +22,15 @@ the unfixed Red Hat CVEs on Rocky Linux and AlmaLinux 8 and 9, and the running
 kernel marked in a full report (`package.running_kernel`). The new JSON fields
 are optional fields of schema version 1.
 
+1.2.0 followed the same day, after running the tool on real Arch, Ubuntu and
+Fedora systems showed that 1.1.0 and earlier can report vulnerable systems as
+clean. An interim Ubuntu release got no advisory at all, an advisory covering
+several packages could give one the fix of another, and severity was often not
+read, so `--fail-on` passed. All three are fixed: an interim release past its
+support is now incomplete, only a fix that names the package counts, and a run
+says how many findings `--fail-on` cannot judge. An EndeavourOS host is read as
+Arch Linux, and the totals count only affected packages.
+
 ## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
@@ -65,9 +74,28 @@ above so that it sees the final code. All of it is still open:
   still open on the form. The translatable messages are not what holds it
   back: the internationalization criterion is met.
 
+## Known gaps
+
+Found in the same round of tests and not fixed yet. The first one comes first,
+because it can make a result read as cleaner than it is.
+
+- A release OSV holds no data for is detected only on Ubuntu. On Debian, Alpine,
+  openSUSE, Red Hat Enterprise Linux, Rocky Linux and AlmaLinux it would still
+  read as clean. This comes from reading the code and has not been reproduced.
+- CVSS 4 vectors are not read, and some distribution advisories state no
+  severity at all (openSUSE's among them), so those findings stay `unknown`.
+- The text summary counts `unknown` severity with the low ones, although the
+  JSON keeps them apart.
+- The first run on a host with many open advisories is slow: about two minutes
+  on an interim Ubuntu desktop.
+- Piping the JSON output into a command that stops reading prints a "Broken
+  pipe" error.
+
 ## After 1.0 (1.x), in rough order
 
-1. **More distributions.** openSUSE (Leap and Tumbleweed, through OSV) and
+1. **More distributions.** EndeavourOS is read as Arch Linux; other Arch
+   derivatives are not, because ones that rebuild or delay packages would be
+   judged wrongly. openSUSE (Leap and Tumbleweed, through OSV) and
    Gentoo (the GLSAs of the host's own Portage tree, with a version
    comparator checked against Portage) are done. NixOS is deferred (decided
    2026-11-17): OSV has no NixOS data, the Nixpkgs security tracker is a web
