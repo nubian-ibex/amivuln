@@ -2878,7 +2878,7 @@ async fn ubuntu_osv() -> (MockServer, tempfile::TempDir) {
     let server = MockServer::start().await;
     let found = serde_json::json!({"results": [{"vulns": [{"id": "UBUNTU-CVE-2026-0001"}]}]});
     // Only the old version of openssl and the probe package have advisories.
-    for (name, version) in [("openssl", "0.0.1-1"), ("linux", "0.0.1")] {
+    for (name, version) in [("openssl", "0.0.1-1"), ("linux", "0.0.1-1")] {
         Mock::given(method("POST"))
             .and(path("/v1/querybatch"))
             .and(body_string_contains("\"ecosystem\":\"Ubuntu:98.10\""))
