@@ -809,11 +809,13 @@ pub(crate) fn check_with(
         },
         out,
     ) {
-        // A closed pipe (`| head`) is not an error worth a message.
+        // A closed pipe (`| head`) is not an error worth a message, and says
+        // nothing about the result: the reader stopped reading.
         if e.kind() != std::io::ErrorKind::BrokenPipe {
             let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
+            return ExitCode::Internal;
         }
-        return ExitCode::Internal;
+        return ExitCode::Success;
     }
     let judged = policy_findings(&report, &s);
     warn_unjudged(cli, &s, &judged, err);

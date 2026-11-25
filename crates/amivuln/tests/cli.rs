@@ -2993,7 +2993,9 @@ async fn debian_osv(severity: serde_json::Value) -> (MockServer, tempfile::TempD
         .and(path("/v1/vulns/DEBIAN-CVE-2026-0001"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "id": "DEBIAN-CVE-2026-0001",
-            "upstream": ["CVE-2026-0001"],
+            "upstream": (0..500)
+                .map(|i| format!("CVE-2026-{i:04}"))
+                .collect::<Vec<_>>(),
             "severity": severity,
             "affected": [{
                 "package": {"name": "openssl", "ecosystem": "Debian:12"},
@@ -3044,7 +3046,8 @@ async fn fail_on_judges_a_debian_finding_by_its_cvss_vector() {
     .await;
     let out = fail_on_high(&home).await;
     assert_eq!(out.status.code(), Some(1), "{}", stdout(&out));
-    assert!(stdout(&out).contains("CRITICAL 1"), "{}", stdout(&out));
+    // One advisory, 500 CVEs in it, all rated from the same CVSS vector.
+    assert!(stdout(&out).contains("CRITICAL 500"), "{}", stdout(&out));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -3054,8 +3057,47 @@ async fn fail_on_says_when_it_cannot_judge_a_finding() {
     // The exit codes are a contract: nothing known to be HIGH, so 0.
     assert_eq!(out.status.code(), Some(0), "{}", stdout(&out));
     let warning = String::from_utf8_lossy(&out.stderr).into_owned();
+    // The advisory carries 500 CVEs (the closed-pipe test reuses it).
     assert!(
-        warning.contains("1 affected finding(s) have no severity"),
+        warning.contains("500 affected finding(s) have no severity"),
         "{warning}"
+    );
+}
+
+/// Writing to a reader that goes away (`| head`) is not a failure: the exit
+/// code is 0 and stderr stays empty.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_closed_pipe_is_not_an_error() {
+    let (_server, home) = debian_osv(serde_json::json!([])).await;
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_amivuln"));
+    cmd.env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .arg("--config")
+        .arg(home.path().join("cfg.toml"))
+        .args(["--distro", "debian:12", "openssl@0.0.1-1", "-f", "json"])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    // Take the pipe, read a little and drop it: the writer then fails.
+    let mut errbuf = Vec::new();
+    {
+        use std::io::Read;
+        let mut out = child.stdout.take().unwrap();
+        let mut buf = [0u8; 512];
+        let _ = out.read(&mut buf);
+        drop(out);
+        if let Some(mut e) = child.stderr.take() {
+            let _ = e.read_to_end(&mut errbuf);
+        }
+    }
+    let status = child.wait().unwrap();
+    assert_eq!(
+        status.code(),
+        Some(0),
+        "exit on a closed pipe: {:?} {}",
+        status,
+        String::from_utf8_lossy(&errbuf)
     );
 }
