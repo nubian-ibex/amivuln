@@ -99,6 +99,9 @@ struct JsonPackage<'a> {
     ecosystem: &'static str,
     purl: String,
     provenance: &'static str,
+    /// Present (true) only on the package that owns the running kernel.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    running_kernel: bool,
 }
 
 #[derive(Serialize)]
@@ -291,6 +294,7 @@ fn target(t: &TargetReport) -> JsonTarget<'_> {
             ecosystem: ecosystem_name(t.package.ecosystem),
             purl: purl(&t.package),
             provenance: provenance_name(t.package.provenance),
+            running_kernel: t.running_kernel,
         },
         summary: JsonSummary {
             critical: sum.critical,
@@ -668,6 +672,21 @@ mod tests {
         let f = &v["targets"][0]["findings"];
         assert!(f[0]["distro_status"].get("vendor_state").is_none(), "{f}");
         assert_eq!(f[1]["distro_status"]["vendor_state"], "Will not fix");
+    }
+
+    #[test]
+    fn running_kernel_is_present_only_on_the_package_that_runs() {
+        let mut r = report(true);
+        let first = r.targets.first_mut().unwrap();
+        let mut running = first.clone();
+        first.running_kernel = false;
+        running.running_kernel = true;
+        r.targets.push(running);
+        let mut buf = Vec::new();
+        render_json(&r, &mut buf).unwrap();
+        let v: serde_json::Value = serde_json::from_slice(&buf).unwrap();
+        assert!(v["targets"][0]["package"].get("running_kernel").is_none());
+        assert_eq!(v["targets"][1]["package"]["running_kernel"], true);
     }
 
     #[test]

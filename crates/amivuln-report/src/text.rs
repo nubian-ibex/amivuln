@@ -106,6 +106,9 @@ fn write_target_header(out: &mut dyn Write, t: &TargetReport) -> io::Result<()> 
     if sanitize_terminal(&t.input) != p.name {
         write!(out, "  <- {}", sanitize_terminal(&t.input))?;
     }
+    if t.running_kernel {
+        write!(out, "  {}", tr("target.running_kernel"))?;
+    }
     writeln!(out)
 }
 
@@ -682,6 +685,7 @@ pub(crate) mod fixtures {
                 },
                 findings: vec![high, low, unknown],
                 resolved: Vec::new(),
+                running_kernel: false,
             }],
             unresolved: vec![Unresolved {
                 input: "ghost".into(),
@@ -785,6 +789,16 @@ mod tests {
         t.findings[0].vendor_state = Some("Will not fix".to_owned());
         let out = render(render_detail, &r, false);
         assert!(out.contains("no fix published (Will not fix)"), "{out}");
+    }
+
+    #[test]
+    fn the_running_kernel_is_named_in_the_header() {
+        let mut r = report(true);
+        let out = render(render_detail, &r, false);
+        assert!(!out.contains("[running kernel]"), "{out}");
+        r.targets.first_mut().unwrap().running_kernel = true;
+        let out = render(render_detail, &r, false);
+        assert!(out.contains("[running kernel]"), "{out}");
     }
 
     #[test]

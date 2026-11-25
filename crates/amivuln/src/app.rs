@@ -777,7 +777,11 @@ pub(crate) fn check_with(
         Ok(v) => v,
         Err(code) => return code,
     };
-    let (targets_out, sources) = (ev.targets, ev.sources);
+    let (mut targets_out, sources) = (ev.targets, ev.sources);
+    // A full report lists every installed kernel; say which one runs.
+    if all || cli.global.extras.kernel {
+        crate::scan::mark_running_kernel(&mut targets_out, eco);
+    }
     let all_findings: Vec<Finding> = targets_out
         .iter()
         .flat_map(|t| t.findings.clone())

@@ -90,3 +90,4 @@ duration.invalid = duração inválida {value}; use formas como 10s, 5m, 6h ou 3
 duration.zero = a duração {value} deve ser maior que zero
 download.failed = o download falhou: {error}
 error.write_file = erro: não foi possível gravar {path}: {error}
+target.running_kernel = [kernel em execução]

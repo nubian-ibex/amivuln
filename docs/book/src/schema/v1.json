@@ -261,6 +261,10 @@
                 "embedded_buildinfo",
                 "string_heuristic"
               ]
+            },
+            "running_kernel": {
+              "description": "True, and present only, on the package that owns the kernel that is running.",
+              "const": true
             }
           }
         },

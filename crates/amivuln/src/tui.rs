@@ -349,6 +349,7 @@ mod terminal {
                 package,
                 findings,
                 resolved: Vec::new(),
+                running_kernel: false,
             }
         }
 

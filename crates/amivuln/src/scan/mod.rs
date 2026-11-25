@@ -42,7 +42,7 @@ mod resolve;
 mod sources;
 mod unpatched;
 
-pub(crate) use inputs::resolve_scope;
+pub(crate) use inputs::{mark_running_kernel, resolve_scope};
 use osv::{MAX_OSV_ADVISORIES, load_osv};
 pub(crate) use resolve::{expand_targets, owners, resolve_all, running_services};
 use sources::{load_and_map_nvd, load_distro, load_enrichment, load_foreign, load_mitigations};
@@ -308,6 +308,7 @@ fn build_reports(
                 package: pkg.clone(),
                 findings,
                 resolved,
+                running_kernel: false,
             }
         })
         .collect()

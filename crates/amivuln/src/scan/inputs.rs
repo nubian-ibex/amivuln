@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The inputs a run reads besides the host: inventories, SBOMs and containers.
 
+use amivuln_core::TargetReport;
 use amivuln_core::i18n::tr_args;
 
 use super::{
@@ -231,44 +232,67 @@ fn find_kernel_image(root: &std::path::Path, release: &str) -> Option<String> {
         })
 }
 
-/// Adds the package that owns the running kernel's image. Several kernels are
-/// installed side by side on most hosts, so a package name cannot say which
-/// one boots; the release the kernel reports can.
+/// The package that owns the running kernel's image, with the release the
+/// kernel reports. Several kernels are installed side by side on most hosts,
+/// so a package name cannot say which one boots; the release can.
+pub(crate) fn running_kernel_package(eco: Ecosystem) -> Result<(String, PackageRef), String> {
+    let release = std::fs::read_to_string("/proc/sys/kernel/osrelease")
+        .map_err(|e| format!("cannot read the kernel release: {e}"))?
+        .trim()
+        .to_owned();
+    if !is_plain_release(&release) {
+        return Err("the kernel release is not a plain version string".to_owned());
+    }
+    let image = find_kernel_image(std::path::Path::new("/"), &release)
+        .ok_or_else(|| format!("no kernel image for the running release {release} was found"))?;
+    let (found, missed) = resolve_all(&[image], false, eco, false);
+    if let Some(u) = missed.into_iter().next() {
+        return Err(u.reason);
+    }
+    found
+        .into_iter()
+        .next()
+        .map(|(_, pkg)| (release.clone(), pkg))
+        .ok_or_else(|| format!("no package owns the kernel image of release {release}"))
+}
+
+/// Adds the package that owns the running kernel's image.
 fn read_kernel(
     eco: Ecosystem,
     resolved: &mut Vec<(String, PackageRef)>,
     unresolved: &mut Vec<Unresolved>,
 ) {
-    let fail = |reason: String| Unresolved {
-        input: "--kernel".to_owned(),
-        reason,
-    };
-    let release = match std::fs::read_to_string("/proc/sys/kernel/osrelease") {
-        Ok(text) => text.trim().to_owned(),
-        Err(e) => {
-            unresolved.push(fail(format!("cannot read the kernel release: {e}")));
-            return;
-        }
-    };
-    if !is_plain_release(&release) {
-        unresolved.push(fail(
-            "the kernel release is not a plain version string".to_owned(),
-        ));
-        return;
+    match running_kernel_package(eco) {
+        Ok((release, pkg)) => resolved.push((format!("--kernel {release}"), pkg)),
+        Err(reason) => unresolved.push(Unresolved {
+            input: "--kernel".to_owned(),
+            reason,
+        }),
     }
-    let Some(image) = find_kernel_image(std::path::Path::new("/"), &release) else {
-        unresolved.push(fail(format!(
-            "no kernel image for the running release {release} was found"
-        )));
-        return;
-    };
-    let (found, missed) = resolve_all(&[image], false, eco, false);
-    unresolved.extend(missed.into_iter().map(|u| fail(u.reason)));
-    resolved.extend(
-        found
-            .into_iter()
-            .map(|(_, pkg)| (format!("--kernel {release}"), pkg)),
-    );
+}
+
+/// Marks the report of the package that owns the running kernel. It is best
+/// effort: when the kernel cannot be identified nothing is marked, and the
+/// full report reads as before.
+pub(crate) fn mark_running_kernel(targets: &mut [TargetReport], eco: Ecosystem) {
+    if let Ok((_, kernel)) = running_kernel_package(eco) {
+        mark_package(targets, &kernel);
+    }
+}
+
+/// Marks the reports of exactly `kernel`: the same name, version and
+/// architecture, in the same ecosystem. The other installed kernels are not.
+fn mark_package(targets: &mut [TargetReport], kernel: &PackageRef) {
+    for t in targets {
+        let p = &t.package;
+        if p.name == kernel.name
+            && p.version == kernel.version
+            && p.arch == kernel.arch
+            && p.ecosystem == kernel.ecosystem
+        {
+            t.running_kernel = true;
+        }
+    }
 }
 
 /// Adds the components of the installed Flatpak runtimes. What cannot be read
@@ -358,6 +382,45 @@ pub(super) fn private_scratch_dir() -> std::io::Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use amivuln_core::Provenance;
+
+    fn kernel(version: &str) -> PackageRef {
+        PackageRef {
+            name: "kernel-core".to_owned(),
+            source_name: None,
+            version: amivuln_core::Version::Rpm(version.parse().unwrap()),
+            arch: Some("x86_64".to_owned()),
+            upstream: None,
+            ecosystem: Ecosystem::Fedora(44),
+            provenance: Provenance::PackageDb,
+            slot: None,
+        }
+    }
+
+    fn report(pkg: PackageRef) -> TargetReport {
+        TargetReport {
+            input: pkg.name.clone(),
+            package: pkg,
+            findings: Vec::new(),
+            resolved: Vec::new(),
+            running_kernel: false,
+        }
+    }
+
+    #[test]
+    fn only_the_running_kernel_is_marked_among_those_installed() {
+        let mut targets = vec![
+            report(kernel("0:7.2.15-200.fc44")),
+            report(kernel("0:7.3.4-200.fc44")),
+            report(PackageRef {
+                name: "bash".to_owned(),
+                ..kernel("0:7.3.4-200.fc44")
+            }),
+        ];
+        mark_package(&mut targets, &kernel("0:7.3.4-200.fc44"));
+        let marked: Vec<bool> = targets.iter().map(|t| t.running_kernel).collect();
+        assert_eq!(marked, [false, true, false]);
+    }
 
     #[test]
     fn the_images_of_a_release_are_named_for_each_distribution_layout() {
