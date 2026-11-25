@@ -378,16 +378,7 @@ pub(super) async fn load_osv(
                 pkg.name
             ));
         };
-        // OSV keys Alpine, Debian and Ubuntu advisories by the source package,
-        // so a binary such as `libcrypto3` or `libssl1.1` is asked about as
-        // `openssl`.
-        let osv_name = match pkg.ecosystem {
-            Ecosystem::Alpine(_)
-            | Ecosystem::Debian(_)
-            | Ecosystem::Ubuntu(_)
-            | Ecosystem::Opensuse(_) => pkg.source_name.as_deref().unwrap_or(&pkg.name),
-            _ => pkg.name.as_str(),
-        };
+        let osv_name = pkg.osv_name();
         for osv_eco in osv_ecosystems {
             let body = match amivuln_sources::osv::batch_request(
                 osv_name,

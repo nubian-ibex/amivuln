@@ -243,6 +243,22 @@ pub struct PackageRef {
     pub provenance: Provenance,
 }
 
+impl PackageRef {
+    /// The name OSV files this package's advisories under: the source package
+    /// on Alpine, Debian, Ubuntu and openSUSE, so a binary such as `libssl3` is
+    /// asked about as `openssl`, and the installed name elsewhere.
+    #[must_use]
+    pub fn osv_name(&self) -> &str {
+        match self.ecosystem {
+            Ecosystem::Alpine(_)
+            | Ecosystem::Debian(_)
+            | Ecosystem::Ubuntu(_)
+            | Ecosystem::Opensuse(_) => self.source_name.as_deref().unwrap_or(&self.name),
+            _ => &self.name,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
