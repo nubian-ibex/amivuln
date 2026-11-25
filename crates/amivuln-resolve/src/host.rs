@@ -65,8 +65,8 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
             let minor: u16 = parts.next()?.parse().ok()?;
             Ecosystem::Alpine(major * 100 + minor)
         }
-        // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
-        // long-lived OSV ecosystem, so amivuln does not claim them.
+        // Ubuntu releases are "NN.04" or "NN.10", LTS and interim alike. Whether
+        // OSV has data for one is checked when it is asked.
         "ubuntu" => {
             let vid: Option<&String> = version_id.as_ref();
             let (maj, min) = vid?.split_once('.')?;

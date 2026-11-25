@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 
 pub mod arch;
+mod cvss;
 pub mod epss;
 pub mod fedora;
 pub mod fetch;

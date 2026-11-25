@@ -91,3 +91,4 @@ duration.zero = a duração {value} deve ser maior que zero
 download.failed = o download falhou: {error}
 error.write_file = erro: não foi possível gravar {path}: {error}
 target.running_kernel = [kernel em execução]
+warning.unjudged = aviso: {n} achado(s) afetado(s) não têm severidade em nenhuma fonte, então --fail-on não consegue avaliá-los
