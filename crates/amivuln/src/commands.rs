@@ -101,13 +101,12 @@ pub(crate) fn cve(
         },
         out,
     ) {
-        // A closed pipe (`| head`) is a normal end for the reader, and the
-        // exit code of a violating run still says what it said.
+        // A closed pipe (`| head`) is not an error worth a message. The run
+        // goes on to its exit code, which the reader does not change.
         if e.kind() != std::io::ErrorKind::BrokenPipe {
             let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
             return ExitCode::Internal;
         }
-        return ExitCode::Success;
     }
     let mut conditions = Vec::new();
     if !report.complete && s.config.policy.fail_on_incomplete {
@@ -175,13 +174,12 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         },
         out,
     ) {
-        // A closed pipe (`| head`) is a normal end for the reader, and the
-        // exit code of a violating run still says what it said.
+        // A closed pipe (`| head`) is not an error worth a message. The run
+        // goes on to its exit code, which the reader does not change.
         if e.kind() != std::io::ErrorKind::BrokenPipe {
             let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
             return ExitCode::Internal;
         }
-        return ExitCode::Success;
     }
     let mut conditions = Vec::new();
     if !report.complete && s.config.policy.fail_on_incomplete {
@@ -281,13 +279,12 @@ pub(crate) fn restart(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         },
         out,
     ) {
-        // A closed pipe (`| head`) is a normal end for the reader, and the
-        // exit code of a violating run still says what it said.
+        // A closed pipe (`| head`) is not an error worth a message. The run
+        // goes on to its exit code, which the reader does not change.
         if e.kind() != std::io::ErrorKind::BrokenPipe {
             let _ = writeln!(err, "{}", tr_args("error.write_report", &[("error", &e)]));
             return ExitCode::Internal;
         }
-        return ExitCode::Success;
     }
     if report.items.is_empty() {
         ExitCode::Success
