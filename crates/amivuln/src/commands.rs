@@ -186,6 +186,7 @@ pub(crate) fn pending(cli: &Cli, env: &Env, out: &mut dyn Write, err: &mut dyn W
         .filter(|f| !suppressed.contains_key(&f.id))
         .cloned()
         .collect();
+    crate::app::warn_unjudged(cli, &s, &unsuppressed, err);
     if s.policy.violated_by(&unsuppressed) {
         conditions.push(Condition::Violation);
     }
