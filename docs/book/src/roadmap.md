@@ -16,6 +16,12 @@ person and its `unsafe` code has had no outside review. They are the first
 work of the 1.x series. Their dates depend on other people, so they are not
 promised; the Scorecard estimate is February or March 2027.
 
+1.1.0 followed on 2026-11-25 with three additive changes, none of which touches
+the contract: Red Hat's state for an unfixed CVE (`distro_status.vendor_state`),
+the unfixed Red Hat CVEs on Rocky Linux and AlmaLinux 8 and 9, and the running
+kernel marked in a full report (`package.running_kernel`). The new JSON fields
+are optional fields of schema version 1.
+
 ## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
@@ -69,8 +75,14 @@ above so that it sees the final code. All of it is still open:
    fix status, which the rule "the distribution's data decides" cannot do. A
    mode with a weaker guarantee (upstream version against the package's
    version, always labelled as such) was considered and not chosen. It is
-   reopened when Nixpkgs publishes machine-readable security data. SUSE Linux Enterprise is in OSV and is a small step from
-   openSUSE.
+   reopened when Nixpkgs publishes machine-readable security data.
+   SUSE Linux Enterprise is not the small step from openSUSE it looked like.
+   OSV has a `SUSE` ecosystem, but it tags each advisory by product and module
+   (for example `SUSE:Linux Enterprise Module for Basesystem 15 SP7`): a query
+   by the product name finds nothing, and the bare `SUSE` ecosystem returns the
+   advisories of several service packs, which would report fixes of SP7 on an
+   SP6 host. It needs an ADR, a filter by service pack and a check on a real
+   SLES (the BCI images of `registry.suse.com` are SLE based) before any code.
 2. **Flatpak applications.** The runtimes are done (`--flatpak`); applications
    bundle their own libraries and carry no manifest of components, so they are
    not read yet.
@@ -92,15 +104,17 @@ above so that it sees the final code. All of it is still open:
    model on the machine. It stays open if a use is shown that the templates do
    not cover.
 6. **Unfixed Red Hat CVEs.** Done for RHEL 8 and 9, and for Rocky Linux and
-   AlmaLinux 8 and 9, which rebuild the same sources (ADR-0014): Red Hat's OVAL
-   file "including unpatched" is streamed once per cache refresh and its
-   unfixed CVEs are reported as affected with no fix. RHEL 10 has no such file
-   yet and stays a lower bound. The Red Hat state (`Will not fix`, `Fix
-   deferred`) is shown in the output (`distro_status.vendor_state`, an
-   additive field).
+   AlmaLinux 8 and 9, which rebuild the same sources (ADR-0014; 1.1.0): Red
+   Hat's OVAL file "including unpatched" is streamed once per cache refresh and
+   its unfixed CVEs are reported as affected with no fix, with the Red Hat
+   state (`Will not fix`, `Fix deferred`) in `distro_status.vendor_state`. A fix
+   Red Hat shipped that a rebuild has not yet is in neither source and stays
+   invisible until the rebuild's own advisory exists. RHEL 10 has no such file
+   yet and stays a lower bound.
 7. **Kernel CVEs.** The design study is ADR-0015: the kernel is judged by the
-   distribution's data, `--kernel` checks the running one, and a full report
-   marks the package that owns it. Knowing about live patches is not done.
+   distribution's data, `--kernel` checks the running one, and, since 1.1.0, a
+   full report marks the package that owns it. Knowing about live patches is not
+   done.
 8. **Fleet checks over SSH.** Copy the static binary, run it, aggregate. No
    agent stays behind.
 
