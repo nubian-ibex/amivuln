@@ -237,6 +237,26 @@ pub struct Policy {
 }
 
 impl Policy {
+    /// How many findings `--fail-on` with a severity level cannot judge: ones
+    /// that would count, with no severity in any source, and that nothing else
+    /// (EPSS) makes a violation.
+    #[must_use]
+    pub fn unjudged(&self, findings: &[Finding]) -> usize {
+        if !matches!(self.fail_on, FailOn::Severity(_)) {
+            return 0;
+        }
+        findings
+            .iter()
+            .filter(|f| f.severity == Severity::Unknown)
+            .filter(|f| match f.verdict {
+                Verdict::Affected { .. } => true,
+                Verdict::Unverified => self.strict,
+                Verdict::Patched | Verdict::NotAffected(_) => false,
+            })
+            .filter(|f| !self.violated_by(std::slice::from_ref(*f)))
+            .count()
+    }
+
     /// True when any finding violates the policy.
     #[must_use]
     pub fn violated_by(&self, findings: &[Finding]) -> bool {

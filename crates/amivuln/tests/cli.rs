@@ -2870,3 +2870,84 @@ async fn retries_run_out_before_the_mirror_is_abandoned() {
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(json(&out)["complete"], false);
 }
+
+/// A Debian OSV with one unfixed advisory for openssl, carrying `severity`.
+async fn debian_osv(severity: serde_json::Value) -> (MockServer, tempfile::TempDir) {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!(
+            {"results": [{"vulns": [{"id": "DEBIAN-CVE-2026-0001"}]}]}
+        )))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/vulns/DEBIAN-CVE-2026-0001"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "DEBIAN-CVE-2026-0001",
+            "upstream": ["CVE-2026-0001"],
+            "severity": severity,
+            "affected": [{
+                "package": {"name": "openssl", "ecosystem": "Debian:12"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}],
+                "ecosystem_specific": {"urgency": "not yet assigned"}
+            }]
+        })))
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join("cfg.toml"),
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    (server, home)
+}
+
+async fn fail_on_high(home: &tempfile::TempDir) -> std::process::Output {
+    let mut cmd = Command::cargo_bin("amivuln").unwrap();
+    cmd.env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .arg("--config")
+        .arg(home.path().join("cfg.toml"))
+        .args([
+            "--distro",
+            "debian:12",
+            "openssl@0.0.1-1",
+            "--fail-on",
+            "high",
+        ]);
+    tokio::task::spawn_blocking(move || cmd.output().unwrap())
+        .await
+        .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn fail_on_judges_a_debian_finding_by_its_cvss_vector() {
+    let (_server, home) = debian_osv(serde_json::json!([
+        {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+    ]))
+    .await;
+    let out = fail_on_high(&home).await;
+    assert_eq!(out.status.code(), Some(1), "{}", stdout(&out));
+    assert!(stdout(&out).contains("CRITICAL 1"), "{}", stdout(&out));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn fail_on_says_when_it_cannot_judge_a_finding() {
+    let (_server, home) = debian_osv(serde_json::json!([])).await;
+    let out = fail_on_high(&home).await;
+    // The exit codes are a contract: nothing known to be HIGH, so 0.
+    assert_eq!(out.status.code(), Some(0), "{}", stdout(&out));
+    let warning = String::from_utf8_lossy(&out.stderr).into_owned();
+    assert!(
+        warning.contains("1 affected finding(s) have no severity"),
+        "{warning}"
+    );
+}

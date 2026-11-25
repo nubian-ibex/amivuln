@@ -90,3 +90,4 @@ duration.zero = duration {value} must be greater than zero
 download.failed = download failed: {error}
 error.write_file = error: cannot write {path}: {error}
 target.running_kernel = [running kernel]
+warning.unjudged = warning: {n} affected finding(s) have no severity in any source, so --fail-on cannot judge them
