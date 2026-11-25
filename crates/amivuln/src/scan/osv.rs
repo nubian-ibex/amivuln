@@ -255,18 +255,40 @@ pub(super) async fn query_osv(
     slots.into_iter().filter_map(|s| s.answer).collect()
 }
 
-/// A source package every Ubuntu release with data has advisories for.
-const UBUNTU_PROBE: &str = "linux";
+/// A source package whose advisories every release of a distribution has. The
+/// question tells "a clean package" from "a release OSV holds no data for".
+fn probe_package(eco: Ecosystem) -> Option<&'static str> {
+    match eco {
+        Ecosystem::Ubuntu(_) => Some("linux"),
+        Ecosystem::Opensuse(_) => Some("openssl-3"),
+        Ecosystem::Alpine(_)
+        | Ecosystem::Debian(_)
+        | Ecosystem::Rocky(_)
+        | Ecosystem::Alma(_)
+        | Ecosystem::Rhel(_) => Some("openssl"),
+        _ => None,
+    }
+}
 
-/// Fails the source for an Ubuntu release whose answer cannot be trusted as
-/// complete.
+/// A version no package ever had, so the probe's answer is about the data, not
+/// about the version asked.
+fn probe_version(eco: Ecosystem) -> &'static str {
+    match eco {
+        Ecosystem::Alpine(_) => "0.0.1-r0",
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Opensuse(_) => "0.0.1-1",
+        _ => "0.0.1-1.el9",
+    }
+}
+
+/// Fails the source for a distribution release whose answer cannot be trusted
+/// as complete.
 ///
-/// An interim release past its support gets no new advisories, and OSV keeps
-/// only leftovers for it. For any other release OSV answers "nothing" both for
-/// a clean package and for a release it holds no data for, so when no package
-/// got an advisory one more question tells the two apart. Neither case may read
-/// as clean.
-async fn ubuntu_coverage(
+/// An Ubuntu interim release past its support gets no new advisories, and OSV
+/// keeps only leftovers for it. For any other release OSV answers "nothing"
+/// both for a clean package and for a release it holds no data for, so when no
+/// package of a release got an advisory, one more question tells the two apart.
+/// Neither case may read as clean.
+async fn distro_coverage(
     f: &Fetcher<'_>,
     base: &str,
     packages: &[(String, PackageRef)],
@@ -276,14 +298,15 @@ async fn ubuntu_coverage(
         .map(|t| jiff::tz::TimeZone::UTC.to_datetime(t).date())
         .unwrap_or_default();
     let mut status = SourceStatus::Ok;
-    let mut silent = std::collections::BTreeSet::new();
+    let mut silent = std::collections::BTreeMap::new();
     for (_, pkg) in packages {
+        let probe = probe_package(pkg.ecosystem);
         let Some(ecosystem) = pkg.ecosystem.osv_ecosystem() else {
             continue;
         };
-        if !matches!(pkg.ecosystem, Ecosystem::Ubuntu(_)) {
+        let Some(probe) = probe else {
             continue;
-        }
+        };
         if pkg
             .ecosystem
             .interim_support_ended(today.year(), today.month())
@@ -295,17 +318,17 @@ async fn ubuntu_coverage(
             .iter()
             .all(|(e, ids)| *e != ecosystem || ids.is_empty())
         {
-            silent.insert(ecosystem);
+            silent.insert(ecosystem, (probe, probe_version(pkg.ecosystem)));
         }
     }
-    for ecosystem in silent {
-        let version = "0.0.1".to_owned();
-        let body = match amivuln_sources::osv::batch_request(UBUNTU_PROBE, &ecosystem, &version) {
+    for (ecosystem, (probe, version)) in silent {
+        let version = version.to_owned();
+        let body = match amivuln_sources::osv::batch_request(probe, &ecosystem, &version) {
             Ok(body) => body,
             Err(e) => return SourceStatus::Failed(e.to_string()),
         };
         let probe = [OsvQuery {
-            name: UBUNTU_PROBE,
+            name: probe,
             ecosystem: ecosystem.clone(),
             version,
             body,
@@ -421,7 +444,7 @@ pub(super) async fn load_osv(
             }
         }
     }
-    status = worse(status, ubuntu_coverage(f, base, packages, &asked).await);
+    status = worse(status, distro_coverage(f, base, packages, &asked).await);
     for ids in &mut ids_by_package {
         ids.sort();
         ids.dedup();
