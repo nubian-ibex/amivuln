@@ -362,7 +362,7 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
         ("almalinux", Some(v)) => Some(Ecosystem::Alma(v)),
         ("debian", Some(v)) => Some(Ecosystem::Debian(v)),
         ("ubuntu", Some(v)) if matches!(v % 100, 4 | 10) => Some(Ecosystem::Ubuntu(v)),
-        ("arch", _) => Some(Ecosystem::Arch),
+        ("arch" | "endeavouros", _) => Some(Ecosystem::Arch),
         ("alpine", Some(v)) => Some(Ecosystem::Alpine(v)),
         // Gentoo is rolling; its VERSION_ID is the profile, not a release.
         ("gentoo", _) => Some(Ecosystem::Gentoo),
@@ -529,6 +529,14 @@ mod tests {
         assert_eq!(
             ecosystem_from_os_release(alpine),
             Some(Ecosystem::Alpine(320))
+        );
+        assert_eq!(
+            ecosystem_from_os_release("ID=endeavouros\nID_LIKE=arch\n"),
+            Some(Ecosystem::Arch)
+        );
+        assert_eq!(
+            ecosystem_from_os_release("ID=manjaro\nID_LIKE=arch\n"),
+            None
         );
         assert_eq!(
             ecosystem_from_os_release("ID=gentoo\nVERSION_ID=\"2.15\"\n"),
