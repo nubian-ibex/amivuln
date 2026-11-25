@@ -364,6 +364,10 @@
                 "string",
                 "null"
               ]
+            },
+            "vendor_state": {
+              "description": "The vendor's own words for why a CVE has no fix (Red Hat: Affected, Fix deferred, Will not fix, Out of support scope). Present only when the CVE comes from a vendor list of unfixed CVEs.",
+              "type": "string"
             }
           }
         },

@@ -44,8 +44,11 @@ scope`) has no advisory there, so on RHEL 8 and 9 amivuln also reads Red Hat's
 OVAL file "including unpatched" (ADR-0014, source `redhat-oval`): about 11 MB,
 read once per cache refresh and reduced to a small index. A package of the
 host is matched by its binary or source package name, and each CVE found is
-reported as affected with no fix version, never as clean. A CVE OSV already
-has an answer for keeps OSV's answer. `Under investigation` is not reported.
+reported as affected with no fix version, never as clean, and Red Hat's own
+state for it is shown: `no fix published (Will not fix)` in the text output,
+`distro_status.vendor_state` in the JSON, and in CycloneDX and OpenVEX as part
+of the analysis (`will_not_fix` as the response for `Will not fix` and `Out of
+support scope`). A CVE OSV already has an answer for keeps OSV's answer. `Under investigation` is not reported.
 The file has no state for RHEL 10, so the source is shown as skipped there and
 the RHEL 10 result stays a lower bound. Nothing about the host is sent; turn it
 off with `sources.rhel_unpatched.enabled = false`. The data is published by Red

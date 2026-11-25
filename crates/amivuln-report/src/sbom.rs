@@ -117,11 +117,36 @@ fn source(id: &str) -> Option<Value> {
     Some(json!({"name": name, "url": url}))
 }
 
+/// `text` with the vendor's reason for having no fix, when it gave one.
+fn with_vendor(text: &str, f: &Finding) -> String {
+    match &f.vendor_state {
+        Some(state) => format!("{text} (vendor state: {state})"),
+        None => text.to_owned(),
+    }
+}
+
+/// The vendor will not fix it, so the response is not `update`.
+fn wont_fix(f: &Finding) -> bool {
+    matches!(
+        f.vendor_state.as_deref(),
+        Some("Will not fix" | "Out of support scope")
+    )
+}
+
 fn cyclonedx_vulnerability(f: &Finding, purl: &str, version: &str) -> Value {
     let m = meaning(&f.verdict);
     let analysis = with(
-        json!({"state": m.cyclonedx, "detail": m.text}),
-        [("response", m.update.then(|| json!(["update"])))],
+        json!({"state": m.cyclonedx, "detail": with_vendor(&m.text, f)}),
+        [(
+            "response",
+            if m.update {
+                Some(json!(["update"]))
+            } else if wont_fix(f) {
+                Some(json!(["will_not_fix"]))
+            } else {
+                None
+            },
+        )],
     );
     let mut ratings = vec![json!({"severity": json_severity(f.severity)})];
     if let Some(e) = &f.epss {
@@ -247,7 +272,7 @@ fn openvex_statement(f: &Finding, purl: &str) -> Value {
             "products": [{"@id": purl, "identifiers": {"purl": purl}}],
             "status": m.openvex,
         }),
-        [(key, Some(json!(m.text)))],
+        [(key, Some(json!(with_vendor(&m.text, f))))],
     )
 }
 
@@ -309,6 +334,61 @@ mod tests {
         let mut out = Vec::new();
         f(r, &mut out).unwrap();
         serde_json::from_slice(&out).unwrap()
+    }
+
+    #[test]
+    fn a_vendor_state_is_said_and_will_not_fix_is_the_response() {
+        let mut r = report(true);
+        let mut wont = Finding::new(
+            "CVE-2026-0004",
+            Severity::High,
+            Verdict::Affected { fixed_in: None },
+        );
+        wont.vendor_state = Some("Will not fix".to_owned());
+        let mut deferred = Finding::new(
+            "CVE-2026-0005",
+            Severity::High,
+            Verdict::Affected { fixed_in: None },
+        );
+        deferred.vendor_state = Some("Fix deferred".to_owned());
+        if let Some(t) = r.targets.first_mut() {
+            t.findings = vec![wont, deferred];
+            t.resolved = Vec::new();
+        }
+        let bom = render(render_cyclonedx, &r);
+        let by_id = |id: &str| {
+            bom["vulnerabilities"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|v| v["id"] == id)
+                .unwrap()
+                .clone()
+        };
+        let wont = by_id("CVE-2026-0004");
+        assert_eq!(wont["analysis"]["response"], json!(["will_not_fix"]));
+        assert!(
+            wont["analysis"]["detail"]
+                .as_str()
+                .unwrap()
+                .contains("vendor state: Will not fix")
+        );
+        // A postponed fix is not a refusal: no response, the reason is said.
+        let deferred = by_id("CVE-2026-0005");
+        assert!(deferred["analysis"].get("response").is_none());
+        assert!(
+            deferred["analysis"]["detail"]
+                .as_str()
+                .unwrap()
+                .contains("Fix deferred")
+        );
+        let vex = render(render_openvex, &r);
+        assert!(
+            vex["statements"][0]["action_statement"]
+                .as_str()
+                .unwrap()
+                .contains("vendor state")
+        );
     }
 
     #[test]

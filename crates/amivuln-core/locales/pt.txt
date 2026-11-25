@@ -13,6 +13,7 @@ footer.incomplete = resultado: INCOMPLETO (uma fonte obrigatória falhou); não 
 totals.line = {packages} pacotes verificados, {with} com achados   nota do host {grade} ({points} pontos){accepted}
 totals.accepted =    {n} aceitos
 finding.no_fix = sem correção publicada
+finding.no_fix_state = sem correção publicada ({state})
 finding.fix = correção: {fixed}
 finding.kev =   KEV(incluído em {added}{ransomware})
 finding.ransomware = , ransomware

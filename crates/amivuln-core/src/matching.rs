@@ -120,6 +120,10 @@ pub struct Finding {
     /// What Red Hat says can be done while the fix is not installed, when
     /// mitigations were asked for and Red Hat states one.
     pub mitigation: Option<Mitigation>,
+    /// The vendor's own words for why there is no fix (Red Hat: `Affected`,
+    /// `Fix deferred`, `Will not fix`, `Out of support scope`), when the CVE
+    /// comes from a vendor list of unfixed CVEs.
+    pub vendor_state: Option<String>,
 }
 
 impl Finding {
@@ -133,6 +137,7 @@ impl Finding {
             kev: None,
             epss: None,
             mitigation: None,
+            vendor_state: None,
         }
     }
 }

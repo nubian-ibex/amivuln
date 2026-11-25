@@ -139,9 +139,9 @@ pub(super) fn add_unpatched(
             }
             let mut verdict = Verdict::Affected { fixed_in: None };
             apply_vex(&mut verdict, vex, &u.cve);
-            target
-                .findings
-                .push(Finding::new(u.cve.clone(), u.severity, verdict));
+            let mut finding = Finding::new(u.cve.clone(), u.severity, verdict);
+            finding.vendor_state = Some(u.state.as_str().to_owned());
+            target.findings.push(finding);
             added = true;
         }
         if added {
@@ -197,6 +197,8 @@ mod tests {
         assert_eq!(f[0].id, "CVE-2024-0001");
         assert_eq!(f[0].severity, Severity::High);
         assert_eq!(f[0].verdict, Verdict::Affected { fixed_in: None });
+        // Red Hat's own state is kept for the output.
+        assert!(f[0].vendor_state.is_some(), "{:?}", f[0]);
     }
 
     #[test]

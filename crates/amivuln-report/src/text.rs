@@ -269,7 +269,13 @@ fn write_finding(
 ) -> io::Result<()> {
     let fixed = match &f.verdict {
         Verdict::Affected { fixed_in: Some(v) } => sanitize_terminal(&v.to_string()),
-        Verdict::Affected { fixed_in: None } => tr("finding.no_fix"),
+        Verdict::Affected { fixed_in: None } => match &f.vendor_state {
+            Some(state) => tr_args(
+                "finding.no_fix_state",
+                &[("state", &sanitize_terminal(state))],
+            ),
+            None => tr("finding.no_fix"),
+        },
         _ => "-".to_owned(),
     };
     let kev = f.kev.as_ref().map_or(String::new(), |k| {
@@ -765,6 +771,20 @@ mod tests {
         assert!(out[affected..unverified].contains("KEV(added 2026-10-30, ransomware)"));
         assert!(!out[affected..unverified].contains("CVE-0000-0003"));
         assert!(out[unverified..].contains("CVE-0000-0003"));
+    }
+
+    #[test]
+    fn the_vendor_state_follows_no_fix_published() {
+        let mut r = report(true);
+        let t = r.targets.first_mut().unwrap();
+        t.findings = vec![Finding::new(
+            "CVE-2026-0009",
+            Severity::High,
+            Verdict::Affected { fixed_in: None },
+        )];
+        t.findings[0].vendor_state = Some("Will not fix".to_owned());
+        let out = render(render_detail, &r, false);
+        assert!(out.contains("no fix published (Will not fix)"), "{out}");
     }
 
     #[test]
