@@ -32,6 +32,20 @@ complete. A required source that failed makes the result **incomplete**: the
 output says so loudly and the exit code is 2, so an outage can never look like
 a clean scan.
 
+## Severity
+
+The severity is the one the data states, the distribution's own first:
+Ubuntu's priority, Debian's urgency, the rating a Rocky Linux or AlmaLinux
+advisory opens with, Red Hat's classification, and the textual severity of a
+language advisory. When a distribution advisory states no rating, its CVSS 3
+vector is rated (the distribution's vector before NVD's).
+
+Some advisories carry neither, openSUSE's among them. Those findings are
+`unknown` in the JSON, are counted with the low ones in the summary and in the
+host score, and no `--fail-on` severity level can judge them: the run says so
+on stderr (`-q` silences it). Use `--fail-on kev` or `--fail-on-epss` where
+that matters.
+
 ## Use in CI
 
 ```bash

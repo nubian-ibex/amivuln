@@ -31,7 +31,10 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
     }
     let ecosystem = match id.as_deref()? {
         "fedora" => Ecosystem::Fedora(version_id?.parse().ok()?),
-        "arch" => Ecosystem::Arch,
+        // EndeavourOS installs Arch's own packages from Arch's repositories.
+        // Named one by one, never through `ID_LIKE`: other derivatives rebuild
+        // or delay packages, which the Arch tracker cannot judge.
+        "arch" | "endeavouros" => Ecosystem::Arch,
         // os-release says `debian` with VERSION_CODENAME in newer releases and
         // VERSION_ID as a number in others; a floating version is not possible.
         "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
@@ -62,8 +65,8 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
             let minor: u16 = parts.next()?.parse().ok()?;
             Ecosystem::Alpine(major * 100 + minor)
         }
-        // Ubuntu LTS versions are "NN.04" or "NN.10"; interim releases have no
-        // long-lived OSV ecosystem, so amivuln does not claim them.
+        // Ubuntu releases are "NN.04" or "NN.10", LTS and interim alike. Whether
+        // OSV has data for one is checked when it is asked.
         "ubuntu" => {
             let vid: Option<&String> = version_id.as_ref();
             let (maj, min) = vid?.split_once('.')?;
@@ -95,6 +98,21 @@ mod tests {
             parse_os_release(a).map(|h| h.ecosystem),
             Some(Ecosystem::Arch)
         );
+    }
+
+    #[test]
+    fn endeavouros_is_read_as_arch_and_other_derivatives_are_not() {
+        let endeavour = "NAME=EndeavourOS\nID=endeavouros\nID_LIKE=arch\n";
+        assert_eq!(
+            parse_os_release(endeavour).map(|h| h.ecosystem),
+            Some(Ecosystem::Arch)
+        );
+        // `ID_LIKE=arch` alone says nothing about whose packages these are:
+        // a derivative that rebuilds or delays them would be judged wrongly.
+        for id in ["manjaro", "cachyos", "artix"] {
+            let os = format!("ID={id}\nID_LIKE=arch\n");
+            assert_eq!(parse_os_release(&os), None, "{id}");
+        }
     }
 
     #[test]

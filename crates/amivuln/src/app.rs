@@ -815,9 +815,20 @@ pub(crate) fn check_with(
         }
         return ExitCode::Internal;
     }
-    let violated = s.policy.violated_by(&policy_findings(&report, &s));
+    let judged = policy_findings(&report, &s);
+    warn_unjudged(cli, &s, &judged, err);
+    let violated = s.policy.violated_by(&judged);
     maybe_notify(&report, &s, violated, err);
     exit_for(&report, &s, mode)
+}
+
+/// Says on stderr when `--fail-on` passes over findings only because no source
+/// rates them, so a clean exit code is not read as "nothing that bad".
+pub(crate) fn warn_unjudged(cli: &Cli, s: &Settings, findings: &[Finding], err: &mut dyn Write) {
+    let n = s.policy.unjudged(findings);
+    if n > 0 && !cli.global.quiet {
+        let _ = writeln!(err, "{}", tr_args("warning.unjudged", &[("n", &n)]));
+    }
 }
 
 #[allow(clippy::too_many_lines)]

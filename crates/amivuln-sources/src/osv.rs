@@ -215,6 +215,21 @@ struct RawVuln {
     database_specific: Option<RawDatabaseSpecific>,
     #[serde(default)]
     references: Vec<RawReference>,
+    #[serde(default)]
+    severity: Vec<RawSeverity>,
+    #[serde(default)]
+    summary: String,
+}
+
+/// A scored or rated severity: a CVSS vector, or Ubuntu's priority word.
+#[derive(Debug, Deserialize)]
+struct RawSeverity {
+    #[serde(rename = "type", default)]
+    kind: String,
+    #[serde(default)]
+    score: String,
+    #[serde(default)]
+    source: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -235,6 +250,66 @@ fn severity_from_references(references: &[RawReference]) -> Option<String> {
     })
 }
 
+/// A rating word in the vocabulary of [`OsvEntry::severity`]. Ubuntu's
+/// `negligible` and Debian's `unimportant` are the lowest rating; anything
+/// else, such as `not yet assigned`, is not a rating.
+fn rating_word(word: &str) -> Option<String> {
+    let rating = match word.to_ascii_lowercase().as_str() {
+        "critical" => "CRITICAL",
+        "high" | "important" => "HIGH",
+        "medium" => "MEDIUM",
+        "moderate" => "MODERATE",
+        "low" | "negligible" | "unimportant" => "LOW",
+        _ => return None,
+    };
+    Some(rating.to_owned())
+}
+
+/// The severity of an advisory, in the order of who is speaking: the
+/// distribution's own rating (Ubuntu's priority, Debian's urgency, the rating
+/// a Rocky Linux or `AlmaLinux` summary opens with) and only then a CVSS
+/// vector, the distribution's before NVD's. Language advisories are rated by
+/// their textual severity alone (ADR-0013).
+fn advisory_severity(raw: &RawVuln, ecosystem: &str) -> Option<String> {
+    let ubuntu = raw
+        .severity
+        .iter()
+        .find(|s| s.kind == "Ubuntu")
+        .and_then(|s| rating_word(&s.score));
+    // Urgency is per package and an advisory can cover several, so it counts
+    // only when every package of the release carries the same rating.
+    let urgencies: std::collections::BTreeSet<Option<String>> = raw
+        .affected
+        .iter()
+        .filter(|a| a.package.as_ref().is_some_and(|p| p.ecosystem == ecosystem))
+        .map(|a| rating_word(a.ecosystem_specific.as_ref()?.urgency.as_deref()?))
+        .collect();
+    let debian = match urgencies.len() {
+        1 => urgencies.into_iter().next().flatten(),
+        _ => None,
+    };
+    let rebuild = (raw.id.starts_with("RLSA-") || raw.id.starts_with("ALSA-"))
+        .then(|| raw.summary.split_once(':'))
+        .flatten()
+        .and_then(|(rating, _)| rating_word(rating));
+    let vector = || {
+        if matches!(ecosystem, "Go" | "crates.io") {
+            return None;
+        }
+        let mut vectors: Vec<&RawSeverity> = raw
+            .severity
+            .iter()
+            .filter(|s| s.kind == "CVSS_V3")
+            .collect();
+        vectors.sort_by_key(|s| s.source == "NVD");
+        vectors
+            .into_iter()
+            .find_map(|s| crate::cvss::rating(&s.score))
+            .map(str::to_owned)
+    };
+    ubuntu.or(debian).or(rebuild).or_else(vector)
+}
+
 /// The vendor block; only the textual severity GitHub advisories carry.
 #[derive(Debug, Deserialize)]
 struct RawDatabaseSpecific {
@@ -247,6 +322,15 @@ struct RawAffected {
     package: Option<RawPackage>,
     #[serde(default)]
     ranges: Vec<RawRange>,
+    #[serde(default)]
+    ecosystem_specific: Option<RawEcosystemSpecific>,
+}
+
+/// Only Debian's urgency is read from it.
+#[derive(Debug, Deserialize)]
+struct RawEcosystemSpecific {
+    #[serde(default)]
+    urgency: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -281,8 +365,9 @@ pub struct OsvEntry {
     /// advisories list one range per release branch, so the fix that matters
     /// depends on the installed version.
     pub fixes: Vec<(String, String)>,
-    /// Textual severity (`CRITICAL`, `HIGH`, `MODERATE`, `LOW`) when the
-    /// advisory database states one, upper-cased.
+    /// Textual severity (`CRITICAL`, `HIGH`, `MEDIUM` or `MODERATE`, `LOW`),
+    /// upper-cased: the advisory database's own rating, or the rating of its
+    /// CVSS vector.
     pub severity: Option<String>,
 }
 
@@ -351,16 +436,19 @@ impl OsvData {
         }
         cves.sort();
         cves.dedup();
+        let severity = raw
+            .database_specific
+            .as_ref()
+            .and_then(|d| d.severity.as_ref())
+            .map(|v| v.to_ascii_uppercase())
+            .or_else(|| severity_from_references(&raw.references))
+            .or_else(|| advisory_severity(&raw, ecosystem));
         Ok(Self::from_entries(vec![OsvEntry {
             advisory: lowest_fix.clone().unwrap_or_default(),
             cves,
             fixed: lowest_fix,
             fixes,
-            severity: raw
-                .database_specific
-                .and_then(|d| d.severity)
-                .map(|v| v.to_ascii_uppercase())
-                .or_else(|| severity_from_references(&raw.references)),
+            severity,
         }]))
     }
 
@@ -651,6 +739,92 @@ mod tests {
             "SUSE-SU-../x:1-1",
         ] {
             assert!(!is_advisory_id(bad), "{bad} should be dropped");
+        }
+    }
+
+    /// The severity read from one advisory filed under `ecosystem`.
+    fn severity_of(ecosystem: &str, mut doc: serde_json::Value) -> Option<String> {
+        doc["upstream"] = serde_json::json!(["CVE-2026-0001"]);
+        let data = OsvData::parse_advisory(doc.to_string().as_bytes(), ecosystem).unwrap();
+        data.severity_for("CVE-2026-0001").map(str::to_owned)
+    }
+
+    #[test]
+    fn each_distribution_states_severity_its_own_way() {
+        let affected = |eco: &str, specific: serde_json::Value| {
+            serde_json::json!([{
+                "package": {"name": "openssl", "ecosystem": eco},
+                "ecosystem_specific": specific
+            }])
+        };
+        let cvss = |source: Option<&str>, vector: &str| {
+            let mut s = serde_json::json!({"type": "CVSS_V3", "score": vector});
+            if let Some(source) = source {
+                s["source"] = source.into();
+            }
+            s
+        };
+        let high = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N";
+        let low = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N";
+        // Ubuntu's priority wins over any CVSS score.
+        let ubuntu = serde_json::json!({"id": "UBUNTU-CVE-2026-0001", "severity": [
+            cvss(Some("NVD"), high),
+            {"type": "Ubuntu", "score": "negligible", "source": "SELF"}
+        ]});
+        assert_eq!(
+            severity_of("Ubuntu:24.04:LTS", ubuntu).as_deref(),
+            Some("LOW")
+        );
+        // Debian's urgency wins when Debian assigned one.
+        let urgent = serde_json::json!({"id": "DEBIAN-CVE-2026-0001",
+            "severity": [cvss(None, high)],
+            "affected": affected("Debian:12", serde_json::json!({"urgency": "medium"}))});
+        assert_eq!(severity_of("Debian:12", urgent).as_deref(), Some("MEDIUM"));
+        let unimportant = serde_json::json!({"id": "DEBIAN-CVE-2026-0001",
+            "affected": affected("Debian:12", serde_json::json!({"urgency": "unimportant"}))});
+        assert_eq!(
+            severity_of("Debian:12", unimportant).as_deref(),
+            Some("LOW")
+        );
+        // Not assigned yet: the CVSS vector decides.
+        let pending = serde_json::json!({"id": "DEBIAN-CVE-2026-0001",
+            "severity": [cvss(None, high)],
+            "affected": affected("Debian:12", serde_json::json!({"urgency": "not yet assigned"}))});
+        assert_eq!(severity_of("Debian:12", pending).as_deref(), Some("HIGH"));
+        // The rebuilds open the summary with Red Hat's rating.
+        for (id, eco) in [
+            ("RLSA-2026:0001", "Rocky Linux:9"),
+            ("ALSA-2026:0001", "AlmaLinux:9"),
+        ] {
+            let doc = serde_json::json!({"id": id, "severity": [cvss(None, high)],
+                "summary": "Moderate: openssl security update"});
+            assert_eq!(severity_of(eco, doc).as_deref(), Some("MODERATE"), "{id}");
+        }
+        // The distribution's own vector is preferred to NVD's.
+        let two = serde_json::json!({"id": "ALPINE-CVE-2026-0001",
+            "severity": [cvss(Some("NVD"), high), cvss(None, "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L")]});
+        assert_eq!(severity_of("Alpine:v3.20", two).as_deref(), Some("LOW"));
+        // One advisory, two source packages rated differently: neither urgency
+        // can be pinned on the package asked about, so the vector decides.
+        let two = serde_json::json!({"id": "DEBIAN-CVE-2026-0001",
+        "severity": [cvss(None, high)],
+        "affected": [
+            {"package": {"name": "minizip", "ecosystem": "Debian:12"},
+             "ecosystem_specific": {"urgency": "unimportant"}},
+            {"package": {"name": "zlib", "ecosystem": "Debian:12"},
+             "ecosystem_specific": {"urgency": "not yet assigned"}},
+        ]});
+        assert_eq!(severity_of("Debian:12", two).as_deref(), Some("HIGH"));
+        // A language advisory is not rated from its vector (ADR-0013).
+        let rust = serde_json::json!({"id": "RUSTSEC-2026-0001", "severity": [cvss(None, high)]});
+        assert_eq!(severity_of("crates.io", rust), None);
+        // Nothing stated, and nothing invented.
+        for doc in [
+            serde_json::json!({"id": "SUSE-SU-2026:0001-1", "summary": "Security update for openssl-3"}),
+            serde_json::json!({"id": "ALPINE-CVE-2026-0001", "severity": [cvss(None, low)]}),
+            serde_json::json!({"id": "ALPINE-CVE-2026-0001", "severity": [cvss(None, "not a vector")]}),
+        ] {
+            assert_eq!(severity_of("Alpine:v3.20", doc.clone()), None, "{doc}");
         }
     }
 
