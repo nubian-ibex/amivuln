@@ -216,7 +216,17 @@ fn is_clean(t: &TargetReport) -> bool {
 
 fn write_totals(out: &mut dyn Write, r: &RunReport) -> io::Result<()> {
     if r.targets.len() > 1 {
-        let with = r.targets.iter().filter(|t| !is_clean(t)).count();
+        // Unverified findings are listed apart, so they do not make a package
+        // one "with findings".
+        let with = r
+            .targets
+            .iter()
+            .filter(|t| {
+                t.findings
+                    .iter()
+                    .any(|f| matches!(f.verdict, Verdict::Affected { .. }))
+            })
+            .count();
         let all: Vec<Finding> = r.targets.iter().flat_map(|t| t.findings.clone()).collect();
         let sc = amivuln_core::score(&all);
         let accepted = r.suppressed.len();
@@ -799,6 +809,22 @@ mod tests {
         r.targets.first_mut().unwrap().running_kernel = true;
         let out = render(render_detail, &r, false);
         assert!(out.contains("[running kernel]"), "{out}");
+    }
+
+    #[test]
+    fn a_package_with_only_unverified_findings_is_not_counted_as_with_findings() {
+        let mut r = report(true);
+        let mut other = r.targets.first().unwrap().clone();
+        other.findings = vec![Finding::new(
+            "CVE-2026-0007",
+            Severity::High,
+            Verdict::Unverified,
+        )];
+        r.targets.push(other);
+        let out = render(render_summary, &r, false);
+        assert!(out.contains("checked 2 packages, 1 with findings"), "{out}");
+        // It is still listed: unverified is reported, apart.
+        assert!(out.contains("1 finding(s) could not be verified"), "{out}");
     }
 
     #[test]
