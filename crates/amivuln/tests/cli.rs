@@ -2870,3 +2870,111 @@ async fn retries_run_out_before_the_mirror_is_abandoned() {
     assert_eq!(out.status.code(), Some(2));
     assert_eq!(json(&out)["complete"], false);
 }
+
+/// An OSV that, like the real one, files an interim Ubuntu release under its
+/// plain name (`Ubuntu:98.10`) and an LTS one with the `:LTS` suffix, and has
+/// nothing for a release it does not cover.
+async fn ubuntu_osv() -> (MockServer, tempfile::TempDir) {
+    let server = MockServer::start().await;
+    let found = serde_json::json!({"results": [{"vulns": [{"id": "UBUNTU-CVE-2026-0001"}]}]});
+    // Only the old version of openssl and the probe package have advisories.
+    for (name, version) in [("openssl", "0.0.1-1"), ("linux", "0.0.1")] {
+        Mock::given(method("POST"))
+            .and(path("/v1/querybatch"))
+            .and(body_string_contains("\"ecosystem\":\"Ubuntu:98.10\""))
+            .and(body_string_contains(format!("\"name\":\"{name}\"")))
+            .and(body_string_contains(format!("\"version\":\"{version}\"")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(found.clone()))
+            .with_priority(1)
+            .mount(&server)
+            .await;
+    }
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": [{}]})),
+        )
+        .with_priority(5)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/vulns/UBUNTU-CVE-2026-0001"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "UBUNTU-CVE-2026-0001",
+            "upstream": ["CVE-2026-0001"],
+            "affected": [{
+                "package": {"name": "openssl", "ecosystem": "Ubuntu:98.10"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]
+            }]
+        })))
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join("cfg.toml"),
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    (server, home)
+}
+
+async fn ask_ubuntu(
+    home: &tempfile::TempDir,
+    release: &str,
+    target: &str,
+) -> (Option<i32>, serde_json::Value) {
+    let mut cmd = Command::cargo_bin("amivuln").unwrap();
+    cmd.env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .arg("--config")
+        .arg(home.path().join("cfg.toml"))
+        .args(["--distro", release, target, "-f", "json"]);
+    let out = tokio::task::spawn_blocking(move || cmd.output().unwrap())
+        .await
+        .unwrap();
+    (out.status.code(), json(&out))
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_interim_ubuntu_release_is_asked_by_its_own_name() {
+    let (_server, home) = ubuntu_osv().await;
+    let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", "openssl@0.0.1-1").await;
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_clean_package_of_a_covered_release_stays_complete() {
+    let (_server, home) = ubuntu_osv().await;
+    let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", "openssl@9.9.9-1").await;
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["complete"], true, "{v}");
+    assert_eq!(v["targets"][0]["findings"], serde_json::json!([]));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_osv_has_no_data_for_is_incomplete_never_clean() {
+    let (_server, home) = ubuntu_osv().await;
+    let (code, v) = ask_ubuntu(&home, "ubuntu:97.10", "openssl@0.0.1-1").await;
+    assert_eq!(code, Some(2), "{v}");
+    assert_eq!(v["complete"], false, "{v}");
+    assert!(
+        v.to_string().contains("no data for Ubuntu:97.10"),
+        "the reason is said: {v}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_interim_release_past_its_support_is_never_complete() {
+    let (_server, home) = ubuntu_osv().await;
+    let (code, v) = ask_ubuntu(&home, "ubuntu:25.04", "openssl@0.0.1-1").await;
+    assert_eq!(code, Some(2), "{v}");
+    assert_eq!(v["complete"], false, "{v}");
+    assert!(v.to_string().contains("past its support"), "{v}");
+}

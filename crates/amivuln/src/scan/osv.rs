@@ -255,6 +255,80 @@ pub(super) async fn query_osv(
     slots.into_iter().filter_map(|s| s.answer).collect()
 }
 
+/// A source package every Ubuntu release with data has advisories for.
+const UBUNTU_PROBE: &str = "linux";
+
+/// Fails the source for an Ubuntu release whose answer cannot be trusted as
+/// complete.
+///
+/// An interim release past its support gets no new advisories, and OSV keeps
+/// only leftovers for it. For any other release OSV answers "nothing" both for
+/// a clean package and for a release it holds no data for, so when no package
+/// got an advisory one more question tells the two apart. Neither case may read
+/// as clean.
+async fn ubuntu_coverage(
+    f: &Fetcher<'_>,
+    base: &str,
+    packages: &[(String, PackageRef)],
+    asked: &[(String, Vec<String>)],
+) -> SourceStatus {
+    let today = jiff::Timestamp::from_second(f.now)
+        .map(|t| jiff::tz::TimeZone::UTC.to_datetime(t).date())
+        .unwrap_or_default();
+    let mut status = SourceStatus::Ok;
+    let mut silent = std::collections::BTreeSet::new();
+    for (_, pkg) in packages {
+        let Some(ecosystem) = pkg.ecosystem.osv_ecosystem() else {
+            continue;
+        };
+        if !matches!(pkg.ecosystem, Ecosystem::Ubuntu(_)) {
+            continue;
+        }
+        if pkg
+            .ecosystem
+            .interim_support_ended(today.year(), today.month())
+        {
+            status = SourceStatus::Failed(format!(
+                "{ecosystem} is past its support and gets no new advisories, so the result is not complete"
+            ));
+        } else if asked
+            .iter()
+            .all(|(e, ids)| *e != ecosystem || ids.is_empty())
+        {
+            silent.insert(ecosystem);
+        }
+    }
+    for ecosystem in silent {
+        let version = "0.0.1".to_owned();
+        let body = match amivuln_sources::osv::batch_request(UBUNTU_PROBE, &ecosystem, &version) {
+            Ok(body) => body,
+            Err(e) => return SourceStatus::Failed(e.to_string()),
+        };
+        let probe = [OsvQuery {
+            name: UBUNTU_PROBE,
+            ecosystem: ecosystem.clone(),
+            version,
+            body,
+        }];
+        for answer in query_osv(f, base, &probe).await {
+            let found = answer.map_err(|e| describe(&e)).and_then(|d| {
+                amivuln_sources::osv::parse_batch(&d.body).map_err(|e| e.to_string())
+            });
+            status = worse(
+                status,
+                match found {
+                    Ok(ids) if ids.is_empty() => SourceStatus::Failed(format!(
+                        "OSV has no data for {ecosystem}, so nothing can be said about it"
+                    )),
+                    Ok(_) => SourceStatus::Ok,
+                    Err(why) => SourceStatus::Failed(why),
+                },
+            );
+        }
+    }
+    status
+}
+
 /// Loads the OSV data for the host's ecosystem.
 ///
 /// Debian and Ubuntu advisories are fetched per package (one batched request
@@ -356,6 +430,7 @@ pub(super) async fn load_osv(
             }
         }
     }
+    status = worse(status, ubuntu_coverage(f, base, packages, &asked).await);
     for ids in &mut ids_by_package {
         ids.sort();
         ids.dedup();
