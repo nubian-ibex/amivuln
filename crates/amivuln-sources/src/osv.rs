@@ -276,11 +276,18 @@ fn advisory_severity(raw: &RawVuln, ecosystem: &str) -> Option<String> {
         .iter()
         .find(|s| s.kind == "Ubuntu")
         .and_then(|s| rating_word(&s.score));
-    let debian = raw
+    // Urgency is per package and an advisory can cover several, so it counts
+    // only when every package of the release carries the same rating.
+    let urgencies: std::collections::BTreeSet<Option<String>> = raw
         .affected
         .iter()
         .filter(|a| a.package.as_ref().is_some_and(|p| p.ecosystem == ecosystem))
-        .find_map(|a| rating_word(a.ecosystem_specific.as_ref()?.urgency.as_deref()?));
+        .map(|a| rating_word(a.ecosystem_specific.as_ref()?.urgency.as_deref()?))
+        .collect();
+    let debian = match urgencies.len() {
+        1 => urgencies.into_iter().next().flatten(),
+        _ => None,
+    };
     let rebuild = (raw.id.starts_with("RLSA-") || raw.id.starts_with("ALSA-"))
         .then(|| raw.summary.split_once(':'))
         .flatten()
@@ -797,6 +804,17 @@ mod tests {
         let two = serde_json::json!({"id": "ALPINE-CVE-2026-0001",
             "severity": [cvss(Some("NVD"), high), cvss(None, "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L")]});
         assert_eq!(severity_of("Alpine:v3.20", two).as_deref(), Some("LOW"));
+        // One advisory, two source packages rated differently: neither urgency
+        // can be pinned on the package asked about, so the vector decides.
+        let two = serde_json::json!({"id": "DEBIAN-CVE-2026-0001",
+        "severity": [cvss(None, high)],
+        "affected": [
+            {"package": {"name": "minizip", "ecosystem": "Debian:12"},
+             "ecosystem_specific": {"urgency": "unimportant"}},
+            {"package": {"name": "zlib", "ecosystem": "Debian:12"},
+             "ecosystem_specific": {"urgency": "not yet assigned"}},
+        ]});
+        assert_eq!(severity_of("Debian:12", two).as_deref(), Some("HIGH"));
         // A language advisory is not rated from its vector (ADR-0013).
         let rust = serde_json::json!({"id": "RUSTSEC-2026-0001", "severity": [cvss(None, high)]});
         assert_eq!(severity_of("crates.io", rust), None);
