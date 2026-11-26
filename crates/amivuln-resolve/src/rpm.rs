@@ -141,7 +141,7 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
     };
     let parsed = evr.parse().unwrap_or_else(|never| match never {});
     Ok(PackageRef {
-        source_vr: source_vr(srpm, &format!("{version}-{release}")),
+        source_vr: source_release(srpm).filter(|vr| *vr != format!("{version}-{release}")),
         ecosystem,
         name: name.to_owned(),
         source_name: source_name(srpm),
@@ -154,21 +154,19 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
 }
 
 /// `bash-5.3.9-3.fc44.src.rpm` gives `bash`.
-fn source_name(srpm: &str) -> Option<String> {
+pub(crate) fn source_name(srpm: &str) -> Option<String> {
     let base = srpm.strip_suffix(".src.rpm")?;
     let without_release = base.rsplit_once('-')?.0;
     let name = without_release.rsplit_once('-')?.0;
     (!name.is_empty()).then(|| name.to_owned())
 }
 
-/// The release of `bash-5.3.9-3.fc44.src.rpm` is `5.3.9-3.fc44`; kept only
-/// when the binary's differs.
-fn source_vr(srpm: &str, binary: &str) -> Option<String> {
+/// `bash-5.3.9-3.fc44.src.rpm` gives `5.3.9-3.fc44`.
+pub(crate) fn source_release(srpm: &str) -> Option<String> {
     let base = srpm.strip_suffix(".src.rpm")?;
     let (rest, release) = base.rsplit_once('-')?;
     let (_, version) = rest.rsplit_once('-')?;
-    let vr = format!("{version}-{release}");
-    (vr != binary).then_some(vr)
+    Some(format!("{version}-{release}"))
 }
 
 #[cfg(test)]

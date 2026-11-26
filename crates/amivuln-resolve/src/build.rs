@@ -76,6 +76,77 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
     }
 }
 
+/// Records the source package an input names for `package`, and its
+/// version-release when it has one of its own. A value no package manager
+/// would accept is left out, so the source stays unknown.
+pub fn set_source(package: &mut PackageRef, name: &str, release: Option<&str>) {
+    if !valid_name(name) || name.contains('@') {
+        return;
+    }
+    package.source_name = Some(name.to_owned());
+    if is_rpm(package.ecosystem) {
+        let binary = package.version.to_string();
+        let binary = binary.split_once(':').map_or(binary.as_str(), |(_, vr)| vr);
+        package.source_vr = release
+            .filter(|vr| *vr != binary && valid_version(vr))
+            .map(str::to_owned);
+    }
+}
+
+/// The source a purl's `upstream` qualifier names, as Syft writes it: the name
+/// (`name@version` for some deb packages) or the source rpm's file name.
+fn set_upstream_source(package: &mut PackageRef, upstream: &str) {
+    match package.ecosystem {
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
+            let name = upstream.split_once('@').map_or(upstream, |(name, _)| name);
+            set_source(package, name, None);
+        }
+        Ecosystem::Alpine(_) => set_source(package, upstream, None),
+        eco if is_rpm(eco) => {
+            if upstream.strip_suffix(".rpm").is_none() {
+                set_source(package, upstream, None);
+            } else if let Some(name) = crate::rpm::source_name(upstream) {
+                let release = crate::rpm::source_release(upstream);
+                set_source(package, &name, release.as_deref());
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The `--distro` value that names an ecosystem, for an error message.
+fn distro_flag(e: Ecosystem) -> String {
+    match e {
+        Ecosystem::Fedora(v) => format!("fedora:{v}"),
+        Ecosystem::Arch => "arch".to_owned(),
+        Ecosystem::Debian(v) => format!("debian:{v}"),
+        Ecosystem::Ubuntu(v) => {
+            format!("ubuntu:{}.{:02}", v / 100, v % 100)
+        }
+        Ecosystem::Rocky(v) => format!("rocky:{v}"),
+        Ecosystem::Alma(v) => format!("alma:{v}"),
+        Ecosystem::Rhel(v) => format!("rhel:{}", Ecosystem::rhel_version(v)),
+        Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
+        Ecosystem::Gentoo => "gentoo".to_owned(),
+        Ecosystem::Flatpak => "a Flatpak runtime".to_owned(),
+        Ecosystem::Opensuse(0) => "opensuse:tumbleweed".to_owned(),
+        Ecosystem::Opensuse(v) => format!("opensuse:{}.{}", v / 100, v % 100),
+        Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
+    }
+}
+
+/// Whether a purl of the ecosystem carries its epoch as a qualifier.
+fn is_rpm(ecosystem: Ecosystem) -> bool {
+    matches!(
+        ecosystem,
+        Ecosystem::Fedora(_)
+            | Ecosystem::Rocky(_)
+            | Ecosystem::Alma(_)
+            | Ecosystem::Rhel(_)
+            | Ecosystem::Opensuse(_)
+    )
+}
+
 /// A Gentoo package as users write it: `category/name`, optionally followed by
 /// `:slot` (`dev-lang/php:8.2`). Returns the name and the slot.
 fn gentoo_name(text: &str) -> Result<(&str, Option<&str>), ResolveError> {
@@ -193,23 +264,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         Some(e) => {
             return Err(bad(format!(
                 "the purl {kind}/{namespace} does not match --distro {}; supported purls: pkg:rpm/fedora, pkg:alpm/arch, pkg:deb/debian, pkg:deb/ubuntu, pkg:apk/alpine, pkg:rpm/redhat, pkg:rpm/opensuse, pkg:generic/gentoo",
-                match e {
-                    Ecosystem::Fedora(v) => format!("fedora:{v}"),
-                    Ecosystem::Arch => "arch".to_owned(),
-                    Ecosystem::Debian(v) => format!("debian:{v}"),
-                    Ecosystem::Ubuntu(v) => {
-                        format!("ubuntu:{}.{:02}", v / 100, v % 100)
-                    }
-                    Ecosystem::Rocky(v) => format!("rocky:{v}"),
-                    Ecosystem::Alma(v) => format!("alma:{v}"),
-                    Ecosystem::Rhel(v) => format!("rhel:{}", Ecosystem::rhel_version(v)),
-                    Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
-                    Ecosystem::Gentoo => "gentoo".to_owned(),
-                    Ecosystem::Flatpak => "a Flatpak runtime".to_owned(),
-                    Ecosystem::Opensuse(0) => "opensuse:tumbleweed".to_owned(),
-                    Ecosystem::Opensuse(v) => format!("opensuse:{}.{}", v / 100, v % 100),
-                    Ecosystem::Go | Ecosystem::Crates => "a language ecosystem".to_owned(),
-                }
+                distro_flag(e)
             )));
         }
         None => {
@@ -227,13 +282,20 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
 
     let mut arch = None;
     let mut slot = None;
+    let mut upstream = None;
     for kv in query.split('&').filter(|s| !s.is_empty()) {
         let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
         let v = percent_decode(v).ok_or_else(|| bad("bad percent-encoding in a qualifier"))?;
         match k {
             "arch" => arch = Some(v),
             "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
-            "epoch" if matches!(ecosystem, Ecosystem::Fedora(_)) && !version.contains(':') => {
+            "upstream" => upstream = Some(v),
+            // Alpine and Arch versions have no epoch qualifier to read.
+            "epoch"
+                if (is_rpm(ecosystem)
+                    || matches!(ecosystem, Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)))
+                    && !version.contains(':') =>
+            {
                 version = format!("{v}:{version}");
             }
             _ => {}
@@ -258,6 +320,9 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
     }
     let mut package = make(ecosystem, &name, &version, arch);
     package.slot = slot;
+    if let Some(upstream) = upstream {
+        set_upstream_source(&mut package, &upstream);
+    }
     Ok(package)
 }
 
@@ -331,6 +396,93 @@ mod tests {
         assert_eq!(p.ecosystem, Ecosystem::Fedora(41));
         assert_eq!(p.version.to_string(), "1:1.26.2-1.fc41");
         assert_eq!(p.arch.as_deref(), Some("x86_64"));
+    }
+
+    #[test]
+    fn purl_epoch_counts_on_every_rpm_distribution() {
+        for (purl, eco) in [
+            (
+                "pkg:rpm/redhat/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Rhel(9),
+            ),
+            (
+                "pkg:rpm/rocky/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Rocky(9),
+            ),
+            (
+                "pkg:rpm/alma/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Alma(9),
+            ),
+            (
+                "pkg:rpm/opensuse/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Opensuse(1506),
+            ),
+        ] {
+            let p = from_purl(purl, Some(eco)).unwrap();
+            assert_eq!(p.version.to_string(), "1:3.0.7-24.el9", "{purl}");
+        }
+    }
+
+    #[test]
+    fn purl_epoch_counts_on_deb_packages_too() {
+        // Trivy keeps a deb epoch in the qualifier, Syft in the version.
+        for purl in [
+            "pkg:deb/debian/libcap2@2.66-4?epoch=1",
+            "pkg:deb/debian/libcap2@1%3A2.66-4",
+            "pkg:deb/debian/libcap2@1%3A2.66-4?epoch=1",
+        ] {
+            let p = from_purl(purl, Some(Ecosystem::Debian(12))).unwrap();
+            assert_eq!(p.version.to_string(), "1:2.66-4", "{purl}");
+        }
+    }
+
+    #[test]
+    fn purl_upstream_names_the_source_package() {
+        let source = |purl: &str, eco| {
+            let p = from_purl(purl, Some(eco)).unwrap();
+            (p.source_name, p.source_vr)
+        };
+        let named = |name: &str| Some(name.to_owned());
+        // Syft writes `name` or `name@version` for deb, `name` for apk and the
+        // source rpm's file name for rpm.
+        for purl in [
+            "pkg:deb/debian/libssl3@3.0.11-1?upstream=openssl",
+            "pkg:deb/debian/libssl3@3.0.11-1?upstream=openssl%403.0.11-1",
+        ] {
+            assert_eq!(
+                source(purl, Ecosystem::Debian(12)),
+                (named("openssl"), None)
+            );
+        }
+        assert_eq!(
+            source(
+                "pkg:apk/alpine/libssl3@3.5.0-r0?upstream=openssl",
+                Ecosystem::Alpine(322)
+            ),
+            (named("openssl"), None)
+        );
+        assert_eq!(
+            source(
+                "pkg:rpm/rocky/device-mapper@1.02.181-15.el8?epoch=8&upstream=lvm2-2.03.14-15.el8.src.rpm",
+                Ecosystem::Rocky(8)
+            ),
+            (named("lvm2"), named("2.03.14-15.el8"))
+        );
+        assert_eq!(
+            source(
+                "pkg:rpm/rocky/openssl-libs@3.0.7-24.el9?epoch=1&upstream=openssl-3.0.7-24.el9.src.rpm",
+                Ecosystem::Rocky(9)
+            ),
+            (named("openssl"), None)
+        );
+        // Nothing a package manager would accept: the source stays unknown.
+        assert_eq!(
+            source(
+                "pkg:deb/debian/libssl3@3.0.11-1?upstream=a%20b",
+                Ecosystem::Debian(12)
+            ),
+            (None, None)
+        );
     }
 
     #[test]

@@ -24,7 +24,7 @@ mod target;
 mod unit;
 
 pub use apk::ApkResolver;
-pub use build::{from_name_version, from_purl};
+pub use build::{from_name_version, from_purl, set_source};
 pub use container::{
     ContainerError, available_runtime, export as export_container, packages as container_packages,
 };

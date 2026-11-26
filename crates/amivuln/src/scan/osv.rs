@@ -68,6 +68,73 @@ pub(super) fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version)
     }
 }
 
+/// Whether a package given without its source can be judged by its name.
+/// Debian, Ubuntu, Alpine and openSUSE file advisories by source package, so a
+/// name OSV holds no advisory under may be a binary's, and finding nothing for
+/// it says nothing (ADR-0019).
+async fn name_coverage(
+    f: &Fetcher<'_>,
+    base: &str,
+    packages: &[(String, amivuln_core::PackageRef)],
+    ids_by_package: &[Vec<String>],
+) -> SourceStatus {
+    let unnamed: std::collections::BTreeMap<(&str, String), Ecosystem> = packages
+        .iter()
+        .zip(ids_by_package)
+        .filter(|((_, p), ids)| {
+            ids.is_empty()
+                && p.source_name.is_none()
+                && p.provenance == amivuln_core::Provenance::UserInput
+                && matches!(
+                    p.ecosystem,
+                    Ecosystem::Debian(_)
+                        | Ecosystem::Ubuntu(_)
+                        | Ecosystem::Alpine(_)
+                        | Ecosystem::Opensuse(_)
+                )
+        })
+        .filter_map(|((_, p), _)| {
+            let ecosystem = p.ecosystem.osv_ecosystem()?;
+            Some(((p.name.as_str(), ecosystem), p.ecosystem))
+        })
+        .collect();
+    let mut queries = Vec::new();
+    for ((name, ecosystem), eco) in &unnamed {
+        let version = probe_version(*eco);
+        let body = match amivuln_sources::osv::batch_request(name, ecosystem, version) {
+            Ok(body) => body,
+            Err(e) => return SourceStatus::Failed(e.to_string()),
+        };
+        queries.push(OsvQuery {
+            name,
+            ecosystem: ecosystem.clone(),
+            version: version.to_owned(),
+            body,
+        });
+    }
+    let mut unknown = Vec::new();
+    for (query, answer) in queries.iter().zip(query_osv(f, base, &queries).await) {
+        let ids = answer
+            .map_err(|e| describe(&e))
+            .and_then(|d| amivuln_sources::osv::parse_batch(&d.body).map_err(|e| e.to_string()));
+        match ids {
+            Ok(ids) if ids.is_empty() => unknown.push(query.name),
+            Ok(_) => {}
+            Err(why) => return SourceStatus::Failed(why),
+        }
+    }
+    let Some(first) = unknown.first() else {
+        return SourceStatus::Ok;
+    };
+    let more = match unknown.len() - 1 {
+        0 => String::new(),
+        n => format!(" (and {n} more)"),
+    };
+    SourceStatus::Failed(format!(
+        "OSV has no advisory under {first}{more}, given without a source package: it may be a binary's name, so the result is not complete"
+    ))
+}
+
 /// The names and versions OSV is asked about for one package.
 fn questions<'a>(pkg: &'a amivuln_core::PackageRef, version: &str) -> Vec<(&'a str, String)> {
     let mut asked = vec![(pkg.osv_name(), version.to_owned())];
@@ -486,6 +553,10 @@ pub(super) async fn load_osv(
         }
     }
     status = worse(status, distro_coverage(f, base, packages, &asked).await);
+    status = worse(
+        status,
+        name_coverage(f, base, packages, &ids_by_package).await,
+    );
     for ids in &mut ids_by_package {
         ids.sort();
         ids.dedup();

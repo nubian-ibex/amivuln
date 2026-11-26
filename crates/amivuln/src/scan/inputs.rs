@@ -51,6 +51,51 @@ pub(super) fn read_inventory(
     Ok(out)
 }
 
+/// The purls of an SBOM, each with the source package a component states
+/// beside it.
+pub(super) type Purls = std::collections::BTreeMap<String, Option<(String, Option<String>)>>;
+
+/// The source Trivy states in a component's properties: its name and, when
+/// both parts are there, its version-release.
+fn trivy_source(component: &serde_json::Value) -> Option<(String, Option<String>)> {
+    let properties = component.get("properties")?.as_array()?;
+    let property = |wanted: &str| {
+        properties.iter().find_map(|p| {
+            (p.get("name")?
+                .as_str()?
+                .strip_prefix("aquasecurity:trivy:")?
+                == wanted)
+                .then(|| p.get("value")?.as_str())?
+        })
+    };
+    let release = property("SrcVersion")
+        .zip(property("SrcRelease"))
+        .map(|(version, release)| format!("{version}-{release}"));
+    Some((property("SrcName")?.to_owned(), release))
+}
+
+/// Syft names the source of a deb or apk package only when it differs from the
+/// binary: once the document names any, a package without one is its own.
+fn fill_omitted_sources(packages: &mut [(String, PackageRef)]) {
+    let omits = |eco| {
+        matches!(
+            eco,
+            Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) | Ecosystem::Alpine(_)
+        )
+    };
+    if !packages
+        .iter()
+        .any(|(_, p)| omits(p.ecosystem) && p.source_name.is_some())
+    {
+        return;
+    }
+    for (_, p) in packages.iter_mut().filter(|(_, p)| omits(p.ecosystem)) {
+        if p.source_name.is_none() {
+            p.source_name = Some(p.name.clone());
+        }
+    }
+}
+
 /// Deepest component nesting and most components read from an SBOM.
 pub(super) const MAX_SBOM_DEPTH: usize = 8;
 
@@ -60,7 +105,7 @@ pub(super) fn collect_purls(
     components: &serde_json::Value,
     depth: usize,
     seen: &mut usize,
-    purls: &mut std::collections::BTreeSet<String>,
+    purls: &mut Purls,
     without: &mut usize,
 ) -> Result<(), String> {
     let Some(list) = components.as_array() else {
@@ -73,7 +118,10 @@ pub(super) fn collect_purls(
         }
         match c.get("purl").and_then(serde_json::Value::as_str) {
             Some(p) => {
-                purls.insert(p.to_owned());
+                let source = purls.entry(p.to_owned()).or_default();
+                if source.is_none() {
+                    *source = trivy_source(c);
+                }
             }
             None => *without += 1,
         }
@@ -86,7 +134,7 @@ pub(super) fn collect_purls(
     Ok(())
 }
 
-/// Reads `--sbom FILE`, a `CycloneDX` JSON document. rpm, deb and alpm purls
+/// Reads `--sbom FILE`, a `CycloneDX` JSON document. rpm, deb, apk and alpm purls
 /// become packages; every other component is reported as unresolved, one entry
 /// per purl type, so nothing is dropped without a trace.
 pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
@@ -107,27 +155,37 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
     if doc.get("bomFormat").and_then(serde_json::Value::as_str) != Some("CycloneDX") {
         return Err(tr_args("sbom.not_cyclonedx", &[("path", &path.display())]));
     }
-    let mut purls = std::collections::BTreeSet::new();
+    let mut purls = Purls::new();
     let (mut seen, mut without) = (0, 0);
     if let Some(c) = doc.get("components") {
         collect_purls(c, 0, &mut seen, &mut purls, &mut without)?;
     }
     let mut packages = Vec::new();
     let mut skipped: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for purl in purls {
+    for (purl, source) in purls {
         let kind = purl
             .strip_prefix("pkg:")
             .and_then(|r| r.split(['/', '@']).next())
             .unwrap_or("invalid")
             .to_owned();
-        if matches!(kind.as_str(), "rpm" | "deb" | "alpm") {
-            let pkg = amivuln_resolve::from_purl(&purl, Some(eco))
+        if matches!(kind.as_str(), "rpm" | "deb" | "apk" | "alpm") {
+            let mut pkg = amivuln_resolve::from_purl(&purl, Some(eco))
                 .map_err(|e| format!("{}: {purl}: {e}", path.display()))?;
+            if pkg.source_name.is_none()
+                && let Some((name, release)) = source
+            {
+                amivuln_resolve::set_source(&mut pkg, &name, release.as_deref());
+            }
+            // The signing keys rpm lists among its packages carry no software.
+            if kind == "rpm" && pkg.name == "gpg-pubkey" {
+                continue;
+            }
             packages.push((purl, pkg));
         } else {
             *skipped.entry(format!("pkg:{kind}")).or_default() += 1;
         }
     }
+    fill_omitted_sources(&mut packages);
     let mut unresolved: Vec<Unresolved> = skipped
         .into_iter()
         .map(|(kind, n)| Unresolved {
@@ -406,6 +464,82 @@ mod tests {
             resolved: Vec::new(),
             running_kernel: false,
         }
+    }
+
+    #[test]
+    fn an_sbom_apk_component_is_an_os_package() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("bom.json");
+        let doc = serde_json::json!({"bomFormat": "CycloneDX", "components": [
+            {"purl": "pkg:apk/alpine/zlib@1.3.1-r2"},
+        ]});
+        std::fs::write(&file, doc.to_string()).unwrap();
+        let (packages, unresolved) = read_sbom(&file, Ecosystem::Alpine(322)).unwrap();
+        assert!(unresolved.is_empty(), "{unresolved:?}");
+        assert_eq!(packages[0].1.name, "zlib");
+    }
+
+    fn sbom(components: &serde_json::Value, eco: Ecosystem) -> Vec<(String, Option<String>)> {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("bom.json");
+        let doc = serde_json::json!({"bomFormat": "CycloneDX", "components": components});
+        std::fs::write(&file, doc.to_string()).unwrap();
+        let (packages, unresolved) = read_sbom(&file, eco).unwrap();
+        assert!(unresolved.is_empty(), "{unresolved:?}");
+        packages
+            .into_iter()
+            .map(|(_, p)| (p.name, p.source_name))
+            .collect()
+    }
+
+    fn pair(name: &str, source: Option<&str>) -> (String, Option<String>) {
+        (name.to_owned(), source.map(str::to_owned))
+    }
+
+    #[test]
+    fn a_package_without_a_source_is_its_own_once_the_sbom_names_any() {
+        // Syft names the source of an apk or deb package only when it differs.
+        let named = serde_json::json!([
+            {"purl": "pkg:apk/alpine/libssl3@3.5.0-r0?upstream=openssl"},
+            {"purl": "pkg:apk/alpine/zlib@1.3.1-r2"},
+        ]);
+        assert_eq!(
+            sbom(&named, Ecosystem::Alpine(322)),
+            [pair("libssl3", Some("openssl")), pair("zlib", Some("zlib"))]
+        );
+        let silent = serde_json::json!([{"purl": "pkg:apk/alpine/zlib@1.3.1-r2"}]);
+        assert_eq!(sbom(&silent, Ecosystem::Alpine(322)), [pair("zlib", None)]);
+    }
+
+    #[test]
+    fn the_signing_keys_of_rpm_are_not_packages() {
+        let components = serde_json::json!([
+            {"purl": "pkg:rpm/opensuse/gpg-pubkey@39db7c82-66c5d91a"},
+            {"purl": "pkg:rpm/opensuse/zlib@1.2.13-150500.2.3?upstream=zlib-1.2.13-150500.2.3.src.rpm"},
+        ]);
+        assert_eq!(
+            sbom(&components, Ecosystem::Opensuse(1506)),
+            [pair("zlib", Some("zlib"))]
+        );
+    }
+
+    #[test]
+    fn the_source_trivy_states_in_a_property_is_read() {
+        let components = serde_json::json!([{
+            "purl": "pkg:rpm/rocky/device-mapper@1.02.181-15.el8?epoch=8",
+            "properties": [
+                {"name": "aquasecurity:trivy:SrcName", "value": "lvm2"},
+                {"name": "aquasecurity:trivy:SrcVersion", "value": "2.03.14"},
+                {"name": "aquasecurity:trivy:SrcRelease", "value": "15.el8"},
+            ]
+        }, {
+            "purl": "pkg:rpm/rocky/zlib@1.2.11-25.el8"
+        }]);
+        assert_eq!(
+            sbom(&components, Ecosystem::Rocky(8)),
+            // An rpm without a source stays unknown: Trivy always states it.
+            [pair("device-mapper", Some("lvm2")), pair("zlib", None)]
+        );
     }
 
     #[test]

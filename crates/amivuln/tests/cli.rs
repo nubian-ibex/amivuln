@@ -1648,7 +1648,9 @@ async fn osv_advisories_stay_with_the_package_they_were_found_for() {
                 .collect();
             ResponseTemplate::new(200).set_body_json(serde_json::json!({ "results": results }))
         })
-        .expect(1)
+        // The packages in one request, and a second asking whether curl, given
+        // without its source and with nothing found, is a name OSV knows.
+        .expect(2)
         .mount(&server)
         .await;
     let advisory =
@@ -3233,4 +3235,28 @@ async fn a_rocky_package_without_its_source_is_never_complete() {
     assert_eq!(code, Some(2), "{v}");
     assert_eq!(v["complete"], false, "{v}");
     assert!(v.to_string().contains("source package"), "{v}");
+}
+
+/// Debian, Ubuntu, Alpine and openSUSE file advisories by source package: a
+/// binary's name finds nothing, which says nothing about the package.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_binary_name_without_its_source_is_never_clean() {
+    let (_server, home) = ubuntu_osv().await;
+    let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", "libssl3@0.0.1-1").await;
+    assert_eq!(code, Some(2), "{v}");
+    assert_eq!(v["complete"], false, "{v}");
+    assert!(
+        v.to_string().contains("no advisory under libssl3"),
+        "the name is said: {v}"
+    );
+    // The same package, with the source its purl names.
+    let (code, v) = ask_ubuntu(
+        &home,
+        "ubuntu:98.10",
+        "pkg:deb/ubuntu/libssl3@0.0.1-1?upstream=openssl",
+    )
+    .await;
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["complete"], true, "{v}");
+    assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
 }
