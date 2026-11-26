@@ -28,13 +28,13 @@ name = "amivuln"
 path = "src/main.rs"
 
 [dependencies]
-amivuln-cache = { path = "../amivuln-cache", version = "1.2.3" }
-amivuln-core = { path = "../amivuln-core", version = "1.2.3" }
-amivuln-report = { path = "../amivuln-report", version = "1.2.3" }
-amivuln-resolve = { path = "../amivuln-resolve", version = "1.2.3" }
-amivuln-sandbox = { path = "../amivuln-sandbox", version = "1.2.3" }
-amivuln-sources = { path = "../amivuln-sources", version = "1.2.3" }
-amivuln-version = { path = "../amivuln-version", version = "1.2.3" }
+amivuln-cache = { path = "../amivuln-cache", version = "1.2.4" }
+amivuln-core = { path = "../amivuln-core", version = "1.2.4" }
+amivuln-report = { path = "../amivuln-report", version = "1.2.4" }
+amivuln-resolve = { path = "../amivuln-resolve", version = "1.2.4" }
+amivuln-sandbox = { path = "../amivuln-sandbox", version = "1.2.4" }
+amivuln-sources = { path = "../amivuln-sources", version = "1.2.4" }
+amivuln-version = { path = "../amivuln-version", version = "1.2.4" }
 clap = { version = "4.6.7", features = ["derive", "wrap_help", "env", "string"] }
 clap_complete = "4.6.11"
 jiff = { version = "1.0.1", default-features = false, features = ["std"] }
