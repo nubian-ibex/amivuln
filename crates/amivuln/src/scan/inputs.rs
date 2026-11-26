@@ -86,7 +86,7 @@ pub(super) fn collect_purls(
     Ok(())
 }
 
-/// Reads `--sbom FILE`, a `CycloneDX` JSON document. rpm, deb and alpm purls
+/// Reads `--sbom FILE`, a `CycloneDX` JSON document. rpm, deb, apk and alpm purls
 /// become packages; every other component is reported as unresolved, one entry
 /// per purl type, so nothing is dropped without a trace.
 pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
@@ -120,7 +120,7 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
             .and_then(|r| r.split(['/', '@']).next())
             .unwrap_or("invalid")
             .to_owned();
-        if matches!(kind.as_str(), "rpm" | "deb" | "alpm") {
+        if matches!(kind.as_str(), "rpm" | "deb" | "apk" | "alpm") {
             let pkg = amivuln_resolve::from_purl(&purl, Some(eco))
                 .map_err(|e| format!("{}: {purl}: {e}", path.display()))?;
             packages.push((purl, pkg));
@@ -406,6 +406,19 @@ mod tests {
             resolved: Vec::new(),
             running_kernel: false,
         }
+    }
+
+    #[test]
+    fn an_sbom_apk_component_is_an_os_package() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("bom.json");
+        let doc = serde_json::json!({"bomFormat": "CycloneDX", "components": [
+            {"purl": "pkg:apk/alpine/zlib@1.3.1-r2"},
+        ]});
+        std::fs::write(&file, doc.to_string()).unwrap();
+        let (packages, unresolved) = read_sbom(&file, Ecosystem::Alpine(322)).unwrap();
+        assert!(unresolved.is_empty(), "{unresolved:?}");
+        assert_eq!(packages[0].1.name, "zlib");
     }
 
     #[test]
