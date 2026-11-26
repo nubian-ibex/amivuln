@@ -1,6 +1,6 @@
 # ADR-0014: Red Hat CVEs that have no fix yet
 
-- Status: Accepted (2026-11-17), amended 2026-11-26 (the file follows the package's release; an answer counts for its own package only)
+- Status: Accepted (2026-11-17), amended 2026-11-26 (the file follows the package's release; an answer counts for its own package only; module streams: ADR-0020)
 - Date: 2026-11-14
 - Amends: ADR-0012
 

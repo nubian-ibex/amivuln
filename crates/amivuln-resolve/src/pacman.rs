@@ -70,6 +70,7 @@ fn parse_pair(line: &str) -> Result<PackageRef, ResolveError> {
         .ok_or_else(|| ResolveError::Parse(line.chars().take(120).collect()))?;
     let parsed = version.parse().unwrap_or_else(|never| match never {});
     Ok(PackageRef {
+        module_stream: None,
         source_vr: None,
         ecosystem: Ecosystem::Arch,
         name: pkg.to_owned(),

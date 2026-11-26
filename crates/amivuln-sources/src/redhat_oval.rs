@@ -277,7 +277,10 @@ impl UnpatchedIndex {
     }
 
     /// The unfixed CVEs of a component, in the order of their CVE ids.
-    pub fn for_component<'a>(&'a self, name: &str) -> impl Iterator<Item = &'a Unpatched> + 'a {
+    pub fn for_component<'a>(
+        &'a self,
+        name: &str,
+    ) -> impl Iterator<Item = &'a Unpatched> + use<'a> {
         self.by_component
             .get(name)
             .into_iter()

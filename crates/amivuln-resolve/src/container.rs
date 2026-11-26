@@ -437,17 +437,8 @@ fn read_packages(
             } else {
                 root.join("root/var/lib/rpm")
             };
-            let out = runner
-                .run(
-                    Program::Rpm,
-                    &[
-                        "--dbpath",
-                        db.to_str().unwrap_or_default(),
-                        "-qa",
-                        "--qf",
-                        crate::rpm::QUERY_FORMAT,
-                    ],
-                )
+            let dbpath = db.to_str().unwrap_or_default();
+            let out = crate::rpm::run_query(runner, eco, &["--dbpath", dbpath, "-qa"], &[])
                 .map_err(|_| ContainerError::HostToolMissing("rpm".to_owned()))?;
             if !out.success {
                 return Err(ContainerError::Export(

@@ -137,6 +137,7 @@ pub fn language_packages(
             continue;
         };
         out.push(PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem,
             name: d.name,

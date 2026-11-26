@@ -285,6 +285,9 @@ pub struct PackageRef {
     /// The source package's version-release, kept when it differs from the
     /// binary's: a fix filed under the source name compares against it.
     pub source_vr: Option<String>,
+    /// The module stream an rpm package was installed from, as `nodejs:22`,
+    /// when the input states it.
+    pub module_stream: Option<String>,
     /// Installed version.
     pub version: Version,
     /// Architecture, when known.
@@ -296,6 +299,13 @@ pub struct PackageRef {
     pub slot: Option<String>,
     /// How this identity was established.
     pub provenance: Provenance,
+}
+
+/// Whether an rpm version or release is that of a module build: Red Hat and
+/// Rocky Linux write `.module+el8`, `AlmaLinux` `.module_el8`.
+#[must_use]
+pub fn is_module_build(version: &str) -> bool {
+    version.contains(".module+") || version.contains(".module_el")
 }
 
 impl PackageRef {

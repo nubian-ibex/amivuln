@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use amivuln_core::{
     DistroStatus, Ecosystem, EpssInfo, Finding, KevInfo, PackageRef, Severity, Verdict, Version,
-    VexStatement, apply_vex, classify, sort_findings,
+    VexStatement, apply_vex, classify, is_module_build, sort_findings,
 };
 use amivuln_sources::arch::{ArchEntry, ArchTracker};
 use amivuln_sources::epss::EpssScores;
@@ -374,13 +374,11 @@ fn source_release_verdict(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Option<
 /// A RHEL, Rocky Linux or `AlmaLinux` fix built for a module stream, which
 /// says nothing about a package installed outside one (ADR-0018).
 fn outside_its_module(pkg: &PackageRef, fix: &str) -> bool {
-    // Red Hat and Rocky Linux write `.module+el8`, AlmaLinux `.module_el8`.
-    let module_build = |text: &str| text.contains(".module+") || text.contains(".module_el");
     matches!(
         pkg.ecosystem,
         Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
-    ) && module_build(fix)
-        && !module_build(&pkg.version.to_string())
+    ) && is_module_build(fix)
+        && !is_module_build(&pkg.version.to_string())
 }
 
 /// Whether every fix of `cve` naming this package or its source belongs to a
@@ -529,6 +527,7 @@ mod tests {
 
     fn arch_pkg(name: &str, version: &str) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: Ecosystem::Arch,
             name: name.into(),
@@ -547,6 +546,7 @@ mod tests {
 
     fn fedora_pkg(name: &str, source: Option<&str>, version: &str) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: Ecosystem::Fedora(43),
             name: name.into(),
@@ -793,6 +793,7 @@ mod tests {
 
     fn rhel_pkg(name: &str, version: &str) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: Ecosystem::Rhel(9),
             name: name.into(),
@@ -1016,6 +1017,7 @@ mod tests {
 
     fn gentoo_pkg(name: &str, slot: Option<&str>, version: &str) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: Ecosystem::Gentoo,
             name: name.into(),
@@ -1182,6 +1184,7 @@ mod tests {
 
     fn component(patched: &[&str], ignored: &[&str]) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: Ecosystem::Flatpak,
             name: "org.freedesktop.Platform/25.08/bash".into(),

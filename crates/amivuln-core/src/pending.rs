@@ -240,6 +240,7 @@ mod tests {
         TargetReport {
             input: name.into(),
             package: PackageRef {
+                module_stream: None,
                 source_vr: None,
                 ecosystem: Ecosystem::Fedora(44),
                 name: name.into(),

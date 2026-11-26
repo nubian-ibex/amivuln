@@ -52,6 +52,10 @@ the wrong release (ADR-0014).
 one package hid it in another that has no fix, and fixes of module streams were
 applied on RHEL and AlmaLinux to packages outside the module.
 
+Fixed after 1.2.3, for the next release: on RHEL, Rocky Linux and AlmaLinux, a
+package of a module stream got none of the CVEs Red Hat lists as unfixed for its
+stream, and read as complete (ADR-0020). A UBI 8 image with `nodejs:22` missed 51.
+
 Every version before 1.2.3 is yanked on crates.io; the release notes of 1.0.0,
 1.1.0, 1.2.0, 1.2.1 and 1.2.2 say why.
 
@@ -105,10 +109,15 @@ Found while testing and not fixed yet.
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
 - The packages of an Arch image are reported with the provenance `user_input`.
-- Streams of one module are not told apart: a package from one stream is also
-  judged by the fixes of the others and reported as affected. An AlmaLinux 8
-  image with an old `nodejs:20` showed 336 such findings beside the 91 that
-  `dnf` lists.
+- The fixes of one module stream are not told apart from another's. A package can
+  be reported as affected with the fix version of another stream (an AlmaLinux 8
+  image with an old `nodejs:20` showed 336 findings beside the 91 `dnf` lists),
+  and a CVE Red Hat does not list for its stream can read as patched because of
+  another stream's fix. Dropping those findings is not safe: Red Hat defers or
+  says nothing about most of them.
+- A purl of `pkg:rpm/almalinux`, as Syft writes for AlmaLinux, is refused with an
+  error; only `pkg:rpm/alma` is read.
+- A host or container whose rpm database lists no package reads as complete.
 - Rocky Linux and AlmaLinux 10 are not supported.
 - Only an Ubuntu interim release is judged past its support by date. Another
   release that is past support, and for which OSV still holds old advisories, is
