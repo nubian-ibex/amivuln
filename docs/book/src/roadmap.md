@@ -31,6 +31,12 @@ support is now incomplete, only a fix that names the package counts, and a run
 says how many findings `--fail-on` cannot judge. An EndeavourOS host is read as
 Arch Linux, and the totals count only affected packages.
 
+More tests after 1.2.0 found three further defects, fixed for the next release.
+Outside Ubuntu, a release OSV has no data for read as clean. An advisory naming
+hundreds of CVEs, as openSUSE kernel updates do, took gigabytes of memory and
+aborted the run (on Leap 15.6 with the kernel it shipped with). A closed pipe
+was reported as a failure.
+
 ## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
@@ -64,11 +70,11 @@ above so that it sees the final code. All of it is still open:
   probe);
 - the public benchmark run against more targets, with a ground truth that does
   not share its source with the tools, and with cve-bin-tool measured;
-- OpenSSF Scorecard of 8.5 or more (7.7 on 2026-11-23). Without a second
+- OpenSSF Scorecard of 8.5 or more (7.8 on 2026-11-25). Without a second
   person it is reachable by about February 2027: the Maintained check starts
-  scoring once the repository is 90 days old, and the Vulnerabilities check
-  needs the advisory of the dependency tree closed. Signed-Releases is already
-  10. A second person would also lift Code-Review and Contributors;
+  scoring once the repository is 90 days old. Vulnerabilities and
+  Signed-Releases are already 10. A second person would also lift Code-Review
+  and Contributors;
 - the OpenSSF Silver badge (87% on 2026-11-23), which needs the second person
   above (the criteria `bus_factor` and `access_continuity`) and the answers
   still open on the form. The translatable messages are not what holds it
@@ -76,20 +82,18 @@ above so that it sees the final code. All of it is still open:
 
 ## Known gaps
 
-Found in the same round of tests and not fixed yet. The first one comes first,
-because it can make a result read as cleaner than it is.
+Found while testing and not fixed yet.
 
-- A release OSV holds no data for is detected only on Ubuntu. On Debian, Alpine,
-  openSUSE, Red Hat Enterprise Linux, Rocky Linux and AlmaLinux it would still
-  read as clean. This comes from reading the code and has not been reproduced.
+- Only an Ubuntu interim release is judged past its support by date. Another
+  release that is past support, and for which OSV still holds old advisories, is
+  not marked incomplete.
 - CVSS 4 vectors are not read, and some distribution advisories state no
   severity at all (openSUSE's among them), so those findings stay `unknown`.
 - The text summary counts `unknown` severity with the low ones, although the
   JSON keeps them apart.
-- The first run on a host with many open advisories is slow: about two minutes
-  on an interim Ubuntu desktop.
-- Piping the JSON output into a command that stops reading prints a "Broken
-  pipe" error.
+- The first run on a host with many open advisories is slow, because each
+  advisory is downloaded once: over two minutes on an interim Ubuntu desktop,
+  and a few seconds afterwards.
 
 ## After 1.0 (1.x), in rough order
 
@@ -109,8 +113,9 @@ because it can make a result read as cleaner than it is.
    (for example `SUSE:Linux Enterprise Module for Basesystem 15 SP7`): a query
    by the product name finds nothing, and the bare `SUSE` ecosystem returns the
    advisories of several service packs, which would report fixes of SP7 on an
-   SP6 host. It needs an ADR, a filter by service pack and a check on a real
-   SLES (the BCI images of `registry.suse.com` are SLE based) before any code.
+   SP6 host. ADR-0016 (proposed) records the measurements and a design; it still
+   needs the list of modules to ask, and a check on a registered SLES, before
+   any code.
 2. **Flatpak applications.** The runtimes are done (`--flatpak`); applications
    bundle their own libraries and carry no manifest of components, so they are
    not read yet.

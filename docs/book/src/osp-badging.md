@@ -33,6 +33,22 @@ and link back to the file or workflow.
 | D-01 | System invokes defenses | `sources` block in all output, `complete` flag and exit 2 | "Every run states exactly what answered, its age, and whether the result was complete." |
 | T-01 | Unit tests on package versions | proptest ground truth and `amivuln-version` test | "Comparators get property-tested against `rpmvercmp`, and are cross-checked with the reference tools." |
 
+## Internationalization
+
+The justification given on the form for the `internationalization` criterion
+(updated 2026-11-25):
+
+> The text a person reads (summary and detail output, pending, cve, restart, the
+> `--help` text, and the errors and warnings about options, input files and
+> configuration values) follows the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`)
+> through message catalogs; English and Brazilian Portuguese exist, anything
+> else falls back to English, and adding a language takes two text files and one
+> variant in the code (see CONTRIBUTING). Still English: the messages printed by
+> the argument parser for a mistyped command line, the parser errors of the
+> configuration file and the messages of the libraries. Machine output (JSON,
+> SARIF, CSV, ...) stays in English on purpose. The documentation is also
+> published in Portuguese, Spanish, German and French.
+
 The rows follow the badge form. The criteria that need people, a second
 maintainer and an independent security review, are on the
 [roadmap](roadmap.md).
