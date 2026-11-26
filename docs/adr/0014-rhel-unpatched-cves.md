@@ -1,6 +1,6 @@
 # ADR-0014: Red Hat CVEs that have no fix yet
 
-- Status: Accepted (2026-11-17), amended 2026-11-26 (the file follows the package's release)
+- Status: Accepted (2026-11-17), amended 2026-11-26 (the file follows the package's release; an answer counts for its own package only)
 - Date: 2026-11-14
 - Amends: ADR-0012
 
@@ -61,3 +61,16 @@ release the wrong file was applied. The file is now chosen by the release of
 each package: one per release in the run, applied to its packages only. Their
 reports are one `redhat-oval` entry, which tells a failure first, then a release
 without a file.
+
+## Amendment (2026-11-26, second)
+
+An unfixed CVE was left out when OSV had answered it for any package of the
+release in the run, so a fix of one package hid the CVE of another that has
+none. A RHEL 9 list with an old `openssl` hid 49 CVEs of `compat-openssl11`, and
+the 50 sampled of such pairs are unfixed according to Red Hat's Security Data
+API. Only the package's own findings and settled CVEs keep an entry out now, so
+what is reported for a package does not depend on the others in the run.
+
+Red Hat's two sources can disagree: for CVE-2026-119374 the OVAL file lists
+`sqlite-libs` of RHEL 8 as affected while the API says `sqlite` is not. The file
+decides.

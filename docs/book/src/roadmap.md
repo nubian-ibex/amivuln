@@ -51,6 +51,10 @@ the wrong release (ADR-0014).
 Every version before 1.2.2 is yanked on crates.io; the release notes of 1.0.0,
 1.1.0, 1.2.0 and 1.2.1 say why.
 
+Fixed after 1.2.2, for the next release: on RHEL, Rocky Linux and AlmaLinux, a
+CVE fixed in one package hid it in another that has no fix, and fixes of module
+streams were applied on RHEL and AlmaLinux to packages outside the module.
+
 ## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
@@ -98,19 +102,13 @@ above so that it sees the final code. All of it is still open:
 
 Found while testing and not fixed yet.
 
-- On RHEL, Rocky Linux and AlmaLinux, a CVE that OSV answers for any package of
-  a release in a run is not added from Red Hat's unfixed list for another
-  package, which hides it there. It takes two packages sharing a CVE, one with a
-  fix: with 1.2.2 a RHEL 9 list holding an old `python3.12` lost CVEs of
-  `python3`, and an old `openssl` hid 49 of `compat-openssl11`; the 50 sampled
-  of those hidden are unfixed according to Red Hat. Five base images showed none.
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
 - The packages of an Arch image are reported with the provenance `user_input`.
-- On AlmaLinux 8 and RHEL 8, a fix built for a module stream is applied to a
-  package installed outside the module (`perl-Carp`, for example), so it is
-  reported as affected. On an AlmaLinux 8 image with Perl installed, 266 of 963
-  findings come from such builds.
+- Streams of one module are not told apart: a package from one stream is also
+  judged by the fixes of the others and reported as affected. An AlmaLinux 8
+  image with an old `nodejs:20` showed 336 such findings beside the 91 that
+  `dnf` lists.
 - Rocky Linux and AlmaLinux 10 are not supported.
 - Only an Ubuntu interim release is judged past its support by date. Another
   release that is past support, and for which OSV still holds old advisories, is
