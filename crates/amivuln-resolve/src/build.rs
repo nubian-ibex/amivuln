@@ -201,7 +201,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
                     }
                     Ecosystem::Rocky(v) => format!("rocky:{v}"),
                     Ecosystem::Alma(v) => format!("alma:{v}"),
-                    Ecosystem::Rhel(v) => format!("rhel:{v}"),
+                    Ecosystem::Rhel(v) => format!("rhel:{}", Ecosystem::rhel_version(v)),
                     Ecosystem::Alpine(v) => format!("alpine:{}.{}", v / 100, v % 100),
                     Ecosystem::Gentoo => "gentoo".to_owned(),
                     Ecosystem::Flatpak => "a Flatpak runtime".to_owned(),

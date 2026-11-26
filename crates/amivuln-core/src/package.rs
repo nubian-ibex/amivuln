@@ -22,7 +22,9 @@ pub enum Ecosystem {
     Rocky(u16),
     /// `AlmaLinux`, release 8 or 9.
     Alma(u16),
-    /// Red Hat Enterprise Linux, major release 8, 9 or 10.
+    /// Red Hat Enterprise Linux. 8 and 9 are the major release. From 10 on OSV
+    /// files each minor release apart, so the value is `major * 100 + minor`
+    /// (1002 is 10.2), and a bare 10 means the minor is not known.
     Rhel(u16),
     /// Ubuntu, an LTS release: 2004 to 9904, where 2404 is 24.04.
     Ubuntu(u16),
@@ -43,7 +45,42 @@ pub enum Ecosystem {
     Flatpak,
 }
 
+/// The first RHEL major release OSV files by minor release.
+const RHEL_BY_MINOR: u16 = 10;
+/// The highest minor asked about; RHEL 8 ended at 8.10.
+const RHEL_LAST_MINOR: u16 = 10;
+
 impl Ecosystem {
+    /// A Red Hat Enterprise Linux release, keeping the minor only where the
+    /// data needs it.
+    #[must_use]
+    pub fn rhel(major: u16, minor: Option<u16>) -> Self {
+        match minor {
+            Some(minor) if major >= RHEL_BY_MINOR && minor < 100 => Self::Rhel(major * 100 + minor),
+            _ => Self::Rhel(major),
+        }
+    }
+
+    /// The major release of a [`Ecosystem::Rhel`] value and, when it holds
+    /// one, the minor.
+    #[must_use]
+    pub fn rhel_release(value: u16) -> (u16, Option<u16>) {
+        if value >= RHEL_BY_MINOR * 100 {
+            (value / 100, Some(value % 100))
+        } else {
+            (value, None)
+        }
+    }
+
+    /// A [`Ecosystem::Rhel`] value as a person writes it: `9`, `10.2`.
+    #[must_use]
+    pub fn rhel_version(value: u16) -> String {
+        match Self::rhel_release(value) {
+            (major, Some(minor)) => format!("{major}.{minor}"),
+            (major, None) => major.to_string(),
+        }
+    }
+
     /// The OSV ecosystem string, when OSV covers this ecosystem.
     #[must_use]
     pub fn osv_ecosystem(&self) -> Option<String> {
@@ -53,7 +90,12 @@ impl Ecosystem {
             Self::Alma(v) => Some(format!("AlmaLinux:{v}")),
             // Red Hat splits a release by repository; the BaseOS stream is the
             // primary one, `osv_ecosystems` lists the rest.
-            Self::Rhel(v) => Some(format!("Red Hat:enterprise_linux:{v}::baseos")),
+            Self::Rhel(v) => Some(match Self::rhel_release(*v) {
+                (major, minor) if major >= RHEL_BY_MINOR => {
+                    format!("Red Hat:enterprise_linux:{major}.{}", minor.unwrap_or(0))
+                }
+                (major, _) => format!("Red Hat:enterprise_linux:{major}::baseos"),
+            }),
             // The OSV ecosystem keeps the decimal form, and only the LTS
             // releases (April of an even year) carry a suffix:
             // Ubuntu:24.04:LTS, Ubuntu:26.10.
@@ -102,10 +144,20 @@ impl Ecosystem {
     #[must_use]
     pub fn osv_ecosystems(&self) -> Vec<String> {
         match self {
-            Self::Rhel(v) => ["baseos", "appstream", "crb"]
-                .iter()
-                .map(|repo| format!("Red Hat:enterprise_linux:{v}::{repo}"))
-                .collect(),
+            Self::Rhel(v) => match Self::rhel_release(*v) {
+                // The host's minor and the later ones: what an earlier minor
+                // fixed says nothing about a host on a later one.
+                (major, minor) if major >= RHEL_BY_MINOR => {
+                    let first = minor.unwrap_or(0);
+                    (first..=RHEL_LAST_MINOR.max(first))
+                        .map(|m| format!("Red Hat:enterprise_linux:{major}.{m}"))
+                        .collect()
+                }
+                (major, _) => ["baseos", "appstream", "crb"]
+                    .iter()
+                    .map(|repo| format!("Red Hat:enterprise_linux:{major}::{repo}"))
+                    .collect(),
+            },
             other => other.osv_ecosystem().into_iter().collect(),
         }
     }
@@ -281,6 +333,25 @@ mod tests {
             Ecosystem::Alma(8).osv_ecosystem().as_deref(),
             Some("AlmaLinux:8")
         );
+    }
+
+    #[test]
+    fn rhel_10_is_asked_by_minor_release_from_the_hosts_own_on() {
+        // 1002 is 10.2: OSV files each minor apart, and an earlier minor's
+        // fix says nothing about a host on a later one.
+        let asked = Ecosystem::Rhel(1002).osv_ecosystems();
+        assert_eq!(asked.len(), 9, "{asked:?}");
+        assert_eq!(asked[0], "Red Hat:enterprise_linux:10.2");
+        assert_eq!(asked[8], "Red Hat:enterprise_linux:10.10");
+        // A bare 10 knows no minor: every minor is asked.
+        assert_eq!(Ecosystem::Rhel(10).osv_ecosystems().len(), 11);
+        // A minor past the last one expected is still asked, never skipped.
+        assert_eq!(
+            Ecosystem::Rhel(1011).osv_ecosystems(),
+            ["Red Hat:enterprise_linux:10.11"]
+        );
+        // 8 and 9 keep the repository ecosystems.
+        assert_eq!(Ecosystem::Rhel(9).osv_ecosystems().len(), 3);
     }
 
     #[test]

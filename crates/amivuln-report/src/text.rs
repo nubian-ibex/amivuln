@@ -50,7 +50,9 @@ fn ecosystem_label(e: Ecosystem) -> String {
         Ecosystem::Ubuntu(v) => format!("Ubuntu {}.{:02}", v / 100, v % 100),
         Ecosystem::Rocky(v) => format!("Rocky Linux {v}"),
         Ecosystem::Alma(v) => format!("AlmaLinux {v}"),
-        Ecosystem::Rhel(v) => format!("Red Hat Enterprise Linux {v}"),
+        Ecosystem::Rhel(v) => {
+            format!("Red Hat Enterprise Linux {}", Ecosystem::rhel_version(v))
+        }
         Ecosystem::Go => "Go module".to_owned(),
         Ecosystem::Crates => "Rust crate".to_owned(),
         Ecosystem::Alpine(v) => format!("Alpine {}.{}", v / 100, v % 100),

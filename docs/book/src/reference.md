@@ -27,7 +27,7 @@
 - `--offline`, `--no-cache`: network and cache behavior
 - `--config FILE`: use this configuration file only
 - `--color auto|always|never`: `NO_COLOR` is honored
-- `--distro fedora:NN|arch|debian:NN|ubuntu:NN.NN|alpine:N.NN|opensuse:NN.N|opensuse:tumbleweed|gentoo|rhel:N|rocky:N|alma:N`: treat the host as this distribution
+- `--distro fedora:NN|arch|debian:NN|ubuntu:NN.NN|alpine:N.NN|opensuse:NN.N|opensuse:tumbleweed|gentoo|rhel:N[.M]|rocky:N|alma:N`: treat the host as this distribution
 - `--baseline FILE`: a previous `-f json` report; only findings absent from it violate `--fail-on`
 - `--pid PID`: check the executable of a running process (repeatable); a process that is gone, unreadable or whose executable was replaced on disk is reported as unresolved
 - `--sbom FILE`: check the OS packages of a CycloneDX JSON SBOM (rpm, deb, apk and alpm purls); other components are listed as unresolved, one entry per purl type
