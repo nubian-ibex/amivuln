@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 amivuln contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The CVEs Red Hat has not fixed (ADR-0014): loading Red Hat's OVAL file and
-//! adding what it says to the findings of a RHEL host.
+//! adding what it says to the packages of the release it describes.
 
 use amivuln_cache::Lookup;
 use amivuln_core::{
@@ -11,7 +11,7 @@ use amivuln_core::{
 use amivuln_sources::http::{Response, Validators};
 use amivuln_sources::redhat_oval::UnpatchedIndex;
 
-use super::{Config, DistroData, Duration, Ecosystem, Fetcher, report_of};
+use super::{Config, Duration, Ecosystem, Fetcher, report_of};
 
 const REDHAT_DATA_URL: &str = "https://security.access.redhat.com";
 
@@ -25,8 +25,36 @@ fn age_of(now: i64, fetched_at: i64) -> Duration {
     Duration::from_secs(u64::try_from(now.saturating_sub(fetched_at)).unwrap_or(0))
 }
 
-/// The index for a RHEL host or one of its rebuilds (Rocky Linux and
-/// `AlmaLinux`), with its report. `None` for any other host.
+/// The RHEL major release whose unfixed list covers a package: that of a RHEL
+/// package or of one from a rebuild (Rocky Linux and `AlmaLinux`).
+pub(super) fn release_of(eco: Ecosystem) -> Option<u16> {
+    match eco {
+        Ecosystem::Rhel(value) => Some(Ecosystem::rhel_release(value).0),
+        Ecosystem::Rocky(major) | Ecosystem::Alma(major) => Some(major),
+        _ => None,
+    }
+}
+
+/// One report for the lists of several releases: a failure is told first, then
+/// a release without a list, then stale data.
+pub(super) fn merge_reports(a: SourceReport, b: SourceReport) -> SourceReport {
+    let rank = |s: &SourceStatus| match s {
+        SourceStatus::Failed(_) => 3,
+        SourceStatus::Skipped(_) => 2,
+        SourceStatus::Stale => 1,
+        SourceStatus::Ok => 0,
+    };
+    let age = a.age.max(b.age);
+    let mut worst = if rank(&b.status) > rank(&a.status) {
+        b
+    } else {
+        a
+    };
+    worst.age = age;
+    worst
+}
+
+/// The index of one RHEL major release, with its report.
 ///
 /// A rebuild ships Red Hat's sources, so a CVE Red Hat has not fixed has no fix
 /// in the rebuild either, and the file of the same major release applies. The
@@ -38,28 +66,23 @@ fn age_of(now: i64, fetched_at: i64) -> Duration {
 pub(super) async fn load_unpatched(
     f: &Fetcher<'_>,
     cfg: &Config,
-    eco: Ecosystem,
-) -> Option<(Option<UnpatchedIndex>, SourceReport)> {
-    let release = match eco {
-        Ecosystem::Rhel(value) => Ecosystem::rhel_release(value).0,
-        Ecosystem::Rocky(major) | Ecosystem::Alma(major) => major,
-        _ => return None,
-    };
+    release: u16,
+) -> (Option<UnpatchedIndex>, SourceReport) {
     let source = &cfg.sources.rhel_unpatched;
     let report = |status: SourceStatus, age: Duration| {
         report_of(SourceId::RedHatOval, source.required, status, age)
     };
     if !source.enabled {
-        return Some((
+        return (
             None,
             report(SourceStatus::Skipped("disabled".into()), Duration::ZERO),
-        ));
+        );
     }
     if !matches!(release, 8 | 9) {
         let why = format!(
             "Red Hat publishes no list of unfixed CVEs for RHEL {release}: the result is a lower bound"
         );
-        return Some((None, report(SourceStatus::Skipped(why), Duration::ZERO)));
+        return (None, report(SourceStatus::Skipped(why), Duration::ZERO));
     }
     let key = format!("redhat-oval-index:{release}");
     let cached = f.cache.get(&key, f.now, f.policy).ok();
@@ -72,7 +95,7 @@ pub(super) async fn load_unpatched(
     if let Some(Lookup::Fresh(e)) = &cached
         && let Ok(found) = from_cache(e, SourceStatus::Ok)
     {
-        return Some(found);
+        return found;
     }
     let usable = |c: Option<Lookup>| match c {
         Some(Lookup::Stale(e)) => Some(e),
@@ -85,10 +108,10 @@ pub(super) async fn load_unpatched(
         _ => (None, report(SourceStatus::Failed(why), Duration::ZERO)),
     };
     if f.offline {
-        return Some(fail(
+        return fail(
             "offline and no cached index within the allowed age".into(),
             cached,
-        ));
+        );
     }
     let base = source.url.as_deref().unwrap_or(REDHAT_DATA_URL);
     let body = match f
@@ -98,36 +121,34 @@ pub(super) async fn load_unpatched(
     {
         Ok(Response::Fresh { body, .. }) => body,
         Ok(Response::NotModified) => {
-            return Some(fail("unexpected 304 answer".into(), cached));
+            return fail("unexpected 304 answer".into(), cached);
         }
-        Err(e) => return Some(fail(e.to_string(), cached)),
+        Err(e) => return fail(e.to_string(), cached),
     };
     // Reading the XML takes seconds of CPU. Nothing else waits on this
     // source, so it runs here rather than on a thread of its own.
     let index = match UnpatchedIndex::parse_bz2(&body) {
         Ok(i) => i,
-        Err(e) => return Some(fail(e.to_string(), cached)),
+        Err(e) => return fail(e.to_string(), cached),
     };
     // A cache that cannot be written only costs the next run a re-read.
     let _ = f.cache.put(&key, &index.to_reduced(), None, None, f.now);
-    Some((Some(index), report(SourceStatus::Ok, Duration::ZERO)))
+    (Some(index), report(SourceStatus::Ok, Duration::ZERO))
 }
 
-/// Adds to each RHEL, Rocky or `AlmaLinux` package the CVEs Red Hat lists as
-/// unfixed for it. A CVE
-/// the distribution data already has an answer for keeps that answer (a fix
-/// exists); only the ones it cannot show are added, as affected with no fix.
+/// Adds to each package of `release` (RHEL, Rocky Linux or `AlmaLinux`) the
+/// CVEs Red Hat lists as unfixed for it. A CVE the distribution data already
+/// has an answer for (`known`) keeps that answer, as a fix exists; only the ones
+/// it cannot show are added, as affected with no fix.
 pub(super) fn add_unpatched(
     reports: &mut [TargetReport],
+    release: u16,
     index: &UnpatchedIndex,
-    known: Option<&DistroData>,
+    known: &dyn Fn(&str) -> bool,
     vex: &[VexStatement],
 ) {
     for target in reports {
-        if !matches!(
-            target.package.ecosystem,
-            Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
-        ) {
+        if release_of(target.package.ecosystem) != Some(release) {
             continue;
         }
         let mut added = false;
@@ -144,9 +165,7 @@ pub(super) fn add_unpatched(
         unfixed.sort_by(|a, b| a.cve.cmp(&b.cve).then(a.state.cmp(&b.state)));
         unfixed.dedup_by(|a, b| a.cve == b.cve);
         for u in unfixed {
-            if target.findings.iter().any(|f| f.id == u.cve)
-                || known.is_some_and(|d| d.knows(&u.cve))
-            {
+            if target.findings.iter().any(|f| f.id == u.cve) || known(&u.cve) {
                 continue;
             }
             let mut verdict = Verdict::Affected { fixed_in: None };
@@ -205,7 +224,7 @@ mod tests {
     #[test]
     fn an_unfixed_cve_is_added_as_affected_with_no_fix() {
         let mut reports = vec![target("openssl", Ecosystem::Rhel(9), Vec::new())];
-        add_unpatched(&mut reports, &index(), None, &[]);
+        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
         let f = &reports[0].findings;
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].id, "CVE-2024-0001");
@@ -221,7 +240,7 @@ mod tests {
             target("openssl", Ecosystem::Rocky(9), Vec::new()),
             target("openssl", Ecosystem::Alma(9), Vec::new()),
         ];
-        add_unpatched(&mut reports, &index(), None, &[]);
+        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
         for r in &reports {
             assert_eq!(r.findings.len(), 1, "{:?}", r.package.ecosystem);
             assert_eq!(r.findings[0].id, "CVE-2024-0001");
@@ -234,7 +253,7 @@ mod tests {
         let mut t = target("openssl-libs", Ecosystem::Rhel(9), Vec::new());
         t.package.source_name = Some("openssl".into());
         let mut reports = vec![t];
-        add_unpatched(&mut reports, &index(), None, &[]);
+        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
         assert_eq!(reports[0].findings.len(), 1);
     }
 
@@ -246,7 +265,7 @@ mod tests {
             target("openssl", Ecosystem::Debian(12), Vec::new()),
             target("nginx", Ecosystem::Rhel(9), Vec::new()),
         ];
-        add_unpatched(&mut reports, &index(), None, &[]);
+        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
         assert_eq!(reports[0].findings, vec![patched]);
         assert!(reports[1].findings.is_empty());
         assert!(reports[2].findings.is_empty());
