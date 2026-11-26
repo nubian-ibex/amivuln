@@ -371,12 +371,16 @@ fn source_release_verdict(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Option<
     })
 }
 
-/// A Rocky Linux fix built for a module stream, which says nothing about a
-/// package installed outside one (ADR-0018).
+/// A RHEL, Rocky Linux or `AlmaLinux` fix built for a module stream, which
+/// says nothing about a package installed outside one (ADR-0018).
 fn outside_its_module(pkg: &PackageRef, fix: &str) -> bool {
-    matches!(pkg.ecosystem, Ecosystem::Rocky(_))
-        && fix.contains(".module+")
-        && !pkg.version.to_string().contains(".module+")
+    // Red Hat and Rocky Linux write `.module+el8`, AlmaLinux `.module_el8`.
+    let module_build = |text: &str| text.contains(".module+") || text.contains(".module_el");
+    matches!(
+        pkg.ecosystem,
+        Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
+    ) && module_build(fix)
+        && !module_build(&pkg.version.to_string())
 }
 
 /// Whether every fix of `cve` naming this package or its source belongs to a
@@ -906,6 +910,44 @@ mod tests {
             None,
         );
         assert_eq!(osv_findings(&inside, &osv, &no_vex()).len(), 1);
+    }
+
+    #[test]
+    fn module_fixes_stay_in_their_module_on_alma_and_rhel_too() {
+        // Red Hat writes `.module+el8`, AlmaLinux `.module_el8`.
+        for (ecosystem, osv_name, fix) in [
+            (
+                Ecosystem::Rhel(8),
+                "Red Hat:enterprise_linux:8::appstream",
+                "1.50-439.module+el8.10.0+21354+3ad137bb",
+            ),
+            (
+                Ecosystem::Alma(8),
+                "AlmaLinux:8",
+                "1.50-439.module_el8.6.0+2766+8bf0b7ce",
+            ),
+        ] {
+            let doc = serde_json::json!({
+                "id": "RHSA-2099:0002",
+                "upstream": ["CVE-2099-0002"],
+                "affected": [{
+                    "package": {"name": "perl-Carp", "ecosystem": osv_name},
+                    "ranges": [{"type": "ECOSYSTEM", "events": [
+                        {"introduced": "0"}, {"fixed": fix}
+                    ]}]
+                }]
+            });
+            let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), osv_name).unwrap();
+            let package = |version: &str| PackageRef {
+                ecosystem,
+                ..rhel_pkg("perl-Carp", version)
+            };
+            let outside = osv_findings(&package("1.42-396.el8"), &osv, &no_vex());
+            assert_eq!(outside, [], "{ecosystem:?}");
+            let older = format!("1.42-1{}", fix.split_once("-439").unwrap().1);
+            let inside = osv_findings(&package(&older), &osv, &no_vex());
+            assert_eq!(inside.len(), 1, "{ecosystem:?} {older}");
+        }
     }
 
     /// Two RHSAs for one CVE (a GA and a z-stream fix), one of them also

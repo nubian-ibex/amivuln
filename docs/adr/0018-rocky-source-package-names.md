@@ -1,6 +1,6 @@
 # ADR-0018: Rocky Linux advisories are also read by source package
 
-- Status: Accepted (2026-11-26), amended the same day: ADR-0019 reads the source a purl or SBOM states
+- Status: Accepted (2026-11-26), amended the same day: ADR-0019 reads the source a purl or SBOM states, and the module rule covers RHEL and AlmaLinux
 - Date: 2026-11-26
 
 ## Context
@@ -65,3 +65,21 @@ same image, as (package, CVE) pairs:
 
 ADR-0019 reads the source an SBOM or a purl states, so only a Rocky Linux
 package without it is incomplete.
+
+## Amendment (2026-11-26, second)
+
+The module rule applies to RHEL and AlmaLinux too (AlmaLinux writes
+`.module_el`). On AlmaLinux 8 with Perl installed, 266 findings came from module
+builds; without them the findings with a fix are the 31 `dnf updateinfo` lists,
+no more and no fewer. On UBI 8 with Perl, the 266 removed pairs cover 7 CVEs:
+Red Hat states nothing for the packages outside the module for 4, and the
+installed packages already hold the fix of the other 3.
+
+A CVE listed only for a module stream no longer keeps Red Hat's unfixed entry
+out for the package outside the module (ADR-0014).
+
+Streams of one module are still not told apart: an AlmaLinux 8 image with an old
+`nodejs:20` showed 336 findings from other streams besides the 91 `dnf` lists.
+
+A package version typed without its module marker is read as one outside the
+module.

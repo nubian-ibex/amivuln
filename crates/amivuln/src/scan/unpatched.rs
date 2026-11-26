@@ -137,14 +137,14 @@ pub(super) async fn load_unpatched(
 }
 
 /// Adds to each package of `release` (RHEL, Rocky Linux or `AlmaLinux`) the
-/// CVEs Red Hat lists as unfixed for it. A CVE the distribution data already
-/// has an answer for (`known`) keeps that answer, as a fix exists; only the ones
-/// it cannot show are added, as affected with no fix.
+/// CVEs Red Hat lists as unfixed for it. A CVE the package already has an answer
+/// for, open or settled, keeps it; only the ones it cannot show are added, as
+/// affected with no fix. What was answered for another package says nothing:
+/// the same CVE can be fixed in one and not in the other.
 pub(super) fn add_unpatched(
     reports: &mut [TargetReport],
     release: u16,
     index: &UnpatchedIndex,
-    known: &dyn Fn(&str) -> bool,
     vex: &[VexStatement],
 ) {
     for target in reports {
@@ -165,7 +165,12 @@ pub(super) fn add_unpatched(
         unfixed.sort_by(|a, b| a.cve.cmp(&b.cve).then(a.state.cmp(&b.state)));
         unfixed.dedup_by(|a, b| a.cve == b.cve);
         for u in unfixed {
-            if target.findings.iter().any(|f| f.id == u.cve) || known(&u.cve) {
+            if target
+                .findings
+                .iter()
+                .chain(&target.resolved)
+                .any(|f| f.id == u.cve)
+            {
                 continue;
             }
             let mut verdict = Verdict::Affected { fixed_in: None };
@@ -224,7 +229,7 @@ mod tests {
     #[test]
     fn an_unfixed_cve_is_added_as_affected_with_no_fix() {
         let mut reports = vec![target("openssl", Ecosystem::Rhel(9), Vec::new())];
-        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
+        add_unpatched(&mut reports, 9, &index(), &[]);
         let f = &reports[0].findings;
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].id, "CVE-2024-0001");
@@ -240,7 +245,7 @@ mod tests {
             target("openssl", Ecosystem::Rocky(9), Vec::new()),
             target("openssl", Ecosystem::Alma(9), Vec::new()),
         ];
-        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
+        add_unpatched(&mut reports, 9, &index(), &[]);
         for r in &reports {
             assert_eq!(r.findings.len(), 1, "{:?}", r.package.ecosystem);
             assert_eq!(r.findings[0].id, "CVE-2024-0001");
@@ -253,8 +258,18 @@ mod tests {
         let mut t = target("openssl-libs", Ecosystem::Rhel(9), Vec::new());
         t.package.source_name = Some("openssl".into());
         let mut reports = vec![t];
-        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
+        add_unpatched(&mut reports, 9, &index(), &[]);
         assert_eq!(reports[0].findings.len(), 1);
+    }
+
+    #[test]
+    fn a_cve_settled_for_the_package_is_not_added_again() {
+        let settled = Finding::new("CVE-2024-0001", Severity::High, Verdict::Patched);
+        let mut report = target("openssl", Ecosystem::Rhel(9), Vec::new());
+        report.resolved = vec![settled];
+        let mut reports = vec![report];
+        add_unpatched(&mut reports, 9, &index(), &[]);
+        assert!(reports[0].findings.is_empty(), "{:?}", reports[0]);
     }
 
     #[test]
@@ -265,7 +280,7 @@ mod tests {
             target("openssl", Ecosystem::Debian(12), Vec::new()),
             target("nginx", Ecosystem::Rhel(9), Vec::new()),
         ];
-        add_unpatched(&mut reports, 9, &index(), &|_| false, &[]);
+        add_unpatched(&mut reports, 9, &index(), &[]);
         assert_eq!(reports[0].findings, vec![patched]);
         assert!(reports[1].findings.is_empty());
         assert!(reports[2].findings.is_empty());
