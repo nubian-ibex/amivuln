@@ -290,7 +290,12 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
             "arch" => arch = Some(v),
             "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
             "upstream" => upstream = Some(v),
-            "epoch" if is_rpm(ecosystem) && !version.contains(':') => {
+            // Alpine and Arch versions have no epoch qualifier to read.
+            "epoch"
+                if (is_rpm(ecosystem)
+                    || matches!(ecosystem, Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)))
+                    && !version.contains(':') =>
+            {
                 version = format!("{v}:{version}");
             }
             _ => {}
@@ -415,6 +420,19 @@ mod tests {
         ] {
             let p = from_purl(purl, Some(eco)).unwrap();
             assert_eq!(p.version.to_string(), "1:3.0.7-24.el9", "{purl}");
+        }
+    }
+
+    #[test]
+    fn purl_epoch_counts_on_deb_packages_too() {
+        // Trivy keeps a deb epoch in the qualifier, Syft in the version.
+        for purl in [
+            "pkg:deb/debian/libcap2@2.66-4?epoch=1",
+            "pkg:deb/debian/libcap2@1%3A2.66-4",
+            "pkg:deb/debian/libcap2@1%3A2.66-4?epoch=1",
+        ] {
+            let p = from_purl(purl, Some(Ecosystem::Debian(12))).unwrap();
+            assert_eq!(p.version.to_string(), "1:2.66-4", "{purl}");
         }
     }
 
