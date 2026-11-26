@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use amivuln_core::{Ecosystem, PackageRef};
+use amivuln_core::{Ecosystem, PackageRef, Provenance};
 
 use crate::{PackageResolver, ResolveError};
 
@@ -80,6 +80,9 @@ fn entries(status: &str, eco: Ecosystem) -> Vec<Entry> {
         let Ok(mut package) = crate::from_name_version(eco, name, version) else {
             continue;
         };
+        // Read from the database, so a missing `Source:` means the source is
+        // the package itself, not that nobody said.
+        package.provenance = Provenance::PackageDb;
         package.source_name = fields
             .get("Source")
             .and_then(|s| s.split_whitespace().next())
@@ -337,6 +340,13 @@ Version: 2.36-9+deb12u7
         assert_eq!(found[0].source_name, None);
         assert_eq!(found[1].source_name.as_deref(), Some("openssl"));
         assert_eq!(found[2].source_name.as_deref(), Some("glibc"));
+    }
+
+    #[test]
+    fn a_package_of_the_database_is_not_user_input() {
+        let status = "Package: bash\nStatus: install ok installed\nVersion: 5.2-1\n";
+        let found = parse_status(status, Ecosystem::Debian(12));
+        assert_eq!(found[0].provenance, amivuln_core::Provenance::PackageDb);
     }
 
     #[test]
