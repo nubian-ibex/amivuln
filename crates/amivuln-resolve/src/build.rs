@@ -76,6 +76,18 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
     }
 }
 
+/// Whether a purl of the ecosystem carries its epoch as a qualifier.
+fn is_rpm(ecosystem: Ecosystem) -> bool {
+    matches!(
+        ecosystem,
+        Ecosystem::Fedora(_)
+            | Ecosystem::Rocky(_)
+            | Ecosystem::Alma(_)
+            | Ecosystem::Rhel(_)
+            | Ecosystem::Opensuse(_)
+    )
+}
+
 /// A Gentoo package as users write it: `category/name`, optionally followed by
 /// `:slot` (`dev-lang/php:8.2`). Returns the name and the slot.
 fn gentoo_name(text: &str) -> Result<(&str, Option<&str>), ResolveError> {
@@ -233,7 +245,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         match k {
             "arch" => arch = Some(v),
             "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
-            "epoch" if matches!(ecosystem, Ecosystem::Fedora(_)) && !version.contains(':') => {
+            "epoch" if is_rpm(ecosystem) && !version.contains(':') => {
                 version = format!("{v}:{version}");
             }
             _ => {}
@@ -331,6 +343,31 @@ mod tests {
         assert_eq!(p.ecosystem, Ecosystem::Fedora(41));
         assert_eq!(p.version.to_string(), "1:1.26.2-1.fc41");
         assert_eq!(p.arch.as_deref(), Some("x86_64"));
+    }
+
+    #[test]
+    fn purl_epoch_counts_on_every_rpm_distribution() {
+        for (purl, eco) in [
+            (
+                "pkg:rpm/redhat/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Rhel(9),
+            ),
+            (
+                "pkg:rpm/rocky/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Rocky(9),
+            ),
+            (
+                "pkg:rpm/alma/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Alma(9),
+            ),
+            (
+                "pkg:rpm/opensuse/openssl@3.0.7-24.el9?epoch=1",
+                Ecosystem::Opensuse(1506),
+            ),
+        ] {
+            let p = from_purl(purl, Some(eco)).unwrap();
+            assert_eq!(p.version.to_string(), "1:3.0.7-24.el9", "{purl}");
+        }
     }
 
     #[test]
