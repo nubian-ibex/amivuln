@@ -32,22 +32,24 @@ says how many findings `--fail-on` cannot judge. An EndeavourOS host is read as
 Arch Linux, and the totals count only affected packages.
 
 1.2.1 followed on 2026-11-26, because more tests after 1.2.0 found further
-defects, all fixed in it. Outside Ubuntu, a release OSV has no data for read as clean. RHEL 10 read as
-clean, because OSV files it by minor release; it is now judged by the host's
-minor (ADR-0017). A Rocky Linux subpackage hid the CVEs filed under its source
-package, and Rocky Linux and AlmaLinux hosts and containers were not recognised
-(ADR-0018). An advisory naming hundreds of CVEs, as openSUSE kernel updates do,
-took gigabytes of memory and aborted the run (on Leap 15.6 with the kernel it
-shipped with). A closed pipe was reported as a failure. Every version before
-1.2.1 is yanked on crates.io; the release notes of 1.0.0, 1.1.0 and 1.2.0 say
-why.
+defects, all fixed in it. Outside Ubuntu, a release OSV has no data for read as
+clean. RHEL 10 read as clean, because OSV files it by minor release; it is now
+judged by the host's minor (ADR-0017). A Rocky Linux subpackage hid the CVEs
+filed under its source package, and Rocky Linux and AlmaLinux hosts and
+containers were not recognised (ADR-0018). An advisory naming hundreds of CVEs,
+as openSUSE kernel updates do, took gigabytes of memory and aborted the run (on
+Leap 15.6 with the kernel it shipped with). A closed pipe was reported as a
+failure.
 
-Fixed after 1.2.1, for the next release: a binary name given without its
-source package read as clean (ADR-0019), the `apk` components of an SBOM were
-not checked, and a purl lost its epoch outside Fedora, which reported patched
-CVEs as affected. Red Hat's unfixed list was chosen by the host, so an image of
-a Red Hat family distribution got none on another host, or the list of the wrong
-release (ADR-0014).
+1.2.2 followed the same day, for inputs other than a host. A binary name given
+without its source package read as clean (ADR-0019), the `apk` components of an
+SBOM were not checked, and a purl lost its epoch outside Fedora, which reported
+patched CVEs as affected. Red Hat's unfixed list was chosen by the host, so an
+image of a Red Hat family distribution got none on another host, or the list of
+the wrong release (ADR-0014).
+
+Every version before 1.2.2 is yanked on crates.io; the release notes of 1.0.0,
+1.1.0, 1.2.0 and 1.2.1 say why.
 
 ## What 1.0 meant, and what is still open
 
@@ -97,14 +99,18 @@ above so that it sees the final code. All of it is still open:
 Found while testing and not fixed yet.
 
 - On RHEL, Rocky Linux and AlmaLinux, a CVE that OSV answers for any package of
-  a release in a run is not added from Red Hat's unfixed list for another package
-  of it, which can hide it there (found by reading the code, not reproduced).
+  a release in a run is not added from Red Hat's unfixed list for another
+  package, which hides it there. It takes two packages sharing a CVE, one with a
+  fix: with 1.2.2 a RHEL 9 list holding an old `python3.12` lost CVEs of
+  `python3`, and an old `openssl` hid 49 of `compat-openssl11`; the 50 sampled
+  of those hidden are unfixed according to Red Hat. Five base images showed none.
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
 - The packages of an Arch image are reported with the provenance `user_input`.
 - On AlmaLinux 8 and RHEL 8, a fix built for a module stream is applied to a
   package installed outside the module (`perl-Carp`, for example), so it is
-  reported as affected.
+  reported as affected. On an AlmaLinux 8 image with Perl installed, 266 of 963
+  findings come from such builds.
 - Rocky Linux and AlmaLinux 10 are not supported.
 - Only an Ubuntu interim release is judged past its support by date. Another
   release that is past support, and for which OSV still holds old advisories, is
