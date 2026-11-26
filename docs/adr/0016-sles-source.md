@@ -56,10 +56,11 @@ Option 1, and only for hosts whose release says so:
   `VERSION_ID` as `15.SP`, `16.0` and the like, mapping to the existing
   `Opensuse` ecosystem value family or a sibling one, so the rpm comparator
   and the `--distro` plumbing are reused.
-- The ecosystems asked are, for a 15.SP release: the Basesystem and Server
-  Applications modules of that SP, plus the `...-LTSS` ecosystem of the same
-  SP, mirroring what SUSE publishes. A 16.0 release asks its `SUSE:Linux
-  Enterprise Server 16.0` ecosystem.
+- The ecosystems asked are, for a 15.SP release, the modules of that SP plus
+  its `...-LTSS` ecosystem. The list of modules is still to be established: the
+  measurement above saw Basesystem and Web and Scripting, and a Server
+  Applications module is expected but was not observed. A 16.0 release asks its
+  `SUSE:Linux Enterprise Server 16.0` ecosystem.
 - Advisories are matched per package by the rule 1.2.0 introduced: only a fix
   that names the package counts.
 - Support end: when SUSE drops a service pack, OSV stops gaining records. Like
@@ -72,9 +73,10 @@ Option 1, and only for hosts whose release says so:
 
 - No new dependency, and no zypper: the rpm database and the release string
   carry everything.
-- A package of a module the list does not cover gets no advisories and reads
-  unverified (not clean) if the tracker coverage check fires; the module list
-  is the risk to watch, and the coverage probe (fix/osv-no-data-fails) catches
-  a wrong list instead of reading it as clean.
+- The module list is the main risk. A package of a module the list leaves out
+  gets no advisory and would read as clean. The check for a release without
+  data does not catch this: it asks only when no package of the release got an
+  advisory, so a partly covered release passes it. The list has to be complete,
+  or the result of a release it cannot vouch for has to be incomplete.
 - openSUSE Leap keeps its own ecosystem and gains nothing.
 - `--distro sles:15.6` names the same mapping as the host read.
