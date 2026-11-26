@@ -38,9 +38,9 @@ minor (ADR-0017). A Rocky Linux subpackage hid the CVEs filed under its source
 package, and Rocky Linux and AlmaLinux hosts and containers were not recognised
 (ADR-0018). An advisory naming hundreds of CVEs, as openSUSE kernel updates do,
 took gigabytes of memory and aborted the run (on Leap 15.6 with the kernel it
-shipped with). A closed pipe was reported as a failure. 1.0.0, 1.1.0 and 1.2.0
-are yanked on crates.io, and their release notes say why. The 0.x versions are
-not.
+shipped with). A closed pipe was reported as a failure. Every version before
+1.2.1 is yanked on crates.io; the release notes of 1.0.0, 1.1.0 and 1.2.0 say
+why.
 
 ## What 1.0 meant, and what is still open
 
