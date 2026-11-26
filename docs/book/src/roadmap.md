@@ -48,12 +48,12 @@ patched CVEs as affected. Red Hat's unfixed list was chosen by the host, so an
 image of a Red Hat family distribution got none on another host, or the list of
 the wrong release (ADR-0014).
 
-Every version before 1.2.2 is yanked on crates.io; the release notes of 1.0.0,
-1.1.0, 1.2.0 and 1.2.1 say why.
+1.2.3 followed the same day. On RHEL, Rocky Linux and AlmaLinux, a CVE fixed in
+one package hid it in another that has no fix, and fixes of module streams were
+applied on RHEL and AlmaLinux to packages outside the module.
 
-Fixed after 1.2.2, for the next release: on RHEL, Rocky Linux and AlmaLinux, a
-CVE fixed in one package hid it in another that has no fix, and fixes of module
-streams were applied on RHEL and AlmaLinux to packages outside the module.
+Every version before 1.2.3 is yanked on crates.io; the release notes of 1.0.0,
+1.1.0, 1.2.0, 1.2.1 and 1.2.2 say why.
 
 ## What 1.0 meant, and what is still open
 
