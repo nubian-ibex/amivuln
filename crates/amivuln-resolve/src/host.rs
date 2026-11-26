@@ -11,6 +11,17 @@ pub struct HostInfo {
     pub ecosystem: Ecosystem,
 }
 
+/// The supported major release of a Rocky Linux or `AlmaLinux` `VERSION_ID`,
+/// which carries the minor too (`9.4`). One rule for hosts and containers.
+pub(crate) fn rebuild_release(version_id: &str) -> Option<u16> {
+    version_id
+        .split('.')
+        .next()?
+        .parse()
+        .ok()
+        .filter(|major| (8..=9).contains(major))
+}
+
 /// Parses the contents of an `os-release` file.
 ///
 /// Returns `None` for unsupported distributions. Values may be quoted.
@@ -38,8 +49,7 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         // os-release says `debian` with VERSION_CODENAME in newer releases and
         // VERSION_ID as a number in others; a floating version is not possible.
         "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
-        // Rocky and AlmaLinux declare VERSION_ID as the major release.
-        "rocky" => Ecosystem::Rocky(version_id?.parse().ok()?),
+        "rocky" => Ecosystem::Rocky(rebuild_release(&version_id?)?),
         // RHEL declares VERSION_ID as major.minor (9.4); the major decides, and
         // from 10 on the minor too.
         "rhel" => {
@@ -48,7 +58,7 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
             let major = parts.next()?.parse().ok()?;
             Ecosystem::rhel(major, parts.next().and_then(|m| m.parse().ok()))
         }
-        "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
+        "almalinux" => Ecosystem::Alma(rebuild_release(&version_id?)?),
         // Leap writes 15.6 (or 16.0); Tumbleweed has a date for VERSION_ID and
         // one rolling OSV ecosystem.
         "opensuse-leap" => {
@@ -118,6 +128,31 @@ mod tests {
         for id in ["manjaro", "cachyos", "artix"] {
             let os = format!("ID={id}\nID_LIKE=arch\n");
             assert_eq!(parse_os_release(&os), None, "{id}");
+        }
+    }
+
+    #[test]
+    fn rocky_and_alma_are_read_by_major_release() {
+        // The values the official images carry.
+        for (version_id, release) in [("8.10", Some(8)), ("9.9", Some(9)), ("9", Some(9))] {
+            for (id, ecosystem) in [
+                ("rocky", Ecosystem::Rocky as fn(u16) -> Ecosystem),
+                ("almalinux", Ecosystem::Alma),
+            ] {
+                let os = format!("ID=\"{id}\"\nVERSION_ID=\"{version_id}\"\n");
+                assert_eq!(
+                    parse_os_release(&os).map(|h| h.ecosystem),
+                    release.map(ecosystem),
+                    "{id} {version_id}"
+                );
+            }
+        }
+        // Releases that are not supported stay unrecognised.
+        for os in [
+            "ID=rocky\nVERSION_ID=10.3\n",
+            "ID=almalinux\nVERSION_ID=10.0\n",
+        ] {
+            assert_eq!(parse_os_release(os), None, "{os}");
         }
     }
 

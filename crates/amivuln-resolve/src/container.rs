@@ -349,6 +349,8 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
             .ok()
             .zip(minor.parse::<u16>().ok())
             .map(|(maj, min)| maj * 100 + min)
+    } else if id == "rocky" || id == "almalinux" {
+        crate::host::rebuild_release(raw)
     } else if id == "rhel" {
         // `9.4` is release 9; from 10 on the minor is kept (`10.2` is 1002).
         let mut parts = raw.split('.');
@@ -574,6 +576,18 @@ mod tests {
         // Edge and alpha images have no OSV release.
         let edge = "ID=alpine\nVERSION_ID=3.23.0_alpha20250108\n";
         assert_eq!(ecosystem_from_os_release(edge), None);
+        assert_eq!(
+            ecosystem_from_os_release("ID=\"rocky\"\nVERSION_ID=\"9.9\"\n"),
+            Some(Ecosystem::Rocky(9))
+        );
+        assert_eq!(
+            ecosystem_from_os_release("ID=\"almalinux\"\nVERSION_ID=\"8.10\"\n"),
+            Some(Ecosystem::Alma(8))
+        );
+        assert_eq!(
+            ecosystem_from_os_release("ID=\"rocky\"\nVERSION_ID=\"10.3\"\n"),
+            None
+        );
         let unknown = "ID=nixos\n";
         assert!(matches!(
             ecosystem_from_os_release(unknown),
