@@ -373,6 +373,43 @@ async fn load_host_distro(
     (latest.0, Some(latest.1))
 }
 
+/// Adds the CVEs Red Hat has not fixed, which are not in OSV, from its OVAL
+/// file of each release among the packages, whatever the host is. `pass` is the
+/// packages OSV was asked about and its answers, in the same order.
+async fn add_unfixed(
+    fetcher: &Fetcher<'_>,
+    cfg: &Config,
+    reports: &mut [TargetReport],
+    pass: (&Vec<(String, PackageRef)>, Option<&DistroData>),
+    vex: &[VexStatement],
+) -> Option<SourceReport> {
+    let releases: std::collections::BTreeSet<u16> = reports
+        .iter()
+        .filter_map(|t| unpatched::release_of(t.package.ecosystem))
+        .collect();
+    let mut combined: Option<SourceReport> = None;
+    for release in releases {
+        let (index, report) = unpatched::load_unpatched(fetcher, cfg, release).await;
+        combined = Some(match combined {
+            Some(earlier) => unpatched::merge_reports(earlier, report),
+            None => report,
+        });
+        let Some(index) = index else {
+            continue;
+        };
+        // Only what OSV answered for this release counts: a fix for another one
+        // says nothing here.
+        let known = |cve: &str| match pass.1 {
+            Some(DistroData::Osv(list)) => pass.0.iter().zip(list).any(|((_, p), data)| {
+                unpatched::release_of(p.ecosystem) == Some(release) && data.knows(cve)
+            }),
+            _ => false,
+        };
+        unpatched::add_unpatched(reports, release, &index, &known, vex);
+    }
+    combined
+}
+
 async fn gather(
     fetcher: &Fetcher<'_>,
     cfg: &Config,
@@ -439,13 +476,14 @@ async fn gather(
         vex,
     );
 
-    // CVEs Red Hat has not fixed are not in OSV: they come from its OVAL file.
-    if let Some((index, report)) = unpatched::load_unpatched(fetcher, cfg, eco).await {
-        sources.push(report);
-        if let Some(index) = index {
-            unpatched::add_unpatched(&mut reports, &index, data.as_ref(), vex);
-        }
-    }
+    // RHEL and its rebuilds are judged through OSV: in the host's pass on an
+    // OSV host, in the separate one otherwise.
+    let osv_pass = if host_source_id(eco) == SourceId::Osv {
+        (&distro_resolved, data.as_ref())
+    } else {
+        (&lang_resolved, lang_data.as_ref())
+    };
+    sources.extend(add_unfixed(fetcher, cfg, &mut reports, osv_pass, vex).await);
 
     // KEV and EPSS know CVE ids only; a language advisory without a CVE alias
     // keeps its own id and is not looked up there.
@@ -663,6 +701,97 @@ mod tests {
             upstream: None,
             provenance: amivuln_core::Provenance::PackageDb,
         }
+    }
+
+    /// Runs `gather` for a host and packages of another distribution, with only
+    /// Red Hat's file of RHEL 9 published.
+    async fn unfixed_for(host: Ecosystem, packages: &[Ecosystem]) -> Evaluated {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": [{}]})),
+            )
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(
+                "/data/oval/v2/RHEL9/rhel-9-including-unpatched.oval.xml.bz2",
+            ))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_bytes(
+                    include_bytes!("../../../../tests/fixtures/redhat-oval/small.oval.xml.bz2")
+                        .as_slice(),
+                ),
+            )
+            .mount(&server)
+            .await;
+        let mut cfg = Config::default();
+        cfg.sources.osv.url = Some(server.uri());
+        cfg.sources.distro.url = Some(server.uri());
+        cfg.sources.rhel_unpatched.url = Some(server.uri());
+        cfg.sources.kev.enabled = false;
+        cfg.sources.epss.enabled = false;
+        let http = HttpClient::new(HttpConfig {
+            allow_insecure: true,
+            ..HttpConfig::default()
+        })
+        .unwrap();
+        let cache = amivuln_cache::Cache::in_memory().unwrap();
+        let fetcher = Fetcher {
+            http: &http,
+            cache: &cache,
+            now: 0,
+            policy: amivuln_cache::Policy {
+                ttl: 1,
+                stale_max_age: 1,
+            },
+            offline: false,
+            offline_db: None,
+            nvd_http: None,
+        };
+        let resolved: Vec<_> = packages
+            .iter()
+            .map(|eco| ("c".to_owned(), pkg(*eco, "openssl", "1:3.0.7-1.el9", "rpm")))
+            .collect();
+        gather(&fetcher, &cfg, host, &resolved, &[], &[]).await
+    }
+
+    fn unfixed_sources(ev: &Evaluated) -> Vec<&SourceStatus> {
+        ev.sources
+            .iter()
+            .filter(|s| s.source == SourceId::RedHatOval)
+            .map(|s| &s.status)
+            .collect()
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn an_image_gets_its_unfixed_cves_on_a_host_of_another_family() {
+        for image in [Ecosystem::Rocky(9), Ecosystem::Alma(9), Ecosystem::Rhel(9)] {
+            let ev = unfixed_for(Ecosystem::Fedora(44), &[image]).await;
+            let ids: Vec<_> = ev.targets[0].findings.iter().map(|f| &f.id).collect();
+            assert_eq!(ids, ["CVE-2024-0001"], "{image:?}");
+            assert_eq!(unfixed_sources(&ev), [&SourceStatus::Ok], "{image:?}");
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn each_package_gets_the_unfixed_list_of_its_own_release() {
+        // A RHEL 8 host: the RHEL 9 list is for the RHEL 9 package alone, and
+        // the missing RHEL 8 list is said once, in one report.
+        let ev = unfixed_for(
+            Ecosystem::Rhel(8),
+            &[Ecosystem::Rhel(8), Ecosystem::Rocky(9)],
+        )
+        .await;
+        assert!(ev.targets[0].findings.is_empty(), "{:?}", ev.targets[0]);
+        assert_eq!(ev.targets[1].findings.len(), 1, "{:?}", ev.targets[1]);
+        let statuses = unfixed_sources(&ev);
+        assert!(
+            matches!(statuses.as_slice(), [SourceStatus::Failed(_)]),
+            "{statuses:?}"
+        );
     }
 
     /// A Fedora image scanned from a Debian host used to fall into the OSV

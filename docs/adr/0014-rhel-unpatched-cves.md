@@ -1,6 +1,6 @@
 # ADR-0014: Red Hat CVEs that have no fix yet
 
-- Status: Accepted (2026-11-17)
+- Status: Accepted (2026-11-17), amended 2026-11-26 (the file follows the package's release)
 - Date: 2026-11-14
 - Amends: ADR-0012
 
@@ -51,3 +51,13 @@ The maintainer accepted the dependency and the decision. What was settled and me
 ## Not decided here
 
 The first open question of ADR-0012 (hundreds of MB acceptable) is answered by option 3: 11 MB. The stream question (EUS, E4S) does not arise for unfixed CVEs, which have no stream. Implementation: see the acceptance above.
+
+## Amendment (2026-11-26)
+
+The file was chosen by the host's distribution. An image scanned from a host
+outside the Red Hat family got no unfixed CVE and still read as complete (a UBI
+9 image showed none of 476), and on a host, or with `--distro`, of another
+release the wrong file was applied. The file is now chosen by the release of
+each package: one per release in the run, applied to its packages only. Their
+reports are one `redhat-oval` entry, which tells a failure first, then a release
+without a file.

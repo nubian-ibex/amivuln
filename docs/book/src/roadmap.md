@@ -45,7 +45,9 @@ why.
 Fixed after 1.2.1, for the next release: a binary name given without its
 source package read as clean (ADR-0019), the `apk` components of an SBOM were
 not checked, and a purl lost its epoch outside Fedora, which reported patched
-CVEs as affected.
+CVEs as affected. Red Hat's unfixed list was chosen by the host, so an image of
+a Red Hat family distribution got none on another host, or the list of the wrong
+release (ADR-0014).
 
 ## What 1.0 meant, and what is still open
 
@@ -94,13 +96,9 @@ above so that it sees the final code. All of it is still open:
 
 Found while testing and not fixed yet.
 
-- On a Fedora host, `--container` does not read Red Hat's unfixed list for a
-  Rocky Linux image, so those CVEs are missing and the result reads as complete
-  (the same image's SBOM reports them). The code reads the list by the host's
-  distribution, so other hosts outside the Red Hat family are likely affected.
 - On RHEL, Rocky Linux and AlmaLinux, a CVE that OSV answers for any package of
-  a run is not added from Red Hat's unfixed list for another package, which can
-  hide it there (found by reading the code, not reproduced).
+  a release in a run is not added from Red Hat's unfixed list for another package
+  of it, which can hide it there (found by reading the code, not reproduced).
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
 - The packages of an Arch image are reported with the provenance `user_input`.
