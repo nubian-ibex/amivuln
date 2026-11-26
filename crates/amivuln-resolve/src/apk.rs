@@ -37,6 +37,7 @@ pub(crate) fn parse_installed(installed: &str, eco: Ecosystem) -> Vec<PackageRef
             continue;
         };
         packages.push(PackageRef {
+            source_vr: None,
             ecosystem: eco,
             name: (*name).to_owned(),
             source_name: fields

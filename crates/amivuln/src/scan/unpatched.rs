@@ -178,6 +178,7 @@ mod tests {
         TargetReport {
             input: name.to_owned(),
             package: PackageRef {
+                source_vr: None,
                 name: name.to_owned(),
                 source_name: None,
                 version: Version::Rpm("1-1.el9".parse().unwrap()),

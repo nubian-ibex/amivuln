@@ -107,6 +107,7 @@ pub fn parse_manifest(
             continue;
         }
         packages.push(PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Flatpak,
             name: format!("{runtime}/{product}"),
             source_name: Some(module.name),
