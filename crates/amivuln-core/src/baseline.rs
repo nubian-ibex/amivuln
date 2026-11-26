@@ -131,6 +131,7 @@ mod tests {
         TargetReport {
             input: input.to_owned(),
             package: PackageRef {
+                source_vr: None,
                 ecosystem: Ecosystem::Fedora(44),
                 name: name.to_owned(),
                 source_name: None,

@@ -141,6 +141,7 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
     };
     let parsed = evr.parse().unwrap_or_else(|never| match never {});
     Ok(PackageRef {
+        source_vr: source_vr(srpm, &format!("{version}-{release}")),
         ecosystem,
         name: name.to_owned(),
         source_name: source_name(srpm),
@@ -158,6 +159,16 @@ fn source_name(srpm: &str) -> Option<String> {
     let without_release = base.rsplit_once('-')?.0;
     let name = without_release.rsplit_once('-')?.0;
     (!name.is_empty()).then(|| name.to_owned())
+}
+
+/// The release of `bash-5.3.9-3.fc44.src.rpm` is `5.3.9-3.fc44`; kept only
+/// when the binary's differs.
+fn source_vr(srpm: &str, binary: &str) -> Option<String> {
+    let base = srpm.strip_suffix(".src.rpm")?;
+    let (rest, release) = base.rsplit_once('-')?;
+    let (_, version) = rest.rsplit_once('-')?;
+    let vr = format!("{version}-{release}");
+    (vr != binary).then_some(vr)
 }
 
 #[cfg(test)]
@@ -285,6 +296,17 @@ mod tests {
                 .len(),
             1
         );
+    }
+
+    #[test]
+    fn the_source_release_is_kept_only_when_it_differs() {
+        let line = "8\tdevice-mapper\t1.02.181\t15.el8\tx86_64\tlvm2-2.03.14-15.el8.src.rpm";
+        let p = parse_line(line, Ecosystem::Rocky(8)).unwrap();
+        assert_eq!(p.source_name.as_deref(), Some("lvm2"));
+        assert_eq!(p.source_vr.as_deref(), Some("2.03.14-15.el8"));
+        let line = "1\topenssl-libs\t1.1.1k\t12.el8_9\tx86_64\topenssl-1.1.1k-12.el8_9.src.rpm";
+        let p = parse_line(line, Ecosystem::Rocky(8)).unwrap();
+        assert_eq!(p.source_vr, None);
     }
 
     #[test]

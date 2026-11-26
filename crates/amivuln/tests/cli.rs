@@ -3212,3 +3212,25 @@ async fn a_rhel_10_without_a_minor_release_is_never_complete() {
     assert_eq!(v["complete"], false, "{v}");
     assert!(v.to_string().contains("--distro rhel:10.N"), "{v}");
 }
+
+/// Rocky Linux files many advisories under the source package alone, so a
+/// package given without one cannot be called complete.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rocky_package_without_its_source_is_never_complete() {
+    let (server, home) = rhel10_osv().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .and(body_string_contains("\"ecosystem\":\"Rocky Linux:9\""))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"results": [{"vulns": [{"id": "RHSA-2026:0001"}]}]}),
+            ),
+        )
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    let (code, v) = ask_ubuntu(&home, "rocky:9", "openssl-libs@1:3.0.7-1.el9").await;
+    assert_eq!(code, Some(2), "{v}");
+    assert_eq!(v["complete"], false, "{v}");
+    assert!(v.to_string().contains("source package"), "{v}");
+}

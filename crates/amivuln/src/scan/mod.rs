@@ -653,6 +653,7 @@ mod tests {
             _ => amivuln_core::Version::Deb(version.parse().unwrap_or_else(|n| match n {})),
         };
         PackageRef {
+            source_vr: None,
             ecosystem: eco,
             name: name.to_owned(),
             source_name: None,

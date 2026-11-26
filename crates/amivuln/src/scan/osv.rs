@@ -68,6 +68,24 @@ pub(super) fn osv_query_version(eco: Ecosystem, version: &amivuln_core::Version)
     }
 }
 
+/// The names and versions OSV is asked about for one package.
+fn questions<'a>(pkg: &'a amivuln_core::PackageRef, version: &str) -> Vec<(&'a str, String)> {
+    let mut asked = vec![(pkg.osv_name(), version.to_owned())];
+    // Rocky Linux files many advisories under the source package alone
+    // (ADR-0018). A source release of its own is asked from epoch 0 on: the
+    // source's epoch is not known, and the verdict compares the release.
+    if let (Ecosystem::Rocky(_), Some(source)) = (pkg.ecosystem, pkg.source_name.as_deref())
+        && source != pkg.name
+    {
+        let at = pkg
+            .source_vr
+            .as_ref()
+            .map_or_else(|| version.to_owned(), |vr| format!("0:{vr}"));
+        asked.push((source, at));
+    }
+    asked
+}
+
 /// Splits advisories back per package so each is judged only against the
 /// package it was found for.
 pub(super) fn split_per_package(
@@ -316,6 +334,12 @@ async fn distro_coverage(
             ));
             continue;
         }
+        if matches!(pkg.ecosystem, Ecosystem::Rocky(_)) && pkg.source_name.is_none() {
+            status = SourceStatus::Failed(
+                "Rocky Linux files advisories by source package and an input names none, so the result is not complete"
+                    .to_owned(),
+            );
+        }
         if let Ecosystem::Rhel(value) = pkg.ecosystem
             && matches!(Ecosystem::rhel_release(value), (major, None) if major >= 10)
         {
@@ -419,23 +443,22 @@ pub(super) async fn load_osv(
                 pkg.name
             ));
         };
-        let osv_name = pkg.osv_name();
+        let asked = questions(pkg, &version);
         for osv_eco in osv_ecosystems {
-            let body = match amivuln_sources::osv::batch_request(
-                osv_name,
-                osv_eco.as_str(),
-                version.as_str(),
-            ) {
-                Ok(b) => b,
-                Err(e) => return fail(e.to_string()),
-            };
-            queries.push(OsvQuery {
-                name: osv_name,
-                ecosystem: osv_eco.clone(),
-                version: version.clone(),
-                body,
-            });
-            owner.push(index);
+            for (name, version) in &asked {
+                let body =
+                    match amivuln_sources::osv::batch_request(name, osv_eco.as_str(), version) {
+                        Ok(b) => b,
+                        Err(e) => return fail(e.to_string()),
+                    };
+                queries.push(OsvQuery {
+                    name,
+                    ecosystem: osv_eco.clone(),
+                    version: version.clone(),
+                    body,
+                });
+                owner.push(index);
+            }
         }
     }
     let answers = query_osv(f, base, &queries).await;
@@ -480,9 +503,40 @@ pub(super) async fn load_osv(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scan::Fetcher;
+    use crate::scan::{Fetcher, PackageRef};
     use amivuln_cache::{Cache, Policy as CachePolicy};
     use amivuln_sources::http::{HttpClient, HttpConfig};
+
+    #[test]
+    fn rocky_is_asked_by_binary_and_source_name() {
+        let package = |ecosystem, source: &str, source_vr: Option<&str>| PackageRef {
+            ecosystem,
+            name: "device-mapper".into(),
+            source_name: Some(source.into()),
+            source_vr: source_vr.map(str::to_owned),
+            version: amivuln_core::Version::Rpm(
+                "8:1.02.181-15.el8".parse().unwrap_or_else(|n| match n {}),
+            ),
+            arch: None,
+            upstream: None,
+            slot: None,
+            provenance: amivuln_core::Provenance::PackageDb,
+        };
+        let binary = ("device-mapper", "8:1.02.181-15.el8".to_owned());
+        // The source's own release, from epoch 0 on: its epoch is not known.
+        let rocky = package(Ecosystem::Rocky(8), "lvm2", Some("2.03.14-15.el8"));
+        assert_eq!(
+            questions(&rocky, "8:1.02.181-15.el8"),
+            [binary.clone(), ("lvm2", "0:2.03.14-15.el8".to_owned())]
+        );
+        let same_release = package(Ecosystem::Rocky(8), "lvm2", None);
+        assert_eq!(
+            questions(&same_release, "8:1.02.181-15.el8"),
+            [binary.clone(), ("lvm2", "8:1.02.181-15.el8".to_owned())]
+        );
+        let alma = package(Ecosystem::Alma(8), "lvm2", None);
+        assert_eq!(questions(&alma, "8:1.02.181-15.el8"), [binary]);
+    }
 
     /// Fetches against an empty offline cache, so every document fails fast.
     async fn offline_fetch(ids: &[String]) -> SourceStatus {

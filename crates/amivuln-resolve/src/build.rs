@@ -64,6 +64,7 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         }
     };
     PackageRef {
+        source_vr: None,
         ecosystem,
         name: name.to_owned(),
         source_name: None,

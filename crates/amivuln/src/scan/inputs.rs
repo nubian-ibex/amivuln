@@ -386,6 +386,7 @@ mod tests {
 
     fn kernel(version: &str) -> PackageRef {
         PackageRef {
+            source_vr: None,
             name: "kernel-core".to_owned(),
             source_name: None,
             version: amivuln_core::Version::Rpm(version.parse().unwrap()),

@@ -207,6 +207,7 @@ mod tests {
             targets: vec![amivuln_core::TargetReport {
                 input: "nginx".to_owned(),
                 package: amivuln_core::PackageRef {
+                    source_vr: None,
                     ecosystem: amivuln_core::Ecosystem::Fedora(43),
                     name: "nginx".to_owned(),
                     source_name: None,

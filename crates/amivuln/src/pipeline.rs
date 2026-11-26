@@ -6,8 +6,8 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use amivuln_core::{
-    DistroStatus, EpssInfo, Finding, KevInfo, PackageRef, Severity, Verdict, Version, VexStatement,
-    apply_vex, classify, sort_findings,
+    DistroStatus, Ecosystem, EpssInfo, Finding, KevInfo, PackageRef, Severity, Verdict, Version,
+    VexStatement, apply_vex, classify, sort_findings,
 };
 use amivuln_sources::arch::{ArchEntry, ArchTracker};
 use amivuln_sources::epss::EpssScores;
@@ -289,6 +289,9 @@ pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Asse
     cves.sort_unstable();
     cves.dedup();
     for cve in cves {
+        if only_in_other_modules(pkg, osv, &cve) {
+            continue;
+        }
         let candidates = fixes_for_package(pkg, osv, &cve);
         // Several advisories can fix one CVE (Red Hat issues one per minor
         // stream): at or above any published fix is patched, otherwise the
@@ -309,10 +312,11 @@ pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Asse
         // `querybatch` already matched this exact version against the
         // advisory's ranges, so a record that offers no fix at all is an
         // open issue: affected, with nothing to upgrade to.
-        let mut verdict = match chosen.cloned() {
-            Some(fix_version) => classify(&pkg.version, &DistroStatus::Fixed(fix_version)),
-            None => Verdict::Affected { fixed_in: None },
-        };
+        let mut verdict =
+            source_release_verdict(pkg, osv, &cve).unwrap_or_else(|| match chosen.cloned() {
+                Some(fix_version) => classify(&pkg.version, &DistroStatus::Fixed(fix_version)),
+                None => Verdict::Affected { fixed_in: None },
+            });
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }
@@ -332,6 +336,60 @@ pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Asse
     assessment
 }
 
+/// The verdict of a Rocky Linux subpackage whose version is not its source's,
+/// for a CVE filed under the source name alone: the fix compares against the
+/// source's release. The epoch is left out of both, as the source's is not
+/// known (ADR-0018).
+fn source_release_verdict(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Option<Verdict> {
+    let (Ecosystem::Rocky(_), Some(source), Some(vr)) =
+        (pkg.ecosystem, &pkg.source_name, &pkg.source_vr)
+    else {
+        return None;
+    };
+    let mut fixes = osv.fixes_for(cve);
+    fixes.retain(|(_, fix)| !outside_its_module(pkg, fix));
+    if fixes.iter().any(|(name, _)| *name == pkg.name) {
+        return None;
+    }
+    let rpm = |text: &str| Version::Rpm(text.parse().unwrap_or_else(|never| match never {}));
+    let installed = rpm(vr);
+    let mut lowest: Option<(Version, &str)> = None;
+    for (_, fix) in fixes.iter().filter(|(name, _)| name == source) {
+        let release = rpm(fix.split_once(':').map_or(fix.as_str(), |(_, rest)| rest));
+        if classify(&installed, &DistroStatus::Fixed(release.clone())) == Verdict::Patched {
+            return Some(Verdict::Patched);
+        }
+        if lowest
+            .as_ref()
+            .is_none_or(|(low, _)| release.compare(low) == Some(Ordering::Less))
+        {
+            lowest = Some((release, fix));
+        }
+    }
+    lowest.map(|(_, fix)| Verdict::Affected {
+        fixed_in: Some(rpm(fix)),
+    })
+}
+
+/// A Rocky Linux fix built for a module stream, which says nothing about a
+/// package installed outside one (ADR-0018).
+fn outside_its_module(pkg: &PackageRef, fix: &str) -> bool {
+    matches!(pkg.ecosystem, Ecosystem::Rocky(_))
+        && fix.contains(".module+")
+        && !pkg.version.to_string().contains(".module+")
+}
+
+/// Whether every fix of `cve` naming this package or its source belongs to a
+/// module the package is not in: the CVE is then not this package's.
+fn only_in_other_modules(pkg: &PackageRef, osv: &OsvData, cve: &str) -> bool {
+    let fixes = osv.fixes_for(cve);
+    let mut named = fixes
+        .iter()
+        .filter(|(name, _)| *name == pkg.name || Some(name) == pkg.source_name.as_ref())
+        .peekable();
+    named.peek().is_some() && named.all(|(_, fix)| outside_its_module(pkg, fix))
+}
+
 /// Every fix OSV records for `cve` that applies to this package, in the
 /// package's own version scheme.
 ///
@@ -347,13 +405,17 @@ fn fixes_for_package(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Vec<Version>
         Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
         _ => Version::Deb(fix.parse().unwrap_or_else(|never| match never {})),
     };
-    let by_source = matches!(pkg.version, Version::Rpm(_));
+    // A Rocky Linux subpackage with its own version never compares it with a
+    // fix filed under the source: `source_release_verdict` does that.
+    let own_version = matches!(pkg.ecosystem, Ecosystem::Rocky(_)) && pkg.source_vr.is_some();
+    let by_source = matches!(pkg.version, Version::Rpm(_)) && !own_version;
     osv.fixes_for(cve)
         .iter()
-        .filter(|(name, _)| {
-            name.is_empty()
+        .filter(|(name, fix)| {
+            (name.is_empty()
                 || name == pkg.osv_name()
-                || (by_source && Some(name) == pkg.source_name.as_ref())
+                || (by_source && Some(name) == pkg.source_name.as_ref()))
+                && !outside_its_module(pkg, fix)
         })
         .map(|(_, fix)| parse(fix))
         .collect()
@@ -463,6 +525,7 @@ mod tests {
 
     fn arch_pkg(name: &str, version: &str) -> PackageRef {
         PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Arch,
             name: name.into(),
             source_name: None,
@@ -480,6 +543,7 @@ mod tests {
 
     fn fedora_pkg(name: &str, source: Option<&str>, version: &str) -> PackageRef {
         PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Fedora(43),
             name: name.into(),
             source_name: source.map(str::to_owned),
@@ -725,6 +789,7 @@ mod tests {
 
     fn rhel_pkg(name: &str, version: &str) -> PackageRef {
         PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Rhel(9),
             name: name.into(),
             source_name: None,
@@ -734,6 +799,113 @@ mod tests {
             upstream: None,
             provenance: Provenance::PackageDb,
         }
+    }
+
+    #[test]
+    fn a_rocky_subpackage_is_compared_by_its_source_release() {
+        // perl-IO has its own version, so the fix filed under `perl` says
+        // nothing about it: the release of the source package does.
+        let doc = serde_json::json!({
+            "id": "RLSA-2099:0001",
+            "upstream": ["CVE-2099-0001"],
+            "affected": [{
+                "package": {"name": "perl", "ecosystem": "Rocky Linux:8"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"}, {"fixed": "4:5.26.3-423.el8"}
+                ]}]
+            }]
+        });
+        let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), "Rocky Linux:8").unwrap();
+        let subpackage = |source_vr: &str| PackageRef {
+            ecosystem: Ecosystem::Rocky(8),
+            source_name: Some("perl".into()),
+            source_vr: Some(source_vr.into()),
+            ..rhel_pkg("perl-IO", "1.38-423.el8")
+        };
+        assert_eq!(
+            osv_findings(&subpackage("5.26.3-423.el8"), &osv, &no_vex()),
+            []
+        );
+        let old = osv_findings(&subpackage("5.26.3-422.el8"), &osv, &no_vex());
+        assert_eq!(
+            old[0].verdict,
+            Verdict::Affected {
+                fixed_in: Some(Version::Rpm(
+                    "4:5.26.3-423.el8".parse().unwrap_or_else(|n| match n {})
+                ))
+            }
+        );
+    }
+
+    #[test]
+    fn a_fix_naming_the_binary_wins_over_the_sources() {
+        let affected = |name: &str, fix: &str| {
+            serde_json::json!({
+                "package": {"name": name, "ecosystem": "Rocky Linux:8"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"}, {"fixed": fix}
+                ]}]
+            })
+        };
+        let doc = serde_json::json!({
+            "id": "RLSA-2099:0003",
+            "upstream": ["CVE-2099-0003"],
+            "affected": [
+                affected("perl-Sub", "1:2.00-2.el8"),
+                affected("perl", "0:5.26.3-1.el8"),
+            ]
+        });
+        let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), "Rocky Linux:8").unwrap();
+        // The binary's epoch is above the source's: comparing the source's fix
+        // with it would settle a CVE the binary's own fix says is open.
+        let package = PackageRef {
+            ecosystem: Ecosystem::Rocky(8),
+            source_name: Some("perl".into()),
+            source_vr: Some("5.26.3-1.el8".into()),
+            ..rhel_pkg("perl-Sub", "1:2.00-1.el8")
+        };
+        assert_eq!(osv_findings(&package, &osv, &no_vex()).len(), 1);
+    }
+
+    #[test]
+    fn a_rocky_package_outside_a_module_ignores_module_fixes() {
+        // The perl:5.32 module stream says nothing about the perl 5.26 that
+        // ships outside it.
+        let doc = serde_json::json!({
+            "id": "RLSA-2099:0002",
+            "upstream": ["CVE-2099-0002"],
+            "affected": [{
+                "package": {"name": "perl", "ecosystem": "Rocky Linux:8"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"},
+                    {"fixed": "4:5.32.1-473.module+el8.10.0+1616+0d20cc68"}
+                ]}]
+            }]
+        });
+        let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), "Rocky Linux:8").unwrap();
+        let package = |name: &str, version: &str, source_vr: Option<&str>| PackageRef {
+            ecosystem: Ecosystem::Rocky(8),
+            source_name: Some("perl".into()),
+            source_vr: source_vr.map(str::to_owned),
+            ..rhel_pkg(name, version)
+        };
+        for outside in [
+            package("perl-interpreter", "4:5.26.3-423.el8_10", None),
+            package("perl-IO", "1.38-423.el8_10", Some("5.26.3-423.el8_10")),
+        ] {
+            assert_eq!(
+                osv_findings(&outside, &osv, &no_vex()),
+                [],
+                "{}",
+                outside.name
+            );
+        }
+        let inside = package(
+            "perl-interpreter",
+            "4:5.32.1-400.module+el8.9.0+1+aaaaaaaa",
+            None,
+        );
+        assert_eq!(osv_findings(&inside, &osv, &no_vex()).len(), 1);
     }
 
     /// Two RHSAs for one CVE (a GA and a z-stream fix), one of them also
@@ -802,6 +974,7 @@ mod tests {
 
     fn gentoo_pkg(name: &str, slot: Option<&str>, version: &str) -> PackageRef {
         PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Gentoo,
             name: name.into(),
             source_name: None,
@@ -967,6 +1140,7 @@ mod tests {
 
     fn component(patched: &[&str], ignored: &[&str]) -> PackageRef {
         PackageRef {
+            source_vr: None,
             ecosystem: Ecosystem::Flatpak,
             name: "org.freedesktop.Platform/25.08/bash".into(),
             source_name: None,

@@ -282,6 +282,9 @@ pub struct PackageRef {
     pub name: String,
     /// Source package name, when it differs (advisories often use it).
     pub source_name: Option<String>,
+    /// The source package's version-release, kept when it differs from the
+    /// binary's: a fix filed under the source name compares against it.
+    pub source_vr: Option<String>,
     /// Installed version.
     pub version: Version,
     /// Architecture, when known.
