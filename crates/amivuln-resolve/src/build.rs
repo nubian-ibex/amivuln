@@ -64,6 +64,7 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
         }
     };
     PackageRef {
+        module_stream: None,
         source_vr: None,
         ecosystem,
         name: name.to_owned(),
@@ -91,6 +92,25 @@ pub fn set_source(package: &mut PackageRef, name: &str, release: Option<&str>) {
             .filter(|vr| *vr != binary && valid_version(vr))
             .map(str::to_owned);
     }
+}
+
+/// Records the module stream a modularity label (`name:stream:version:context`)
+/// names, on a RHEL, Rocky Linux or `AlmaLinux` package. A label in another
+/// form is left out, so the stream stays unknown.
+pub fn set_module(package: &mut PackageRef, label: &str) {
+    if matches!(
+        package.ecosystem,
+        Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
+    ) {
+        package.module_stream = module_stream(label);
+    }
+}
+
+/// `nodejs:22:8100020261104150431:6d880403` gives `nodejs:22`.
+pub(crate) fn module_stream(label: &str) -> Option<String> {
+    let mut parts = label.split(':');
+    let (name, stream) = (parts.next()?, parts.next()?);
+    (valid_name(name) && valid_name(stream)).then(|| format!("{name}:{stream}"))
 }
 
 /// The source a purl's `upstream` qualifier names, as Syft writes it: the name
@@ -283,6 +303,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
     let mut arch = None;
     let mut slot = None;
     let mut upstream = None;
+    let mut module = None;
     for kv in query.split('&').filter(|s| !s.is_empty()) {
         let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
         let v = percent_decode(v).ok_or_else(|| bad("bad percent-encoding in a qualifier"))?;
@@ -290,6 +311,7 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
             "arch" => arch = Some(v),
             "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
             "upstream" => upstream = Some(v),
+            "modularitylabel" => module = Some(v),
             // Alpine and Arch versions have no epoch qualifier to read.
             "epoch"
                 if (is_rpm(ecosystem)
@@ -322,6 +344,9 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
     package.slot = slot;
     if let Some(upstream) = upstream {
         set_upstream_source(&mut package, &upstream);
+    }
+    if let Some(label) = module {
+        set_module(&mut package, &label);
     }
     Ok(package)
 }
@@ -434,6 +459,16 @@ mod tests {
             let p = from_purl(purl, Some(Ecosystem::Debian(12))).unwrap();
             assert_eq!(p.version.to_string(), "1:2.66-4", "{purl}");
         }
+    }
+
+    #[test]
+    fn purl_module_label_names_the_stream() {
+        let p = from_purl(
+            "pkg:rpm/alma/nodejs@20.12.2-2.module_el8.9.0%2B1%2Ba?modularitylabel=nodejs%3A20%3A8090020240509091713%3A9edba152",
+            Some(Ecosystem::Alma(8)),
+        )
+        .unwrap();
+        assert_eq!(p.module_stream.as_deref(), Some("nodejs:20"));
     }
 
     #[test]

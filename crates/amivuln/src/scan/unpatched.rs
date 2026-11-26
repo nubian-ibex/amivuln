@@ -6,7 +6,7 @@
 use amivuln_cache::Lookup;
 use amivuln_core::{
     Finding, SourceId, SourceReport, SourceStatus, TargetReport, Verdict, VexStatement, apply_vex,
-    sort_findings,
+    is_module_build, sort_findings,
 };
 use amivuln_sources::http::{Response, Validators};
 use amivuln_sources::redhat_oval::UnpatchedIndex;
@@ -45,13 +45,24 @@ pub(super) fn merge_reports(a: SourceReport, b: SourceReport) -> SourceReport {
         SourceStatus::Ok => 0,
     };
     let age = a.age.max(b.age);
+    let required = a.required || b.required;
     let mut worst = if rank(&b.status) > rank(&a.status) {
         b
     } else {
         a
     };
     worst.age = age;
+    worst.required = required;
     worst
+}
+
+/// A package of `release` built for a module stream that no input named.
+pub(super) fn stream_unknown(reports: &[TargetReport], release: u16) -> bool {
+    reports.iter().any(|t| {
+        release_of(t.package.ecosystem) == Some(release)
+            && t.package.module_stream.is_none()
+            && is_module_build(&t.package.version.to_string())
+    })
 }
 
 /// The index of one RHEL major release, with its report.
@@ -141,6 +152,10 @@ pub(super) async fn load_unpatched(
 /// for, open or settled, keeps it; only the ones it cannot show are added, as
 /// affected with no fix. What was answered for another package says nothing:
 /// the same CVE can be fixed in one and not in the other.
+///
+/// A package of a module stream also gets what Red Hat lists for that stream
+/// (`nodejs:22/nodejs`). Such an entry reopens a CVE read as patched, since the
+/// fix that settled it can be that of another stream (ADR-0020).
 pub(super) fn add_unpatched(
     reports: &mut [TargetReport],
     release: u16,
@@ -157,14 +172,33 @@ pub(super) fn add_unpatched(
             Some(target.package.name.as_str()),
             target.package.source_name.as_deref(),
         ];
-        let mut unfixed: Vec<_> = names
-            .into_iter()
-            .flatten()
-            .flat_map(|n| index.for_component(n))
+        let names: Vec<&str> = names.into_iter().flatten().collect();
+        let of_stream: Vec<_> = target
+            .package
+            .module_stream
+            .iter()
+            .flat_map(|stream| names.iter().map(move |n| format!("{stream}/{n}")))
+            .flat_map(|component| index.for_component(&component))
             .collect();
-        unfixed.sort_by(|a, b| a.cve.cmp(&b.cve).then(a.state.cmp(&b.state)));
-        unfixed.dedup_by(|a, b| a.cve == b.cve);
-        for u in unfixed {
+        target
+            .resolved
+            .retain(|f| f.verdict != Verdict::Patched || !of_stream.iter().any(|u| u.cve == f.id));
+        // The stream's own entry comes first, so its state is the one kept.
+        let mut unfixed: Vec<_> = of_stream
+            .into_iter()
+            .map(|u| (false, u))
+            .chain(
+                names
+                    .iter()
+                    .flat_map(|n| index.for_component(n))
+                    .map(|u| (true, u)),
+            )
+            .collect();
+        unfixed.sort_by(|(a_plain, a), (b_plain, b)| {
+            (&a.cve, a_plain, a.state).cmp(&(&b.cve, b_plain, b.state))
+        });
+        unfixed.dedup_by(|(_, a), (_, b)| a.cve == b.cve);
+        for (_, u) in unfixed {
             if target
                 .findings
                 .iter()
@@ -202,6 +236,7 @@ mod tests {
         TargetReport {
             input: name.to_owned(),
             package: PackageRef {
+                module_stream: None,
                 source_vr: None,
                 name: name.to_owned(),
                 source_name: None,
@@ -260,6 +295,57 @@ mod tests {
         let mut reports = vec![t];
         add_unpatched(&mut reports, 9, &index(), &[]);
         assert_eq!(reports[0].findings.len(), 1);
+    }
+
+    #[test]
+    fn a_module_package_gets_the_unfixed_cves_of_its_stream() {
+        let line =
+            |cve: &str, component: &str| format!("{cve}\tFix deferred\tImportant\t{component}\n");
+        let index = UnpatchedIndex::from_reduced(
+            [
+                line("CVE-2099-0001", "nodejs:22/nodejs"),
+                line("CVE-2099-0002", "nodejs:20/nodejs"),
+                line("CVE-2099-0003", "nodejs"),
+                line("CVE-2099-0004", "nodejs:22/nodejs"),
+                line("CVE-2099-0005", "nodejs:22/nodejs"),
+            ]
+            .concat()
+            .as_bytes(),
+        )
+        .unwrap();
+        let mut report = target("nodejs", Ecosystem::Rhel(8), Vec::new());
+        report.package.module_stream = Some("nodejs:22".into());
+        // 0004 read as patched by the fix of another stream; 0005 is open with
+        // such a fix and keeps it.
+        report.resolved = vec![Finding::new(
+            "CVE-2099-0004",
+            Severity::High,
+            Verdict::Patched,
+        )];
+        report.findings = vec![Finding::new(
+            "CVE-2099-0005",
+            Severity::High,
+            Verdict::Affected {
+                fixed_in: Some(report.package.version.clone()),
+            },
+        )];
+        let mut reports = vec![report];
+        add_unpatched(&mut reports, 8, &index, &[]);
+        let found: Vec<_> = reports[0]
+            .findings
+            .iter()
+            .map(|f| (f.id.as_str(), f.vendor_state.is_some()))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                ("CVE-2099-0001", true),
+                ("CVE-2099-0003", true),
+                ("CVE-2099-0004", true),
+                ("CVE-2099-0005", false),
+            ]
+        );
+        assert!(reports[0].resolved.is_empty(), "{:?}", reports[0].resolved);
     }
 
     #[test]

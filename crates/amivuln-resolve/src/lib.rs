@@ -24,7 +24,7 @@ mod target;
 mod unit;
 
 pub use apk::ApkResolver;
-pub use build::{from_name_version, from_purl, set_source};
+pub use build::{from_name_version, from_purl, set_module, set_source};
 pub use container::{
     ContainerError, available_runtime, export as export_container, packages as container_packages,
 };
@@ -121,6 +121,22 @@ mod tests_support {
                         .rev()
                         .map(|s| ProcessOutput {
                             success: true,
+                            stdout: s.as_bytes().to_vec(),
+                        })
+                        .collect(),
+                ),
+                calls: RefCell::default(),
+            }
+        }
+
+        pub(crate) fn replies(replies: &[(bool, &str)]) -> Self {
+            Self {
+                replies: RefCell::new(
+                    replies
+                        .iter()
+                        .rev()
+                        .map(|(success, s)| ProcessOutput {
+                            success: *success,
                             stdout: s.as_bytes().to_vec(),
                         })
                         .collect(),

@@ -51,27 +51,48 @@ pub(super) fn read_inventory(
     Ok(out)
 }
 
-/// The purls of an SBOM, each with the source package a component states
-/// beside it.
-pub(super) type Purls = std::collections::BTreeMap<String, Option<(String, Option<String>)>>;
+/// What a component states beside its purl.
+#[derive(Default)]
+pub(super) struct Stated {
+    /// The source package's name and, when given, its version-release.
+    source: Option<(String, Option<String>)>,
+    /// The modularity label of the rpm.
+    module: Option<String>,
+}
+
+/// The purls of an SBOM, each with what a component states beside it.
+pub(super) type Purls = std::collections::BTreeMap<String, Stated>;
+
+/// The value of a component's property, the first of the names found.
+fn property<'a>(component: &'a serde_json::Value, names: &[&str]) -> Option<&'a str> {
+    let properties = component.get("properties")?.as_array()?;
+    names.iter().find_map(|wanted| {
+        properties.iter().find_map(|p| {
+            (p.get("name")?.as_str()? == *wanted).then(|| p.get("value")?.as_str())?
+        })
+    })
+}
+
+/// The modularity label Syft or Trivy states for an rpm.
+fn module_label(component: &serde_json::Value) -> Option<String> {
+    property(
+        component,
+        &[
+            "syft:metadata:modularityLabel",
+            "aquasecurity:trivy:Modularitylabel",
+        ],
+    )
+    .map(str::to_owned)
+}
 
 /// The source Trivy states in a component's properties: its name and, when
 /// both parts are there, its version-release.
 fn trivy_source(component: &serde_json::Value) -> Option<(String, Option<String>)> {
-    let properties = component.get("properties")?.as_array()?;
-    let property = |wanted: &str| {
-        properties.iter().find_map(|p| {
-            (p.get("name")?
-                .as_str()?
-                .strip_prefix("aquasecurity:trivy:")?
-                == wanted)
-                .then(|| p.get("value")?.as_str())?
-        })
-    };
-    let release = property("SrcVersion")
-        .zip(property("SrcRelease"))
+    let trivy = |name: &str| property(component, &[&format!("aquasecurity:trivy:{name}")]);
+    let release = trivy("SrcVersion")
+        .zip(trivy("SrcRelease"))
         .map(|(version, release)| format!("{version}-{release}"));
-    Some((property("SrcName")?.to_owned(), release))
+    Some((trivy("SrcName")?.to_owned(), release))
 }
 
 /// Syft names the source of a deb or apk package only when it differs from the
@@ -118,9 +139,12 @@ pub(super) fn collect_purls(
         }
         match c.get("purl").and_then(serde_json::Value::as_str) {
             Some(p) => {
-                let source = purls.entry(p.to_owned()).or_default();
-                if source.is_none() {
-                    *source = trivy_source(c);
+                let stated = purls.entry(p.to_owned()).or_default();
+                if stated.source.is_none() {
+                    stated.source = trivy_source(c);
+                }
+                if stated.module.is_none() {
+                    stated.module = module_label(c);
                 }
             }
             None => *without += 1,
@@ -162,7 +186,7 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
     }
     let mut packages = Vec::new();
     let mut skipped: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for (purl, source) in purls {
+    for (purl, stated) in purls {
         let kind = purl
             .strip_prefix("pkg:")
             .and_then(|r| r.split(['/', '@']).next())
@@ -172,9 +196,14 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
             let mut pkg = amivuln_resolve::from_purl(&purl, Some(eco))
                 .map_err(|e| format!("{}: {purl}: {e}", path.display()))?;
             if pkg.source_name.is_none()
-                && let Some((name, release)) = source
+                && let Some((name, release)) = stated.source
             {
                 amivuln_resolve::set_source(&mut pkg, &name, release.as_deref());
+            }
+            if pkg.module_stream.is_none()
+                && let Some(label) = stated.module
+            {
+                amivuln_resolve::set_module(&mut pkg, &label);
             }
             // The signing keys rpm lists among its packages carry no software.
             if kind == "rpm" && pkg.name == "gpg-pubkey" {
@@ -444,6 +473,7 @@ mod tests {
 
     fn kernel(version: &str) -> PackageRef {
         PackageRef {
+            module_stream: None,
             source_vr: None,
             name: "kernel-core".to_owned(),
             source_name: None,
@@ -509,6 +539,28 @@ mod tests {
         );
         let silent = serde_json::json!([{"purl": "pkg:apk/alpine/zlib@1.3.1-r2"}]);
         assert_eq!(sbom(&silent, Ecosystem::Alpine(322)), [pair("zlib", None)]);
+    }
+
+    #[test]
+    fn the_module_stream_an_sbom_states_is_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("bom.json");
+        // Syft and Trivy each have a property of their own.
+        let doc = serde_json::json!({"bomFormat": "CycloneDX", "components": [
+            {"purl": "pkg:rpm/redhat/nodejs@22.1-2.module%2Bel8.10.0%2B1%2Ba",
+             "properties": [{"name": "syft:metadata:modularityLabel",
+                             "value": "nodejs:22:8100020261104150431:6d880403"}]},
+            {"purl": "pkg:rpm/redhat/npm@10.1-1.22.1.2.module%2Bel8.10.0%2B1%2Ba",
+             "properties": [{"name": "aquasecurity:trivy:Modularitylabel",
+                             "value": "nodejs:22:8100020261104150431:6d880403"}]},
+        ]});
+        std::fs::write(&file, doc.to_string()).unwrap();
+        let (packages, _) = read_sbom(&file, Ecosystem::Rhel(8)).unwrap();
+        let streams: Vec<_> = packages
+            .iter()
+            .map(|(_, p)| p.module_stream.as_deref())
+            .collect();
+        assert_eq!(streams, [Some("nodejs:22"), Some("nodejs:22")]);
     }
 
     #[test]

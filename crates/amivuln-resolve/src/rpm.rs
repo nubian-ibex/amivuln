@@ -2,12 +2,53 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Installed package lookup through `rpm`.
 
-use amivuln_core::{Ecosystem, PackageRef, ProcessRunner, Program, Provenance, Version};
+use amivuln_core::{
+    Ecosystem, PackageRef, ProcessError, ProcessOutput, ProcessRunner, Program, Provenance, Version,
+};
 
 use crate::{PackageResolver, ResolveError};
 
 pub(crate) const QUERY_FORMAT: &str =
     "%{EPOCH}\t%{NAME}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{SOURCERPM}\n";
+
+/// [`QUERY_FORMAT`] with the module stream, for the distributions that have
+/// module streams.
+const MODULE_QUERY_FORMAT: &str =
+    "%{EPOCH}\t%{NAME}\t%{VERSION}\t%{RELEASE}\t%{ARCH}\t%{SOURCERPM}\t%{MODULARITYLABEL}\n";
+
+/// Runs `rpm BEFORE --qf FORMAT AFTER`, asking for the module label on RHEL 8
+/// and later and its rebuilds. An rpm that does not know the tag (a host's
+/// older one reading a container) is asked again without it, and the stream
+/// stays unknown. Such an rpm may exit 0 and write nothing, so an empty answer
+/// counts as a refusal too.
+pub(crate) fn run_query(
+    runner: &(impl ProcessRunner + ?Sized),
+    ecosystem: Ecosystem,
+    before: &[&str],
+    after: &[&str],
+) -> Result<ProcessOutput, ProcessError> {
+    let run = |format: &str| {
+        let args: Vec<&str> = before
+            .iter()
+            .copied()
+            .chain(["--qf", format])
+            .chain(after.iter().copied())
+            .collect();
+        runner.run(Program::Rpm, &args)
+    };
+    let modules = match ecosystem {
+        Ecosystem::Rhel(value) => Ecosystem::rhel_release(value).0 >= 8,
+        Ecosystem::Rocky(_) | Ecosystem::Alma(_) => true,
+        _ => false,
+    };
+    if modules {
+        let out = run(MODULE_QUERY_FORMAT)?;
+        if out.success && !out.stdout.is_empty() {
+            return Ok(out);
+        }
+    }
+    run(QUERY_FORMAT)
+}
 
 /// Resolver backed by the rpm database.
 #[derive(Debug)]
@@ -26,9 +67,7 @@ impl<'a, R: ProcessRunner> RpmResolver<'a, R> {
         if subject.chars().any(char::is_control) {
             return Err(ResolveError::NotFound(subject.escape_default().to_string()));
         }
-        let out = self
-            .runner
-            .run(Program::Rpm, &[flag, "--qf", QUERY_FORMAT, "--", subject])?;
+        let out = run_query(self.runner, self.ecosystem, &[flag], &["--", subject])?;
         if !out.success {
             // rpm exits non-zero when nothing matches.
             return Err(ResolveError::NotFound(subject.to_owned()));
@@ -80,9 +119,7 @@ impl<R: ProcessRunner> PackageResolver for RpmResolver<'_, R> {
     }
 
     fn list_all(&self) -> Result<Vec<PackageRef>, ResolveError> {
-        let out = self
-            .runner
-            .run(Program::Rpm, &["-qa", "--qf", QUERY_FORMAT])?;
+        let out = run_query(self.runner, self.ecosystem, &["-qa"], &[])?;
         if !out.success {
             return Err(ResolveError::Parse("rpm -qa failed".into()));
         }
@@ -131,6 +168,7 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
         f.next().ok_or_else(bad)?,
         f.next().ok_or_else(bad)?,
     );
+    let label = f.next();
     if f.next().is_some() || name.is_empty() || version.is_empty() {
         return Err(bad());
     }
@@ -141,6 +179,7 @@ fn parse_line(line: &str, ecosystem: Ecosystem) -> Result<PackageRef, ResolveErr
     };
     let parsed = evr.parse().unwrap_or_else(|never| match never {});
     Ok(PackageRef {
+        module_stream: label.and_then(crate::build::module_stream),
         source_vr: source_release(srpm).filter(|vr| *vr != format!("{version}-{release}")),
         ecosystem,
         name: name.to_owned(),
@@ -305,6 +344,62 @@ mod tests {
         let line = "1\topenssl-libs\t1.1.1k\t12.el8_9\tx86_64\topenssl-1.1.1k-12.el8_9.src.rpm";
         let p = parse_line(line, Ecosystem::Rocky(8)).unwrap();
         assert_eq!(p.source_vr, None);
+    }
+
+    #[test]
+    fn the_module_stream_is_read_from_the_label() {
+        let line = "1\tnodejs\t22.1\t2.module+el8.10.0+1+a\tx86_64\tnodejs-22.1-2.module+el8.10.0+1+a.src.rpm";
+        let with = |label: &str| {
+            parse_line(&format!("{line}\t{label}"), Ecosystem::Rhel(8))
+                .unwrap()
+                .module_stream
+        };
+        assert_eq!(
+            with("nodejs:22:8100020261104150431:6d880403").as_deref(),
+            Some("nodejs:22")
+        );
+        assert_eq!(with("(none)"), None);
+        assert_eq!(with("bad stream:1"), None);
+    }
+
+    #[test]
+    fn only_the_rhel_family_is_asked_for_the_module_label() {
+        let line = "(none)\tbash\t4.4\t1.el8\tx86_64\tbash-4.4-1.el8.src.rpm\n";
+        for (ecosystem, asked) in [
+            (Ecosystem::Rhel(8), true),
+            (Ecosystem::Rocky(9), true),
+            (Ecosystem::Alma(8), true),
+            (Ecosystem::Rhel(7), false),
+            (Ecosystem::Fedora(44), false),
+            (Ecosystem::Opensuse(1506), false),
+        ] {
+            let runner = FakeRunner::ok(line);
+            RpmResolver::new(&runner, ecosystem).list_all().unwrap();
+            let calls = runner.calls.borrow();
+            assert_eq!(
+                calls[0].iter().any(|a| a.contains("MODULARITYLABEL")),
+                asked,
+                "{ecosystem:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_rpm_without_the_module_tag_is_asked_again_without_it() {
+        // rpm 4.14 on openSUSE Leap does not know MODULARITYLABEL: it prints
+        // the error, exits 0 and writes nothing. Another may exit non-zero.
+        let line = "(none)\tbash\t4.4\t1.el8\tx86_64\tbash-4.4-1.el8.src.rpm\n";
+        for first in [(true, ""), (false, "")] {
+            let runner = FakeRunner::replies(&[first, (true, line)]);
+            let found = RpmResolver::new(&runner, Ecosystem::Rocky(8))
+                .list_all()
+                .unwrap();
+            assert_eq!(found.len(), 1, "{first:?}");
+            assert_eq!(found[0].module_stream, None);
+            let calls = runner.calls.borrow();
+            assert_eq!(calls.len(), 2);
+            assert!(!calls[1].iter().any(|a| a.contains("MODULARITYLABEL")));
+        }
     }
 
     #[test]

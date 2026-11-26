@@ -93,6 +93,7 @@ impl PortageResolver {
                 }
                 out.push(Installed {
                     package: PackageRef {
+                        module_stream: None,
                         source_vr: None,
                         ecosystem: Ecosystem::Gentoo,
                         name: format!("{category_name}/{name}"),

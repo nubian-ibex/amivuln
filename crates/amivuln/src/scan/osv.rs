@@ -581,6 +581,7 @@ mod tests {
     #[test]
     fn rocky_is_asked_by_binary_and_source_name() {
         let package = |ecosystem, source: &str, source_vr: Option<&str>| PackageRef {
+            module_stream: None,
             ecosystem,
             name: "device-mapper".into(),
             source_name: Some(source.into()),

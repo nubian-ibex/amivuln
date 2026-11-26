@@ -387,7 +387,18 @@ async fn add_unfixed(
         .collect();
     let mut combined: Option<SourceReport> = None;
     for release in releases {
-        let (index, report) = unpatched::load_unpatched(fetcher, cfg, release).await;
+        let (index, mut report) = unpatched::load_unpatched(fetcher, cfg, release).await;
+        // Without its stream a module package's unfixed CVEs cannot be read,
+        // which must not pass as complete.
+        if !matches!(report.status, SourceStatus::Skipped(_))
+            && unpatched::stream_unknown(reports, release)
+        {
+            report.status = SourceStatus::Failed(
+                "a package of a module stream is given without the stream, so its unfixed CVEs cannot be read and the result is not complete"
+                    .to_owned(),
+            );
+            report.required = true;
+        }
         combined = Some(match combined {
             Some(earlier) => unpatched::merge_reports(earlier, report),
             None => report,
@@ -674,6 +685,7 @@ mod tests {
             _ => amivuln_core::Version::Deb(version.parse().unwrap_or_else(|n| match n {})),
         };
         PackageRef {
+            module_stream: None,
             source_vr: None,
             ecosystem: eco,
             name: name.to_owned(),
@@ -693,6 +705,16 @@ mod tests {
         host: Ecosystem,
         packages: &[(Ecosystem, &str)],
         answered: Option<&str>,
+    ) -> Evaluated {
+        unfixed_with(host, packages, answered, "1:3.0.7-1.el9").await
+    }
+
+    /// [`unfixed_for`] with the installed version of the packages.
+    async fn unfixed_with(
+        host: Ecosystem,
+        packages: &[(Ecosystem, &str)],
+        answered: Option<&str>,
+        version: &str,
     ) -> Evaluated {
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -772,7 +794,7 @@ mod tests {
         };
         let resolved: Vec<_> = packages
             .iter()
-            .map(|(eco, name)| ("c".to_owned(), pkg(*eco, name, "1:3.0.7-1.el9", "rpm")))
+            .map(|(eco, name)| ("c".to_owned(), pkg(*eco, name, version, "rpm")))
             .collect();
         gather(&fetcher, &cfg, host, &resolved, &[], &[]).await
     }
@@ -807,6 +829,27 @@ mod tests {
         };
         assert_eq!(found(0), [("CVE-2024-0001", true)], "{:?}", ev.targets[0]);
         assert_eq!(found(1), [("CVE-2024-0001", false)], "{:?}", ev.targets[1]);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_module_package_without_its_stream_is_never_complete() {
+        let ev = unfixed_with(
+            Ecosystem::Rhel(9),
+            &[(Ecosystem::Rhel(9), "openssl")],
+            None,
+            "1:3.0.7-1.module+el9.4.0+1+aaaaaaaa",
+        )
+        .await;
+        let source = ev
+            .sources
+            .iter()
+            .find(|s| s.source == SourceId::RedHatOval)
+            .unwrap();
+        assert!(source.required, "{source:?}");
+        assert!(
+            matches!(&source.status, SourceStatus::Failed(why) if why.contains("module")),
+            "{source:?}"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

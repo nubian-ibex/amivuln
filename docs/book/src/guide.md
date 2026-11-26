@@ -331,6 +331,12 @@ package without a source does. The same applies to `name@version` and to
 there, or check an SBOM or the container itself. A package that never had an
 advisory, given without its source, is reported the same way (ADR-0019).
 
+On RHEL, Rocky Linux and AlmaLinux, a package of a module stream (a version
+with `.module`) also needs its stream, because Red Hat lists the unfixed CVEs by
+stream. A host, a container and an SBOM from Syft or Trivy carry it, as does the
+`modularitylabel` qualifier of a purl; `name@version` and `--packages-from`
+cannot, so such a package makes the result incomplete (exit 2, ADR-0020).
+
 ## Resilient networks
 
 Sources can have mirrors. A source that fails on its primary endpoint is asked

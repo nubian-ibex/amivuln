@@ -71,6 +71,7 @@ fn package(eco: Ecosystem, case: &Case) -> PackageRef {
         ),
     };
     PackageRef {
+        module_stream: None,
         source_vr: None,
         ecosystem: eco,
         name: case.package.clone(),

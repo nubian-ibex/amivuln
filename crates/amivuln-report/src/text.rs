@@ -686,6 +686,7 @@ pub(crate) mod fixtures {
             targets: vec![TargetReport {
                 input: "nginx.service".into(),
                 package: PackageRef {
+                    module_stream: None,
                     source_vr: None,
                     ecosystem: amivuln_core::Ecosystem::Fedora(41),
                     name: "nginx".into(),
