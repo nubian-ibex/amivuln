@@ -313,12 +313,23 @@ result before treating an empty list as clean.
 
 `amivuln --sbom bom.cdx.json --distro fedora:44 --fail-on high` reads a
 CycloneDX JSON document (any 1.x), checks every component whose purl is an
-`rpm`, `deb` or `alpm` package and leaves the host alone. A purl whose
+`rpm`, `deb`, `apk` or `alpm` package and leaves the host alone. A purl whose
 namespace disagrees with `--distro` is an error. Components that are not OS
 packages (npm, PyPI, Maven and so on) are not dropped silently: they appear as
 `unresolved` entries, one per purl type with a count, and the run exits with 3.
 To gate only on OS packages, filter the SBOM first, for example with
 `jq '.components |= map(select(.purl // "" | startswith("pkg:rpm/")))'`.
+
+Several distributions file advisories under the **source** package, so the
+source matters: `libssl3` is built from `openssl`. amivuln reads it from the
+purl's `upstream` qualifier (as Syft writes it) or from the
+`aquasecurity:trivy:SrcName` property (Trivy). Without it, on Debian, Ubuntu,
+Alpine and openSUSE, a name OSV holds no advisory under makes the result
+incomplete (exit 2), because it may be a binary's name; on Rocky Linux every
+package without a source does. The same applies to `name@version` and to
+`--packages-from`, which cannot name a source: give the source package's name
+there, or check an SBOM or the container itself. A package that never had an
+advisory, given without its source, is reported the same way (ADR-0019).
 
 ## Resilient networks
 

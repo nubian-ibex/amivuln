@@ -1,6 +1,6 @@
 # ADR-0018: Rocky Linux advisories are also read by source package
 
-- Status: Accepted (2026-11-26)
+- Status: Accepted (2026-11-26), amended the same day: ADR-0019 reads the source a purl or SBOM states
 - Date: 2026-11-26
 
 ## Context
@@ -60,3 +60,8 @@ same image, as (package, CVE) pairs:
   module.
 - The same module-stream mismatch can affect AlmaLinux and RHEL 8, which this
   change does not touch.
+
+## Amendment (2026-11-26)
+
+ADR-0019 reads the source an SBOM or a purl states, so only a Rocky Linux
+package without it is incomplete.

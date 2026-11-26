@@ -42,6 +42,11 @@ shipped with). A closed pipe was reported as a failure. Every version before
 1.2.1 is yanked on crates.io; the release notes of 1.0.0, 1.1.0 and 1.2.0 say
 why.
 
+Fixed after 1.2.1, for the next release: a binary name given without its
+source package read as clean (ADR-0019), the `apk` components of an SBOM were
+not checked, and a purl lost its epoch outside Fedora, which reported patched
+CVEs as affected.
+
 ## What 1.0 meant, and what is still open
 
 1.0 means the JSON output, the exit codes, the configuration keys and the
@@ -89,17 +94,16 @@ above so that it sees the final code. All of it is still open:
 
 Found while testing and not fixed yet.
 
-- On Debian, Ubuntu, Alpine and openSUSE, advisories are filed under the source
-  package. A binary name given as `name@version`, in a purl or in an SBOM
-  (`libssl3` on Debian 12) finds nothing and reads as complete, even when the
-  purl names the source in its `upstream` qualifier. Reproduced on Debian 12,
-  Ubuntu 24.04, Alpine 3.22 and openSUSE Leap 15.6. Hosts and containers are
-  not affected, because their package database names the source.
+- On a Fedora host, `--container` does not read Red Hat's unfixed list for a
+  Rocky Linux image, so those CVEs are missing and the result reads as complete
+  (the same image's SBOM reports them). The code reads the list by the host's
+  distribution, so other hosts outside the Red Hat family are likely affected.
 - On RHEL, Rocky Linux and AlmaLinux, a CVE that OSV answers for any package of
   a run is not added from Red Hat's unfixed list for another package, which can
   hide it there (found by reading the code, not reproduced).
-- A Rocky Linux inventory or SBOM is always incomplete, because it does not name
-  the source packages; the `upstream` qualifier of a purl is not read.
+- A Rocky Linux package list is always incomplete, because it cannot name the
+  source packages.
+- The packages of an Arch image are reported with the provenance `user_input`.
 - On AlmaLinux 8 and RHEL 8, a fix built for a module stream is applied to a
   package installed outside the module (`perl-Carp`, for example), so it is
   reported as affected.
