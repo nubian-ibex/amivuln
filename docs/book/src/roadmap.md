@@ -31,14 +31,16 @@ support is now incomplete, only a fix that names the package counts, and a run
 says how many findings `--fail-on` cannot judge. An EndeavourOS host is read as
 Arch Linux, and the totals count only affected packages.
 
-More tests after 1.2.0 found further defects, fixed for the next release.
-Outside Ubuntu, a release OSV has no data for read as clean. RHEL 10 read as
+1.2.1 followed on 2026-11-26, because more tests after 1.2.0 found further
+defects, all fixed in it. Outside Ubuntu, a release OSV has no data for read as clean. RHEL 10 read as
 clean, because OSV files it by minor release; it is now judged by the host's
 minor (ADR-0017). A Rocky Linux subpackage hid the CVEs filed under its source
 package, and Rocky Linux and AlmaLinux hosts and containers were not recognised
 (ADR-0018). An advisory naming hundreds of CVEs, as openSUSE kernel updates do,
 took gigabytes of memory and aborted the run (on Leap 15.6 with the kernel it
-shipped with). A closed pipe was reported as a failure.
+shipped with). A closed pipe was reported as a failure. 1.0.0, 1.1.0 and 1.2.0
+are yanked on crates.io, and their release notes say why. The 0.x versions are
+not.
 
 ## What 1.0 meant, and what is still open
 
@@ -88,9 +90,16 @@ above so that it sees the final code. All of it is still open:
 Found while testing and not fixed yet.
 
 - On Debian, Ubuntu, Alpine and openSUSE, advisories are filed under the source
-  package. A binary name given as `name@version` or in a purl (`libssl3` on
-  Debian 12) finds nothing and reads as complete. Hosts and containers are not
-  affected, because their package database names the source.
+  package. A binary name given as `name@version`, in a purl or in an SBOM
+  (`libssl3` on Debian 12) finds nothing and reads as complete, even when the
+  purl names the source in its `upstream` qualifier. Reproduced on Debian 12,
+  Ubuntu 24.04, Alpine 3.22 and openSUSE Leap 15.6. Hosts and containers are
+  not affected, because their package database names the source.
+- On RHEL, Rocky Linux and AlmaLinux, a CVE that OSV answers for any package of
+  a run is not added from Red Hat's unfixed list for another package, which can
+  hide it there (found by reading the code, not reproduced).
+- A Rocky Linux inventory or SBOM is always incomplete, because it does not name
+  the source packages; the `upstream` qualifier of a purl is not read.
 - On AlmaLinux 8 and RHEL 8, a fix built for a module stream is applied to a
   package installed outside the module (`perl-Carp`, for example), so it is
   reported as affected.
