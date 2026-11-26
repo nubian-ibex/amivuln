@@ -349,7 +349,7 @@ pub fn render_json(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
             })
             .collect(),
     };
-    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(crate::write_error)?;
     writeln!(out)
 }
 
@@ -465,7 +465,7 @@ pub fn render_pending_json(r: &amivuln_core::PendingReport, out: &mut dyn Write)
             })
             .collect(),
     };
-    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(crate::write_error)?;
     writeln!(out)
 }
 
@@ -545,7 +545,7 @@ pub fn render_cve_json(r: &amivuln_core::CveReport, out: &mut dyn Write) -> io::
             })
             .collect(),
     };
-    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(crate::write_error)?;
     writeln!(out)
 }
 
@@ -619,7 +619,7 @@ pub fn render_restart_json(r: &amivuln_core::RestartReport, out: &mut dyn Write)
             })
             .collect(),
     };
-    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(crate::write_error)?;
     writeln!(out)
 }
 

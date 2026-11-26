@@ -124,7 +124,7 @@ pub fn render_sarif(r: &RunReport, out: &mut dyn Write) -> io::Result<()> {
                 .collect(),
         }],
     };
-    serde_json::to_writer_pretty(&mut *out, &doc).map_err(io::Error::other)?;
+    serde_json::to_writer_pretty(&mut *out, &doc).map_err(crate::write_error)?;
     writeln!(out)
 }
 
