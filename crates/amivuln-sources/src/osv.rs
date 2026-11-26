@@ -12,6 +12,7 @@
 //! Querying sends only package name, ecosystem and version.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use serde::Deserialize;
 
@@ -374,7 +375,9 @@ pub struct OsvEntry {
 /// Advisories grouped by CVE.
 #[derive(Debug, Default)]
 pub struct OsvData {
-    by_cve: BTreeMap<String, Vec<OsvEntry>>,
+    /// Each advisory is held once and shared by its CVEs: a kernel update
+    /// names hundreds of them, and a copy under each grows with their square.
+    by_cve: BTreeMap<String, Vec<Arc<OsvEntry>>>,
 }
 
 impl OsvData {
@@ -455,10 +458,11 @@ impl OsvData {
     /// Combines parsed advisories.
     #[must_use]
     pub fn from_entries(entries: Vec<OsvEntry>) -> Self {
-        let mut by_cve: BTreeMap<String, Vec<OsvEntry>> = BTreeMap::new();
+        let mut by_cve: BTreeMap<String, Vec<Arc<OsvEntry>>> = BTreeMap::new();
         for e in entries {
-            for cve in e.cves.clone() {
-                by_cve.entry(cve).or_default().push(e.clone());
+            let e = Arc::new(e);
+            for cve in &e.cves {
+                by_cve.entry(cve.clone()).or_default().push(Arc::clone(&e));
             }
         }
         // Several advisories may cover one CVE; the lowest fix wins, matching
@@ -506,10 +510,17 @@ impl OsvData {
             .and_then(|e| e.fixed.as_deref())
     }
 
-    /// Every advisory entry.
+    /// Every advisory entry, each once, in the order of its first CVE.
     #[must_use]
     pub fn entries(&self) -> Vec<OsvEntry> {
-        self.by_cve.values().flatten().cloned().collect()
+        // The address only tells the shared entries apart; it orders nothing.
+        let mut seen = std::collections::HashSet::new();
+        self.by_cve
+            .values()
+            .flatten()
+            .filter(|e| seen.insert(Arc::as_ptr(e)))
+            .map(|e| OsvEntry::clone(e))
+            .collect()
     }
 
     /// Every CVE id recorded, sorted.
@@ -566,6 +577,33 @@ mod tests {
         // Another ecosystem's data is ignored.
         let none = OsvData::parse_advisory(rust, "Go").unwrap();
         assert!(none.entries().iter().all(|e| e.fixes.is_empty()));
+    }
+
+    /// A kernel update advisory names hundreds of CVEs. Taking it apart and
+    /// putting it together again must not multiply it by their number.
+    #[test]
+    fn an_advisory_of_many_cves_is_kept_once() {
+        let cves: Vec<String> = (0..300).map(|i| format!("CVE-2026-{i:04}")).collect();
+        let doc = serde_json::json!({
+            "id": "USN-0000-1",
+            "upstream": cves,
+            "affected": [{
+                "package": {"name": "linux", "ecosystem": "Ubuntu:24.04:LTS"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"fixed": "1.0"}]}]
+            }]
+        });
+        let parsed =
+            OsvData::parse_advisory(doc.to_string().as_bytes(), "Ubuntu:24.04:LTS").unwrap();
+        assert_eq!(parsed.entries().len(), 1);
+        // What the scan does with it: the entries of the advisories of one
+        // package are combined again.
+        let combined = OsvData::from_entries(parsed.entries());
+        assert_eq!(combined.len(), 300);
+        assert_eq!(combined.entries().len(), 1);
+        assert_eq!(
+            combined.fixes_for("CVE-2026-0299"),
+            [("linux".to_owned(), "1.0".to_owned())]
+        );
     }
 
     #[test]
