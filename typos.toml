@@ -1,6 +1,10 @@
 [files]
 extend-exclude = ["tests/fixtures/**", "crates/*/locales/pt.txt", "crates/*/locales/help.pt.txt", "tests/vendor/**", "supply-chain/**", "Cargo.lock", "LICENSES/**", "LICENSE-*", "bench/truth/**", "crates/*/tests/*.txt", "docs/book/i18n/**"]
 
+[default]
+# The generated changelogs link full commit hashes, whose letters are not words.
+extend-ignore-re = ["\\b[0-9a-f]{40}\\b"]
+
 [default.extend-identifiers]
 ratatui = "ratatui"
 
