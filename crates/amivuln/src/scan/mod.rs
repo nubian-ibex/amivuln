@@ -374,13 +374,11 @@ async fn load_host_distro(
 }
 
 /// Adds the CVEs Red Hat has not fixed, which are not in OSV, from its OVAL
-/// file of each release among the packages, whatever the host is. `pass` is the
-/// packages OSV was asked about and its answers, in the same order.
+/// file of each release among the packages, whatever the host is.
 async fn add_unfixed(
     fetcher: &Fetcher<'_>,
     cfg: &Config,
     reports: &mut [TargetReport],
-    pass: (&Vec<(String, PackageRef)>, Option<&DistroData>),
     vex: &[VexStatement],
 ) -> Option<SourceReport> {
     let releases: std::collections::BTreeSet<u16> = reports
@@ -397,15 +395,7 @@ async fn add_unfixed(
         let Some(index) = index else {
             continue;
         };
-        // Only what OSV answered for this release counts: a fix for another one
-        // says nothing here.
-        let known = |cve: &str| match pass.1 {
-            Some(DistroData::Osv(list)) => pass.0.iter().zip(list).any(|((_, p), data)| {
-                unpatched::release_of(p.ecosystem) == Some(release) && data.knows(cve)
-            }),
-            _ => false,
-        };
-        unpatched::add_unpatched(reports, release, &index, &known, vex);
+        unpatched::add_unpatched(reports, release, &index, vex);
     }
     combined
 }
@@ -476,14 +466,7 @@ async fn gather(
         vex,
     );
 
-    // RHEL and its rebuilds are judged through OSV: in the host's pass on an
-    // OSV host, in the separate one otherwise.
-    let osv_pass = if host_source_id(eco) == SourceId::Osv {
-        (&distro_resolved, data.as_ref())
-    } else {
-        (&lang_resolved, lang_data.as_ref())
-    };
-    sources.extend(add_unfixed(fetcher, cfg, &mut reports, osv_pass, vex).await);
+    sources.extend(add_unfixed(fetcher, cfg, &mut reports, vex).await);
 
     // KEV and EPSS know CVE ids only; a language advisory without a CVE alias
     // keeps its own id and is not looked up there.
@@ -703,16 +686,52 @@ mod tests {
         }
     }
 
-    /// Runs `gather` for a host and packages of another distribution, with only
-    /// Red Hat's file of RHEL 9 published.
-    async fn unfixed_for(host: Ecosystem, packages: &[Ecosystem]) -> Evaluated {
+    /// Runs `gather` for a host and packages, with only Red Hat's file of RHEL 9
+    /// published. OSV holds one advisory, a fix of CVE-2024-0001, for the
+    /// package named `answered` alone.
+    async fn unfixed_for(
+        host: Ecosystem,
+        packages: &[(Ecosystem, &str)],
+        answered: Option<&str>,
+    ) -> Evaluated {
         use wiremock::matchers::{method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
         let server = MockServer::start().await;
+        let answered_name = answered.map(str::to_owned);
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": [{}]})),
-            )
+            .respond_with(move |req: &wiremock::Request| {
+                let asked: serde_json::Value = serde_json::from_slice(&req.body).unwrap();
+                let results: Vec<_> = asked["queries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|q| {
+                        if q["package"]["name"].as_str() == answered_name.as_deref() {
+                            serde_json::json!({"vulns": [{"id": "RHSA-2099:0001"}]})
+                        } else {
+                            serde_json::json!({})
+                        }
+                    })
+                    .collect();
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "results": results }))
+            })
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/vulns/RHSA-2099:0001"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "RHSA-2099:0001",
+                "upstream": ["CVE-2024-0001"],
+                "affected": [{
+                    "package": {
+                        "name": answered.unwrap_or_default(),
+                        "ecosystem": "Red Hat:enterprise_linux:9::baseos"
+                    },
+                    "ranges": [{"type": "ECOSYSTEM", "events": [
+                        {"introduced": "0"}, {"fixed": "1:9.0-1.el9"}
+                    ]}]
+                }]
+            })))
             .mount(&server)
             .await;
         Mock::given(method("GET"))
@@ -753,7 +772,7 @@ mod tests {
         };
         let resolved: Vec<_> = packages
             .iter()
-            .map(|eco| ("c".to_owned(), pkg(*eco, "openssl", "1:3.0.7-1.el9", "rpm")))
+            .map(|(eco, name)| ("c".to_owned(), pkg(*eco, name, "1:3.0.7-1.el9", "rpm")))
             .collect();
         gather(&fetcher, &cfg, host, &resolved, &[], &[]).await
     }
@@ -767,9 +786,33 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn a_fix_for_one_package_does_not_hide_the_unfixed_cve_of_another() {
+        // OSV has a fix of CVE-2024-0001 for `other`; Red Hat has none for
+        // openssl. Each package keeps its own answer.
+        let ev = unfixed_for(
+            Ecosystem::Rhel(9),
+            &[
+                (Ecosystem::Rhel(9), "openssl"),
+                (Ecosystem::Rhel(9), "other"),
+            ],
+            Some("other"),
+        )
+        .await;
+        let found = |i: usize| {
+            ev.targets[i]
+                .findings
+                .iter()
+                .map(|f| (f.id.as_str(), f.vendor_state.is_some()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(found(0), [("CVE-2024-0001", true)], "{:?}", ev.targets[0]);
+        assert_eq!(found(1), [("CVE-2024-0001", false)], "{:?}", ev.targets[1]);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn an_image_gets_its_unfixed_cves_on_a_host_of_another_family() {
         for image in [Ecosystem::Rocky(9), Ecosystem::Alma(9), Ecosystem::Rhel(9)] {
-            let ev = unfixed_for(Ecosystem::Fedora(44), &[image]).await;
+            let ev = unfixed_for(Ecosystem::Fedora(44), &[(image, "openssl")], None).await;
             let ids: Vec<_> = ev.targets[0].findings.iter().map(|f| &f.id).collect();
             assert_eq!(ids, ["CVE-2024-0001"], "{image:?}");
             assert_eq!(unfixed_sources(&ev), [&SourceStatus::Ok], "{image:?}");
@@ -782,7 +825,11 @@ mod tests {
         // the missing RHEL 8 list is said once, in one report.
         let ev = unfixed_for(
             Ecosystem::Rhel(8),
-            &[Ecosystem::Rhel(8), Ecosystem::Rocky(9)],
+            &[
+                (Ecosystem::Rhel(8), "openssl"),
+                (Ecosystem::Rocky(9), "openssl"),
+            ],
+            None,
         )
         .await;
         assert!(ev.targets[0].findings.is_empty(), "{:?}", ev.targets[0]);
