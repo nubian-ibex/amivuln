@@ -216,13 +216,18 @@ pub(crate) fn parse_distro(s: &str) -> Result<Ecosystem, String> {
             .filter(|n| (8..=9).contains(n))
             .map(Ecosystem::Alma)
             .ok_or_else(|| tr_args("distro.alma", &[("value", &format!("{v:?}"))])),
-        Some(("rhel", v)) => v
-            .split('.')
-            .next()
-            .and_then(|m| m.parse::<u16>().ok())
-            .filter(|n| (8..=10).contains(n))
-            .map(Ecosystem::Rhel)
-            .ok_or_else(|| tr_args("distro.rhel", &[("value", &format!("{v:?}"))])),
+        Some(("rhel", v)) => {
+            let mut parts = v.split('.');
+            let major = parts
+                .next()
+                .and_then(|m| m.parse::<u16>().ok())
+                .filter(|n| (8..=10).contains(n));
+            let minor = parts.next().map(str::parse::<u16>).transpose();
+            match (major, minor, parts.next()) {
+                (Some(major), Ok(minor), None) => Ok(Ecosystem::rhel(major, minor)),
+                _ => Err(tr_args("distro.rhel", &[("value", &format!("{v:?}"))])),
+            }
+        }
         Some(("debian", v)) => v
             .parse()
             .map(Ecosystem::Debian)
@@ -882,7 +887,7 @@ pub(crate) fn host_meta(eco: Ecosystem) -> HostMeta {
         Ecosystem::Debian(v) => ("debian".to_owned(), v.to_string()),
         Ecosystem::Ubuntu(v) => ("ubuntu".to_owned(), format!("{}.{:02}", v / 100, v % 100)),
         Ecosystem::Rocky(v) => ("rocky".to_owned(), v.to_string()),
-        Ecosystem::Rhel(v) => ("rhel".to_owned(), v.to_string()),
+        Ecosystem::Rhel(v) => ("rhel".to_owned(), Ecosystem::rhel_version(v)),
         Ecosystem::Alma(v) => ("almalinux".to_owned(), v.to_string()),
         // A host is never a language ecosystem; kept total for the match.
         Ecosystem::Go => ("go".to_owned(), "n/a".to_owned()),

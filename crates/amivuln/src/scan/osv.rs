@@ -300,11 +300,11 @@ async fn distro_coverage(
     let mut status = SourceStatus::Ok;
     let mut silent = std::collections::BTreeMap::new();
     for (_, pkg) in packages {
-        let probe = probe_package(pkg.ecosystem);
-        let Some(ecosystem) = pkg.ecosystem.osv_ecosystem() else {
+        let Some(probe) = probe_package(pkg.ecosystem) else {
             continue;
         };
-        let Some(probe) = probe else {
+        let ecosystems = pkg.ecosystem.osv_ecosystems();
+        let Some(first) = ecosystems.first().cloned() else {
             continue;
         };
         if pkg
@@ -312,40 +312,58 @@ async fn distro_coverage(
             .interim_support_ended(today.year(), today.month())
         {
             status = SourceStatus::Failed(format!(
-                "{ecosystem} is past its support and gets no new advisories, so the result is not complete"
+                "{first} is past its support and gets no new advisories, so the result is not complete"
             ));
-        } else if asked
-            .iter()
-            .all(|(e, ids)| *e != ecosystem || ids.is_empty())
+            continue;
+        }
+        if let Ecosystem::Rhel(value) = pkg.ecosystem
+            && matches!(Ecosystem::rhel_release(value), (major, None) if major >= 10)
         {
-            silent.insert(ecosystem, (probe, probe_version(pkg.ecosystem)));
+            status = SourceStatus::Failed(format!(
+                "RHEL {value} is judged by its minor release and none is known, so the result is not complete; use --distro rhel:{value}.N"
+            ));
+        }
+        if asked
+            .iter()
+            .all(|(e, ids)| ids.is_empty() || !ecosystems.contains(e))
+        {
+            silent.insert(ecosystems, (probe, probe_version(pkg.ecosystem)));
         }
     }
-    for (ecosystem, (probe, version)) in silent {
-        let version = version.to_owned();
-        let body = match amivuln_sources::osv::batch_request(probe, &ecosystem, &version) {
-            Ok(body) => body,
-            Err(e) => return SourceStatus::Failed(e.to_string()),
-        };
-        let probe = [OsvQuery {
-            name: probe,
-            ecosystem: ecosystem.clone(),
-            version,
-            body,
-        }];
+    for (ecosystems, (name, version)) in silent {
+        let mut probe = Vec::new();
+        for ecosystem in &ecosystems {
+            let body = match amivuln_sources::osv::batch_request(name, ecosystem, version) {
+                Ok(body) => body,
+                Err(e) => return SourceStatus::Failed(e.to_string()),
+            };
+            probe.push(OsvQuery {
+                name,
+                ecosystem: ecosystem.clone(),
+                version: version.to_owned(),
+                body,
+            });
+        }
+        let mut found = false;
+        let mut failure = None;
         for answer in query_osv(f, base, &probe).await {
-            let found = answer.map_err(|e| describe(&e)).and_then(|d| {
+            let ids = answer.map_err(|e| describe(&e)).and_then(|d| {
                 amivuln_sources::osv::parse_batch(&d.body).map_err(|e| e.to_string())
             });
+            match ids {
+                Ok(ids) => found |= !ids.is_empty(),
+                Err(why) => failure = Some(why),
+            }
+        }
+        if let Some(why) = failure {
+            status = worse(status, SourceStatus::Failed(why));
+        } else if !found {
+            let first = ecosystems.first().map_or("", String::as_str);
             status = worse(
                 status,
-                match found {
-                    Ok(ids) if ids.is_empty() => SourceStatus::Failed(format!(
-                        "OSV has no data for {ecosystem}, so nothing can be said about it"
-                    )),
-                    Ok(_) => SourceStatus::Ok,
-                    Err(why) => SourceStatus::Failed(why),
-                },
+                SourceStatus::Failed(format!(
+                    "OSV has no data for {first}, so nothing can be said about it"
+                )),
             );
         }
     }

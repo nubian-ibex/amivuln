@@ -350,8 +350,18 @@ fn ecosystem_from_os_release(os_release: &str) -> Option<Ecosystem> {
             .zip(minor.parse::<u16>().ok())
             .map(|(maj, min)| maj * 100 + min)
     } else if id == "rhel" {
-        // `9.4` is release 9.
-        raw.split('.').next().and_then(|m| m.parse::<u16>().ok())
+        // `9.4` is release 9; from 10 on the minor is kept (`10.2` is 1002).
+        let mut parts = raw.split('.');
+        parts
+            .next()
+            .and_then(|m| m.parse::<u16>().ok())
+            .map(|major| {
+                let minor = parts.next().and_then(|m| m.parse().ok());
+                match Ecosystem::rhel(major, minor) {
+                    Ecosystem::Rhel(value) => value,
+                    _ => major,
+                }
+            })
     } else {
         raw.parse::<u16>().ok()
     };

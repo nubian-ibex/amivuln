@@ -40,9 +40,10 @@ pub(super) async fn load_unpatched(
     cfg: &Config,
     eco: Ecosystem,
 ) -> Option<(Option<UnpatchedIndex>, SourceReport)> {
-    let (Ecosystem::Rhel(release) | Ecosystem::Rocky(release) | Ecosystem::Alma(release)) = eco
-    else {
-        return None;
+    let release = match eco {
+        Ecosystem::Rhel(value) => Ecosystem::rhel_release(value).0,
+        Ecosystem::Rocky(major) | Ecosystem::Alma(major) => major,
+        _ => return None,
     };
     let source = &cfg.sources.rhel_unpatched;
     let report = |status: SourceStatus, age: Duration| {

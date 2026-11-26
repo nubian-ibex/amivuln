@@ -40,8 +40,14 @@ pub fn parse_os_release(content: &str) -> Option<HostInfo> {
         "debian" => Ecosystem::Debian(version_id?.parse().ok()?),
         // Rocky and AlmaLinux declare VERSION_ID as the major release.
         "rocky" => Ecosystem::Rocky(version_id?.parse().ok()?),
-        // RHEL declares VERSION_ID as major.minor (9.4); the major decides.
-        "rhel" => Ecosystem::Rhel(version_id?.split('.').next()?.parse().ok()?),
+        // RHEL declares VERSION_ID as major.minor (9.4); the major decides, and
+        // from 10 on the minor too.
+        "rhel" => {
+            let vid = version_id?;
+            let mut parts = vid.split('.');
+            let major = parts.next()?.parse().ok()?;
+            Ecosystem::rhel(major, parts.next().and_then(|m| m.parse().ok()))
+        }
         "almalinux" => Ecosystem::Alma(version_id?.parse().ok()?),
         // Leap writes 15.6 (or 16.0); Tumbleweed has a date for VERSION_ID and
         // one rolling OSV ecosystem.
@@ -112,6 +118,18 @@ mod tests {
         for id in ["manjaro", "cachyos", "artix"] {
             let os = format!("ID={id}\nID_LIKE=arch\n");
             assert_eq!(parse_os_release(&os), None, "{id}");
+        }
+    }
+
+    #[test]
+    fn rhel_10_keeps_its_minor_release_and_8_and_9_do_not() {
+        for (version_id, release) in [("10.2", 1002), ("10.0", 1000), ("9.6", 9), ("8.10", 8)] {
+            let os = format!("ID=rhel\nVERSION_ID={version_id}\n");
+            assert_eq!(
+                parse_os_release(&os).map(|h| h.ecosystem),
+                Some(Ecosystem::Rhel(release)),
+                "{version_id}"
+            );
         }
     }
 

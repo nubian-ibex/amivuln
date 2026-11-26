@@ -35,7 +35,8 @@ More tests after 1.2.0 found three further defects, fixed for the next release.
 Outside Ubuntu, a release OSV has no data for read as clean. An advisory naming
 hundreds of CVEs, as openSUSE kernel updates do, took gigabytes of memory and
 aborted the run (on Leap 15.6 with the kernel it shipped with). A closed pipe
-was reported as a failure.
+was reported as a failure. RHEL 10 read as clean, because OSV files it by minor
+release; it is now judged by the host's minor (ADR-0017).
 
 ## What 1.0 meant, and what is still open
 

@@ -3128,3 +3128,87 @@ async fn a_closed_pipe_keeps_the_verdict_of_fail_on() {
     assert_eq!(code, Some(1), "{stderr}");
     assert_eq!(stderr, "");
 }
+
+/// An OSV that, like the real one, files RHEL 10 by minor release, with the
+/// same CVE fixed in 10.1 and, higher, in 10.2.
+async fn rhel10_osv() -> (MockServer, tempfile::TempDir) {
+    let server = MockServer::start().await;
+    for (minor, id) in [("10.1", "RHSA-2026:0001"), ("10.2", "RHSA-2026:0002")] {
+        Mock::given(method("POST"))
+            .and(path("/v1/querybatch"))
+            .and(body_string_contains(format!(
+                "\"ecosystem\":\"Red Hat:enterprise_linux:{minor}\""
+            )))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({"results": [{"vulns": [{"id": id}]}]})),
+            )
+            .with_priority(1)
+            .mount(&server)
+            .await;
+    }
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({"results": [{}]})),
+        )
+        .with_priority(5)
+        .mount(&server)
+        .await;
+    for (id, minor, fixed) in [
+        ("RHSA-2026:0001", "10.1", "1:3.5.1-8.el10_1"),
+        ("RHSA-2026:0002", "10.2", "1:3.5.5-3.el10_2"),
+    ] {
+        Mock::given(method("GET"))
+            .and(path(format!("/v1/vulns/{id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": id,
+                "upstream": ["CVE-2026-0001"],
+                "affected": [{
+                    "package": {
+                        "name": "openssl",
+                        "ecosystem": format!("Red Hat:enterprise_linux:{minor}")
+                    },
+                    "ranges": [{"type": "ECOSYSTEM", "events": [
+                        {"introduced": "0"}, {"fixed": fixed}
+                    ]}]
+                }]
+            })))
+            .mount(&server)
+            .await;
+    }
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join("cfg.toml"),
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n\
+             [sources.rhel_unpatched]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    (server, home)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rhel_10_host_is_judged_by_its_minor_release() {
+    let (_server, home) = rhel10_osv().await;
+    // Above the 10.1 fix and below the 10.2 one: vulnerable on 10.2.
+    let (code, v) = ask_ubuntu(&home, "rhel:10.2", "openssl@1:3.5.5-2.el10_2").await;
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["complete"], true, "{v}");
+    assert_eq!(v["host"]["os_version"], "10.2");
+    let status = &v["targets"][0]["findings"][0]["distro_status"];
+    assert_eq!(status["state"], "affected", "{v}");
+    assert_eq!(status["fixed_in"], "1:3.5.5-3.el10_2", "{v}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rhel_10_without_a_minor_release_is_never_complete() {
+    let (_server, home) = rhel10_osv().await;
+    let (code, v) = ask_ubuntu(&home, "rhel:10", "openssl@1:3.5.5-2.el10_2").await;
+    assert_eq!(code, Some(2), "{v}");
+    assert_eq!(v["complete"], false, "{v}");
+    assert!(v.to_string().contains("--distro rhel:10.N"), "{v}");
+}
