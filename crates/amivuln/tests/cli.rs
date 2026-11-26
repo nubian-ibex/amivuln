@@ -2878,7 +2878,7 @@ async fn ubuntu_osv() -> (MockServer, tempfile::TempDir) {
     let server = MockServer::start().await;
     let found = serde_json::json!({"results": [{"vulns": [{"id": "UBUNTU-CVE-2026-0001"}]}]});
     // Only the old version of openssl and the probe package have advisories.
-    for (name, version) in [("openssl", "0.0.1-1"), ("linux", "0.0.1")] {
+    for (name, version) in [("openssl", "0.0.1-1"), ("linux", "0.0.1-1")] {
         Mock::given(method("POST"))
             .and(path("/v1/querybatch"))
             .and(body_string_contains("\"ecosystem\":\"Ubuntu:98.10\""))
@@ -3058,4 +3058,73 @@ async fn fail_on_says_when_it_cannot_judge_a_finding() {
         warning.contains("1 affected finding(s) have no severity"),
         "{warning}"
     );
+}
+
+/// Runs a check whose JSON is far larger than a pipe holds, reads the first
+/// bytes and goes away, as `| head` does. Returns the exit code and stderr.
+async fn check_into_a_closed_pipe(extra: &[&str]) -> (Option<i32>, String) {
+    let (server, home) = debian_osv(serde_json::json!([
+        {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+    ]))
+    .await;
+    // Many CVEs, so the writer is still writing when the reader leaves.
+    let cves: Vec<String> = (0..600).map(|i| format!("CVE-2026-{i:04}")).collect();
+    Mock::given(method("GET"))
+        .and(path("/v1/vulns/DEBIAN-CVE-2026-0001"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "DEBIAN-CVE-2026-0001",
+            "upstream": cves,
+            "severity": [
+                {"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+            ],
+            "affected": [{
+                "package": {"name": "openssl", "ecosystem": "Debian:12"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]
+            }]
+        })))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_amivuln"));
+    cmd.env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .arg("--config")
+        .arg(home.path().join("cfg.toml"))
+        .args(["--distro", "debian:12", "openssl@0.0.1-1", "-f", "json"])
+        .args(extra)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    tokio::task::spawn_blocking(move || {
+        use std::io::Read;
+        let mut child = cmd.spawn().unwrap();
+        let mut out = child.stdout.take().unwrap();
+        let mut first = [0u8; 512];
+        let read = out.read(&mut first).unwrap();
+        assert!(read > 0);
+        drop(out);
+        let done = child.wait_with_output().unwrap();
+        (
+            done.status.code(),
+            String::from_utf8_lossy(&done.stderr).into_owned(),
+        )
+    })
+    .await
+    .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_closed_pipe_is_not_an_error() {
+    let (code, stderr) = check_into_a_closed_pipe(&[]).await;
+    assert_eq!(code, Some(0), "{stderr}");
+    assert_eq!(stderr, "");
+}
+
+/// A reader that stops early must not turn a violating run into a passing one.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_closed_pipe_keeps_the_verdict_of_fail_on() {
+    let (code, stderr) = check_into_a_closed_pipe(&["--fail-on", "high"]).await;
+    assert_eq!(code, Some(1), "{stderr}");
+    assert_eq!(stderr, "");
 }

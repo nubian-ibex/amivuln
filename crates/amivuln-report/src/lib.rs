@@ -74,6 +74,16 @@ impl core::str::FromStr for Format {
     }
 }
 
+/// Maps a failed serde write to an `io::Error` that keeps its error kind, so
+/// a closed pipe (`amivuln ... | head`) stays a `BrokenPipe` and is not
+/// reported as a program failure.
+pub(crate) fn write_error(e: serde_json::Error) -> std::io::Error {
+    match e.io_error_kind() {
+        Some(kind) => std::io::Error::new(kind, e),
+        None => std::io::Error::other(e),
+    }
+}
+
 /// Renders `report` in the chosen format.
 ///
 /// # Errors
