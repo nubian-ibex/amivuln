@@ -176,6 +176,10 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
             {
                 amivuln_resolve::set_source(&mut pkg, &name, release.as_deref());
             }
+            // The signing keys rpm lists among its packages carry no software.
+            if kind == "rpm" && pkg.name == "gpg-pubkey" {
+                continue;
+            }
             packages.push((purl, pkg));
         } else {
             *skipped.entry(format!("pkg:{kind}")).or_default() += 1;
@@ -505,6 +509,18 @@ mod tests {
         );
         let silent = serde_json::json!([{"purl": "pkg:apk/alpine/zlib@1.3.1-r2"}]);
         assert_eq!(sbom(&silent, Ecosystem::Alpine(322)), [pair("zlib", None)]);
+    }
+
+    #[test]
+    fn the_signing_keys_of_rpm_are_not_packages() {
+        let components = serde_json::json!([
+            {"purl": "pkg:rpm/opensuse/gpg-pubkey@39db7c82-66c5d91a"},
+            {"purl": "pkg:rpm/opensuse/zlib@1.2.13-150500.2.3?upstream=zlib-1.2.13-150500.2.3.src.rpm"},
+        ]);
+        assert_eq!(
+            sbom(&components, Ecosystem::Opensuse(1506)),
+            [pair("zlib", Some("zlib"))]
+        );
     }
 
     #[test]
