@@ -438,11 +438,15 @@ replay an old database past the anti-rollback timestamp.
 
 `amivuln --container ID` checks the packages installed inside a container.
 The runtime (podman, then docker) is invoked only to export the rootfs,
-which never executes anything inside the container. The container's own
+which never executes anything inside the container. CentOS Stream
+(`ID=centos`) is not a supported image and is refused (exit 64). The container's own
 `os-release` decides the ecosystem, so the host distribution never leaks
 into the answer, and the packages are judged by the matching source (OSV
 for Debian, Ubuntu, Rocky, `AlmaLinux`, Red Hat Enterprise Linux (UBI included); the rpm database through the host
-`rpm` for Fedora-family containers). Findings are labeled with the
+`rpm` for Fedora-family containers, so a host without `rpm` (Flatcar, for
+example) leaves such a container unresolved (exit 3): run amivuln from a host
+that has it, or scan the container from inside another container of the same
+family. Findings are labeled with the
 container id, for example `web:nginx`.
 
 ```bash
