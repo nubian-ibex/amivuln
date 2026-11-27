@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Loading each advisory and enrichment source, with its status.
 
+use super::unpatched::merge_reports;
 use super::{
     ArchTracker, Config, DistroData, Duration, Ecosystem, EpssScores, FetchCtx, FetchError,
     Fetcher, HttpError, Kev, MAX_OSV_ADVISORIES, PackageRef, SourceId, SourceReport, SourceStatus,
-    Updateinfo, cpu_arch, describe, fetch_cached_body, load_osv, report_of, updateinfo_location,
-    worse,
+    Updateinfo, cpu_arch, describe, fetch_cached_body, host_source_id, load_host_distro, load_osv,
+    report_of, updateinfo_location, worse,
 };
 
 /// Default endpoints.
@@ -537,11 +538,13 @@ pub(super) async fn load_epss(
     )
 }
 
-/// One pass per distribution for packages whose data is not the host's and not
-/// OSV: the ecosystem and the data its source returned.
+/// One pass per distribution (and Fedora release) for packages whose data is
+/// not the host's and not OSV: the ecosystem and the data its source returned.
+/// A source asked for several releases is reported once.
 pub(super) async fn load_foreign(
     fetcher: &Fetcher<'_>,
     cfg: &Config,
+    host: Ecosystem,
     other_resolved: &[(String, PackageRef)],
     sources: &mut Vec<SourceReport>,
 ) -> Vec<(Ecosystem, DistroData)> {
@@ -555,11 +558,22 @@ pub(super) async fn load_foreign(
             .filter(|(_, p)| p.ecosystem == eco)
             .cloned()
             .collect();
-        // The configured distro endpoint belongs to the host's distribution.
-        let mut attempt = cfg.clone();
-        attempt.sources.distro.url = None;
-        let (data, report) = load_distro(fetcher, eco, &attempt, &group).await;
-        sources.push(report);
+        // The configured distro endpoint and its mirrors belong to the host's
+        // distribution: another release of it uses them, another one does not.
+        let (data, report) = if host_source_id(eco) == host_source_id(host) {
+            load_host_distro(fetcher, cfg, eco, &group).await
+        } else {
+            let mut attempt = cfg.clone();
+            attempt.sources.distro.url = None;
+            let (data, report) = load_distro(fetcher, eco, &attempt, &group).await;
+            (data, Some(report))
+        };
+        if let Some(report) = report {
+            match sources.iter_mut().find(|s| s.source == report.source) {
+                Some(earlier) => *earlier = merge_reports(earlier.clone(), report),
+                None => sources.push(report),
+            }
+        }
         if let Some(data) = data {
             foreign.push((eco, data));
         }

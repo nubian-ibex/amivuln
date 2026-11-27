@@ -178,6 +178,16 @@ fn host_source_id(eco: Ecosystem) -> SourceId {
 /// whether such a separate pass exists.
 type LanguageSplit = (Vec<(String, PackageRef)>, Vec<(String, PackageRef)>, bool);
 
+/// Whether the data loaded for the host judges a package of `eco`: the same
+/// source, and for Fedora, which publishes its advisories per release, the same
+/// release too. Language packages never are.
+fn judged_by_host(host: Ecosystem, eco: Ecosystem) -> bool {
+    match eco {
+        Ecosystem::Fedora(_) => eco == host,
+        _ => !eco.is_language() && host_source_id(eco) == host_source_id(host),
+    }
+}
+
 /// True for a package whose distribution data is not OSV (Fedora, Arch).
 fn served_by_other_distro(pkg: &PackageRef) -> bool {
     !pkg.ecosystem.is_language() && host_source_id(pkg.ecosystem) != SourceId::Osv
@@ -187,21 +197,16 @@ fn served_by_other_distro(pkg: &PackageRef) -> bool {
 /// and those that get an OSV pass of their own (Go modules and crates on a
 /// host whose own source is not OSV). On OSV hosts everything shares one pass.
 fn split_language(eco: Ecosystem, resolved: &[(String, PackageRef)]) -> LanguageSplit {
-    // Packages whose source differs from the host's get an OSV pass of their
-    // own: Debian or Ubuntu packages on a Fedora host (a `--container` scan)
-    // and Go or Rust crates anywhere.
-    let host_source = host_source_id(eco);
+    // Packages the host's data cannot judge get a pass of their own: Debian
+    // packages on a Fedora host or another Fedora release (a `--container`
+    // scan), and Go or Rust crates anywhere.
     let separate = resolved
         .iter()
-        .any(|(_, p)| p.ecosystem.is_language() || host_source_id(p.ecosystem) != host_source);
+        .any(|(_, p)| !judged_by_host(eco, p.ecosystem));
     let pick = |own_source: bool| -> Vec<(String, PackageRef)> {
         resolved
             .iter()
-            .filter(|(_, p)| {
-                !separate
-                    || (p.ecosystem.is_language() || host_source_id(p.ecosystem) != host_source)
-                        == own_source
-            })
+            .filter(|(_, p)| !separate || judged_by_host(eco, p.ecosystem) != own_source)
             .cloned()
             .collect()
     };
@@ -245,7 +250,7 @@ fn assess(
 fn build_reports(
     resolved: &[(String, PackageRef)],
     separate_lang: bool,
-    host_source: SourceId,
+    host: Ecosystem,
     judging: &Judging<'_>,
     nvd_data: &std::collections::BTreeMap<String, Vec<amivuln_sources::nvd::NvdEntry2>>,
     vex: &[VexStatement],
@@ -261,15 +266,13 @@ fn build_reports(
     resolved
         .iter()
         .map(|(input, pkg)| {
-            // The same rule as `split_language`: language packages and packages
-            // whose source is not the host's were fetched in the own pass.
-            let own_pass = separate_lang
-                && (pkg.ecosystem.is_language() || host_source_id(pkg.ecosystem) != host_source);
+            // The same rule as `split_language`.
+            let own_pass = separate_lang && !judged_by_host(host, pkg.ecosystem);
             let Assessment {
                 mut findings,
                 resolved,
             } = if own_pass && served_by_other_distro(pkg) {
-                // A Fedora or Arch package under a host of another family: it
+                // A Fedora or Arch package under another family or release: it
                 // is judged by the data of its own distribution.
                 let slot = foreign_index.entry(pkg.ecosystem).or_default();
                 let own_data = foreign
@@ -430,12 +433,12 @@ async fn gather(
     let (distro_resolved, lang_resolved, separate_lang) = split_language(eco, resolved);
     let (data, rep) = load_host_distro(fetcher, cfg, eco, &distro_resolved).await;
     sources.extend(rep);
-    // Packages of a Fedora or Arch image under a host of another family are
-    // judged by their own distribution's data, one pass per distribution.
+    // Packages of a Fedora or Arch image the host's data cannot judge use
+    // their own distribution's data, one pass per distribution.
     let (other_resolved, lang_resolved): (Vec<_>, Vec<_>) = lang_resolved
         .into_iter()
         .partition(|(_, p)| served_by_other_distro(p));
-    let foreign = load_foreign(fetcher, cfg, &other_resolved, &mut sources).await;
+    let foreign = load_foreign(fetcher, cfg, eco, &other_resolved, &mut sources).await;
     let lang_data = if lang_resolved.is_empty() {
         None
     } else {
@@ -452,10 +455,15 @@ async fn gather(
         sources.push(r);
         d
     };
-    let known: Vec<String> = data
-        .as_ref()
-        .map(|d: &DistroData| probe.iter().filter(|c| d.knows(c)).cloned().collect())
-        .unwrap_or_default();
+    let known: Vec<String> = probe
+        .iter()
+        .filter(|c| {
+            data.iter()
+                .chain(foreign.iter().map(|(_, d)| d))
+                .any(|d| d.knows(c))
+        })
+        .cloned()
+        .collect();
 
     let mut nvd_data = std::collections::BTreeMap::new();
     if resolved
@@ -467,7 +475,7 @@ async fn gather(
     let mut reports = build_reports(
         resolved,
         separate_lang,
-        host_source_id(eco),
+        eco,
         &Judging {
             distro: data.as_ref(),
             language: lang_data.as_ref(),
@@ -884,6 +892,94 @@ mod tests {
         );
     }
 
+    /// Fedora publishes its advisories per release: a Fedora 43 image on a
+    /// Fedora 44 host judged by the host's data reads as clean.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_fedora_package_of_another_release_than_the_host_uses_its_own_data() {
+        use sha2::{Digest, Sha256};
+        use std::fmt::Write as _;
+        use wiremock::matchers::path_regex;
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        let blob: &[u8] = include_bytes!(
+            "../../../../tests/fixtures/http/fedora-updateinfo/2026-11-07/updateinfo.xml.zst"
+        );
+        let sum = Sha256::digest(blob)
+            .iter()
+            .fold(String::new(), |mut hex, b| {
+                let _ = write!(hex, "{b:02x}");
+                hex
+            });
+        let server = MockServer::start().await;
+        Mock::given(path_regex("^/43/Everything/[^/]+/repodata/repomd\\.xml$"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(format!(
+                r#"<repomd><data type="updateinfo"><checksum type="sha256">{sum}</checksum><location href="repodata/x-updateinfo.xml.zst"/></data></repomd>"#
+            )))
+            .mount(&server)
+            .await;
+        Mock::given(path_regex(
+            "^/43/Everything/[^/]+/repodata/x-updateinfo\\.xml\\.zst$",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes(blob))
+        .mount(&server)
+        .await;
+        let mut cfg = Config::default();
+        // A configured mirror serves every release, the image's too.
+        cfg.sources.distro.url = Some(server.uri());
+        cfg.sources.kev.enabled = false;
+        cfg.sources.epss.enabled = false;
+        let http = HttpClient::new(HttpConfig {
+            allow_insecure: true,
+            ..HttpConfig::default()
+        })
+        .unwrap();
+        let cache = amivuln_cache::Cache::in_memory().unwrap();
+        let fetcher = Fetcher {
+            http: &http,
+            cache: &cache,
+            now: 0,
+            policy: amivuln_cache::Policy {
+                ttl: 1,
+                stale_max_age: 1,
+            },
+            offline: false,
+            offline_db: None,
+            nvd_http: None,
+        };
+        let image = pkg(
+            Ecosystem::Fedora(43),
+            "python3-multipart",
+            "0:1.3.0-1.fc43",
+            "rpm",
+        );
+        let resolved = vec![("c:python3-multipart".to_owned(), image)];
+        let ev = gather(
+            &fetcher,
+            &cfg,
+            Ecosystem::Fedora(44),
+            &resolved,
+            &["CVE-2026-28356".to_owned()],
+            &[],
+        )
+        .await;
+        assert!(
+            ev.targets[0]
+                .findings
+                .iter()
+                .any(|f| f.id == "CVE-2026-28356"),
+            "{:?} {:?}",
+            ev.targets[0].findings,
+            ev.sources
+        );
+        assert_eq!(ev.known, ["CVE-2026-28356"]);
+        // Nothing of the host's release is needed, so it is not asked for.
+        let statuses: Vec<_> = ev.sources.iter().map(|s| (s.source, &s.status)).collect();
+        assert_eq!(
+            statuses,
+            [(SourceId::FedoraUpdateinfo, &SourceStatus::Ok)],
+            "{statuses:?}"
+        );
+    }
+
     /// A Fedora image scanned from a Debian host used to fall into the OSV
     /// pass and fail with "no OSV data". It is judged by Fedora's own data.
     #[test]
@@ -920,7 +1016,7 @@ mod tests {
         let reports = build_reports(
             &own_group,
             separate,
-            host_source_id(host),
+            host,
             &judging,
             &std::collections::BTreeMap::new(),
             &[],
