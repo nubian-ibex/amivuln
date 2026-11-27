@@ -11,6 +11,7 @@
 - [Architecture](architecture.md)
 - [How matching works](matching.md)
 - [Data sources](sources.md)
+- [Benchmarks](benchmark.md)
 - [OpenSSF badging evidence](osp-badging.md)
 - [Roadmap](roadmap.md)
 - [Support policy](support.md)
