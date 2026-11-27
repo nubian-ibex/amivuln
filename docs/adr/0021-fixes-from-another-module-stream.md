@@ -1,6 +1,6 @@
 # ADR-0021: A fix built for another module stream cannot judge a package
 
-- Status: Proposed (2026-11-26)
+- Status: Accepted (2026-11-27, by the maintainer)
 - Date: 2026-11-26
 - Amends: ADR-0018, ADR-0020
 
