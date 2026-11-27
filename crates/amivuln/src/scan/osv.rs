@@ -15,6 +15,9 @@ pub(super) const MAX_OSV_ADVISORIES: usize = 5000;
 /// Package queries per OSV `querybatch` request (the endpoint's limit).
 pub(super) const OSV_BATCH: usize = 1000;
 
+/// Most pages read for one package query: OSV answers about 1000 ids a page.
+const MAX_PAGES: usize = 100;
+
 /// Advisory documents fetched at the same time.
 pub(super) const ADVISORY_PARALLEL: usize = 8;
 
@@ -113,10 +116,11 @@ async fn name_coverage(
         });
     }
     let mut unknown = Vec::new();
-    for (query, answer) in queries.iter().zip(query_osv(f, base, &queries).await) {
-        let ids = answer
-            .map_err(|e| describe(&e))
-            .and_then(|d| amivuln_sources::osv::parse_batch(&d.body).map_err(|e| e.to_string()));
+    let answers = query_osv(f, base, &queries, Pages::First).await;
+    for (query, answer) in queries.iter().zip(answers) {
+        let ids = answer.map_err(|e| describe(&e)).and_then(|d| {
+            amivuln_sources::osv::parse_first_page(&d.body).map_err(|e| e.to_string())
+        });
         match ids {
             Ok(ids) if ids.is_empty() => unknown.push(query.name),
             Ok(_) => {}
@@ -266,14 +270,104 @@ pub(super) struct Slot<'q, 'a> {
     answer: Option<Result<Fetched, FetchError>>,
 }
 
+/// How much of a long answer a question needs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Pages {
+    /// Every id, to judge a package.
+    All,
+    /// The first page, to learn whether OSV holds anything at all.
+    First,
+}
+
+impl Pages {
+    /// Whether a document answers the question as it is.
+    fn answered_by(self, body: &[u8]) -> bool {
+        self == Self::First || matches!(amivuln_sources::osv::next_page(body), Ok(None))
+    }
+}
+
+/// The request for `queries`, each with the token of the page it wants.
+fn batch_of(queries: &[(&OsvQuery<'_>, Option<&str>)]) -> Option<String> {
+    let asked: Vec<_> = queries
+        .iter()
+        .map(|(query, page_token)| amivuln_sources::osv::BatchQuery {
+            name: query.name,
+            ecosystem: &query.ecosystem,
+            version: &query.version,
+            page_token: *page_token,
+        })
+        .collect();
+    amivuln_sources::osv::batch_request_many(&asked).ok()
+}
+
+/// Sends one `querybatch` request and returns the answer of each query, or
+/// `None` when the network or the answer failed.
+async fn post_batch(
+    f: &Fetcher<'_>,
+    url: &str,
+    queries: &[(&OsvQuery<'_>, Option<&str>)],
+) -> Option<Vec<Vec<u8>>> {
+    let request = batch_of(queries)?;
+    let Ok(amivuln_sources::http::Response::Fresh { body, .. }) = f.http.post(url, &request).await
+    else {
+        return None;
+    };
+    amivuln_sources::osv::split_batch(&body, queries.len()).ok()
+}
+
+/// Reads the pages OSV left for the next request and joins them to the answers.
+/// An answer whose pages cannot all be read stays as it is, so that reading its
+/// ids fails and the source is not complete.
+async fn read_next_pages(f: &Fetcher<'_>, url: &str, slots: &mut [Slot<'_, '_>]) {
+    for _ in 1..MAX_PAGES {
+        let mut open: Vec<(&mut Slot<'_, '_>, String)> = slots
+            .iter_mut()
+            .filter_map(|slot| {
+                let Some(Ok(doc)) = &slot.answer else {
+                    return None;
+                };
+                let token = amivuln_sources::osv::next_page(&doc.body).ok().flatten()?;
+                Some((slot, token))
+            })
+            .collect();
+        if open.is_empty() {
+            return;
+        }
+        for chunk in open.chunks_mut(OSV_BATCH) {
+            let asked: Vec<_> = chunk
+                .iter()
+                .map(|(slot, token)| (slot.query, Some(token.as_str())))
+                .collect();
+            let Some(parts) = post_batch(f, url, &asked).await else {
+                return;
+            };
+            for ((slot, _), part) in chunk.iter_mut().zip(parts) {
+                let Some(Ok(doc)) = &mut slot.answer else {
+                    continue;
+                };
+                let Ok(merged) = amivuln_sources::osv::merge_pages(&doc.body, &part) else {
+                    return;
+                };
+                if Pages::All.answered_by(&merged) {
+                    // A cache write that fails only costs the next run a request.
+                    let _ = f.cache.put(&slot.key, &merged, None, None, f.now);
+                }
+                doc.body = merged;
+            }
+        }
+    }
+}
+
 /// The answers to `queries`, in order. Fresh cache entries are used as they
 /// are, the rest go to OSV in batches of [`OSV_BATCH`], and each answer is
 /// cached as the answer of its own query. Whatever a batch could not answer
 /// falls back to the per-query path (stale cache, offline database, error).
+/// With [`Pages::All`] the remaining pages of long answers are read too.
 pub(super) async fn query_osv(
     f: &Fetcher<'_>,
     base: &str,
     queries: &[OsvQuery<'_>],
+    pages: Pages,
 ) -> Vec<Result<Fetched, FetchError>> {
     let url = format!("{base}/v1/querybatch");
     let mut slots: Vec<Slot<'_, '_>> = queries
@@ -285,7 +379,9 @@ pub(super) async fn query_osv(
         })
         .collect();
     for slot in &mut slots {
-        if let Ok(amivuln_cache::Lookup::Fresh(e)) = f.cache.get(&slot.key, f.now, f.policy) {
+        if let Ok(amivuln_cache::Lookup::Fresh(e)) = f.cache.get(&slot.key, f.now, f.policy)
+            && pages.answered_by(&e.body)
+        {
             slot.answer = Some(Ok(Fetched {
                 age: Duration::from_secs(
                     u64::try_from(f.now.saturating_sub(e.fetched_at)).unwrap_or(0),
@@ -299,30 +395,16 @@ pub(super) async fn query_osv(
         let mut pending: Vec<&mut Slot<'_, '_>> =
             slots.iter_mut().filter(|s| s.answer.is_none()).collect();
         for chunk in pending.chunks_mut(OSV_BATCH) {
-            let asked: Vec<(&str, &str, &str)> = chunk
-                .iter()
-                .map(|s| {
-                    (
-                        s.query.name,
-                        s.query.ecosystem.as_str(),
-                        s.query.version.as_str(),
-                    )
-                })
-                .collect();
-            let Ok(request) = amivuln_sources::osv::batch_request_many(&asked) else {
-                continue;
-            };
-            let Ok(amivuln_sources::http::Response::Fresh { body, .. }) =
-                f.http.post(&url, &request).await
-            else {
-                continue;
-            };
-            let Ok(parts) = amivuln_sources::osv::split_batch(&body, chunk.len()) else {
+            let asked: Vec<_> = chunk.iter().map(|s| (s.query, None)).collect();
+            let Some(parts) = post_batch(f, &url, &asked).await else {
                 continue;
             };
             for (slot, part) in chunk.iter_mut().zip(parts) {
-                // A cache write that fails only costs the next run a request.
-                let _ = f.cache.put(&slot.key, &part, None, None, f.now);
+                // A part with pages left is cached once they are joined. A
+                // cache write that fails only costs the next run a request.
+                if pages.answered_by(&part) {
+                    let _ = f.cache.put(&slot.key, &part, None, None, f.now);
+                }
                 slot.answer = Some(Ok(Fetched {
                     body: part,
                     status: SourceStatus::Ok,
@@ -336,6 +418,9 @@ pub(super) async fn query_osv(
             slot.answer =
                 Some(fetch_cached_body(&f.ctx(), &slot.key, &url, Some(&slot.query.body)).await);
         }
+    }
+    if pages == Pages::All && !f.offline {
+        read_next_pages(f, &url, &mut slots).await;
     }
     slots.into_iter().filter_map(|s| s.answer).collect()
 }
@@ -437,9 +522,9 @@ async fn distro_coverage(
         }
         let mut found = false;
         let mut failure = None;
-        for answer in query_osv(f, base, &probe).await {
+        for answer in query_osv(f, base, &probe, Pages::First).await {
             let ids = answer.map_err(|e| describe(&e)).and_then(|d| {
-                amivuln_sources::osv::parse_batch(&d.body).map_err(|e| e.to_string())
+                amivuln_sources::osv::parse_first_page(&d.body).map_err(|e| e.to_string())
             });
             match ids {
                 Ok(ids) => found |= !ids.is_empty(),
@@ -528,7 +613,7 @@ pub(super) async fn load_osv(
             }
         }
     }
-    let answers = query_osv(f, base, &queries).await;
+    let answers = query_osv(f, base, &queries, Pages::All).await;
     let mut ids_by_package: Vec<Vec<String>> = vec![Vec::new(); packages.len()];
     // One entry per (OSV ecosystem, advisory ids found there).
     let mut asked: Vec<(String, Vec<String>)> = Vec::new();
@@ -537,20 +622,22 @@ pub(super) async fn load_osv(
             Ok(d) => d,
             Err(e) => return fail(describe(&e)),
         };
-        match amivuln_sources::osv::parse_batch(&batch.body) {
+        let found = match amivuln_sources::osv::parse_batch(&batch.body) {
             Ok(found) => {
                 status = worse(status, batch.status);
                 age = age.max(batch.age);
-                if let Some(ids) = ids_by_package.get_mut(index) {
-                    ids.extend(found.iter().cloned());
-                }
-                asked.push((query.ecosystem.clone(), found));
+                found
             }
             Err(e) => {
                 status = worse(status, SourceStatus::Failed(e.to_string()));
-                asked.push((query.ecosystem.clone(), Vec::new()));
+                // What was read of an answer with pages left is still shown.
+                amivuln_sources::osv::parse_first_page(&batch.body).unwrap_or_default()
             }
+        };
+        if let Some(ids) = ids_by_package.get_mut(index) {
+            ids.extend(found.iter().cloned());
         }
+        asked.push((query.ecosystem.clone(), found));
     }
     status = worse(status, distro_coverage(f, base, packages, &asked).await);
     status = worse(

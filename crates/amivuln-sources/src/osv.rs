@@ -36,6 +36,9 @@ pub enum OsvError {
         /// Results received.
         got: usize,
     },
+    /// OSV has more ids than the answer holds, and the rest were not read.
+    #[error("OSV has more pages for a package than could be read, so the answer is not complete")]
+    Truncated,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,6 +50,8 @@ pub(crate) struct BatchResponse {
 pub(crate) struct BatchResult {
     #[serde(default)]
     pub(crate) vulns: Vec<BatchId>,
+    #[serde(default)]
+    pub(crate) next_page_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -71,22 +76,82 @@ pub fn batch_request(name: &str, ecosystem: &str, version: &str) -> Result<Strin
     .map_err(OsvError::Invalid)
 }
 
+/// One package query of a `querybatch` request.
+#[derive(Debug, Clone, Copy)]
+pub struct BatchQuery<'a> {
+    /// Package name.
+    pub name: &'a str,
+    /// OSV ecosystem.
+    pub ecosystem: &'a str,
+    /// Installed version.
+    pub version: &'a str,
+    /// The token of the page wanted; `None` asks for the first.
+    pub page_token: Option<&'a str>,
+}
+
 /// One `querybatch` request holding several package queries, in order.
 ///
 /// # Errors
 ///
 /// Fails when the document cannot be serialised.
-pub fn batch_request_many(queries: &[(&str, &str, &str)]) -> Result<String, OsvError> {
+pub fn batch_request_many(queries: &[BatchQuery<'_>]) -> Result<String, OsvError> {
     let queries: Vec<_> = queries
         .iter()
-        .map(|(name, ecosystem, version)| {
-            serde_json::json!({
-                "package": {"name": name, "ecosystem": ecosystem},
-                "version": version
-            })
+        .map(|q| {
+            let mut query = serde_json::Map::new();
+            query.insert(
+                "package".into(),
+                serde_json::json!({"name": q.name, "ecosystem": q.ecosystem}),
+            );
+            query.insert("version".into(), q.version.into());
+            if let Some(token) = q.page_token {
+                query.insert("page_token".into(), token.into());
+            }
+            query
         })
         .collect();
     serde_json::to_string(&serde_json::json!({ "queries": queries })).map_err(OsvError::Invalid)
+}
+
+/// The token of the next page of a single-result document, when OSV holds more
+/// ids than it answered.
+///
+/// # Errors
+///
+/// Fails on malformed JSON.
+pub fn next_page(bytes: &[u8]) -> Result<Option<String>, OsvError> {
+    let r: BatchResponse = serde_json::from_slice(bytes)?;
+    Ok(r.results
+        .into_iter()
+        .find_map(|res| res.next_page_token.filter(|t| !t.is_empty())))
+}
+
+/// A single-result document holding the ids of `first` and of the page that
+/// follows it, with that page's token.
+///
+/// # Errors
+///
+/// Fails on malformed JSON or when either document has no result.
+pub fn merge_pages(first: &[u8], next: &[u8]) -> Result<Vec<u8>, OsvError> {
+    let result = |bytes: &[u8]| -> Result<serde_json::Map<_, _>, OsvError> {
+        let mut doc: serde_json::Value = serde_json::from_slice(bytes)?;
+        match doc.pointer_mut("/results/0").map(serde_json::Value::take) {
+            Some(serde_json::Value::Object(found)) => Ok(found),
+            _ => Err(OsvError::BatchSize {
+                expected: 1,
+                got: 0,
+            }),
+        }
+    };
+    let (earlier, mut merged) = (result(first)?, result(next)?);
+    let ids: Vec<serde_json::Value> = [&earlier, &merged]
+        .iter()
+        .filter_map(|r| r.get("vulns").and_then(serde_json::Value::as_array))
+        .flatten()
+        .cloned()
+        .collect();
+    merged.insert("vulns".into(), ids.into());
+    serde_json::to_vec(&serde_json::json!({ "results": [merged] })).map_err(OsvError::Invalid)
 }
 
 /// Splits a `querybatch` answer into one single-result document per query, in
@@ -122,8 +187,22 @@ pub fn split_batch(bytes: &[u8], expected: usize) -> Result<Vec<Vec<u8>>, OsvErr
 ///
 /// # Errors
 ///
-/// Fails on malformed JSON.
+/// Fails on malformed JSON, and on an answer with a page still unread: its ids
+/// are a part of what OSV holds.
 pub fn parse_batch(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
+    if next_page(bytes)?.is_some() {
+        return Err(OsvError::Truncated);
+    }
+    parse_first_page(bytes)
+}
+
+/// The ids of a `querybatch` response as far as it goes: enough to tell
+/// whether OSV holds anything, never enough to judge a package.
+///
+/// # Errors
+///
+/// Fails on malformed JSON.
+pub fn parse_first_page(bytes: &[u8]) -> Result<Vec<String>, OsvError> {
     let r: BatchResponse = serde_json::from_slice(bytes)?;
     Ok(r.results
         .into_iter()
@@ -634,11 +713,14 @@ mod tests {
 
     #[test]
     fn a_batch_is_split_into_the_answers_of_single_queries() {
-        let req = batch_request_many(&[
-            ("openssl", "Debian:12", "3.0.11-1"),
-            ("bash", "Debian:12", "5.2-1"),
-        ])
-        .unwrap();
+        let query = |name, version| BatchQuery {
+            name,
+            ecosystem: "Debian:12",
+            version,
+            page_token: None,
+        };
+        let req =
+            batch_request_many(&[query("openssl", "3.0.11-1"), query("bash", "5.2-1")]).unwrap();
         let v: serde_json::Value = serde_json::from_str(&req).unwrap();
         assert_eq!(v["queries"].as_array().unwrap().len(), 2);
         let parts = split_batch(
@@ -662,6 +744,36 @@ mod tests {
             })
         ));
         assert!(split_batch(b"{}", 1).is_err());
+    }
+
+    #[test]
+    fn the_pages_of_an_answer_are_joined_and_an_unread_one_is_refused() {
+        let first =
+            br#"{"results":[{"vulns":[{"id":"DEBIAN-CVE-2023-0001"}],"next_page_token":"t"}]}"#;
+        assert_eq!(next_page(first).unwrap().as_deref(), Some("t"));
+        assert!(matches!(parse_batch(first), Err(OsvError::Truncated)));
+        assert_eq!(parse_first_page(first).unwrap(), ["DEBIAN-CVE-2023-0001"]);
+        let last = br#"{"results":[{"vulns":[{"id":"DEBIAN-CVE-2023-0002"}]}]}"#;
+        let all = merge_pages(first, last).unwrap();
+        assert_eq!(next_page(&all).unwrap(), None);
+        assert_eq!(
+            parse_batch(&all).unwrap(),
+            ["DEBIAN-CVE-2023-0001", "DEBIAN-CVE-2023-0002"]
+        );
+        // A page may hold no id and still name the next one.
+        let empty = merge_pages(first, br#"{"results":[{"next_page_token":"u"}]}"#).unwrap();
+        assert_eq!(next_page(&empty).unwrap().as_deref(), Some("u"));
+        assert_eq!(parse_first_page(&empty).unwrap(), ["DEBIAN-CVE-2023-0001"]);
+        assert!(merge_pages(first, br#"{"results":[]}"#).is_err());
+        assert!(merge_pages(first, b"{}").is_err());
+        let asked = batch_request_many(&[BatchQuery {
+            name: "linux",
+            ecosystem: "Debian:12",
+            version: "6.1.0-1",
+            page_token: Some("t"),
+        }])
+        .unwrap();
+        assert!(asked.contains(r#""page_token":"t""#), "{asked}");
     }
 
     #[test]
