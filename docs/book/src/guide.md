@@ -441,7 +441,9 @@ The runtime (podman, then docker) is invoked only to export the rootfs,
 which never executes anything inside the container. CentOS Stream
 (`ID=centos`) is not a supported image and is refused (exit 64). The container's own
 `os-release` decides the ecosystem, so the host distribution never leaks
-into the answer, and the packages are judged by the matching source (OSV
+into the answer: a Fedora image is judged by the advisories of its own
+release, also on a Fedora host of another one. The packages are judged by the
+matching source (OSV
 for Debian, Ubuntu, Rocky, `AlmaLinux`, Red Hat Enterprise Linux (UBI included); the rpm database through the host
 `rpm` for Fedora-family containers, so a host without `rpm` (Flatcar, for
 example) leaves such a container unresolved (exit 3): run amivuln from a host
