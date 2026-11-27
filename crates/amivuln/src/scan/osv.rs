@@ -10,7 +10,7 @@ use super::{
 pub(super) const OSV_URL: &str = "https://api.osv.dev";
 
 /// Most advisory documents fetched per run.
-pub(super) const MAX_OSV_ADVISORIES: usize = 5000;
+pub(super) const MAX_OSV_ADVISORIES: usize = 20_000;
 
 /// Package queries per OSV `querybatch` request (the endpoint's limit).
 pub(super) const OSV_BATCH: usize = 1000;
