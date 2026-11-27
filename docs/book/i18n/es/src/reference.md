@@ -37,7 +37,7 @@
 - `--mitigations`: busca también la mitigación que publica Red Hat para cada CVE afectada (envía los ids de CVE a access.redhat.com)
 - `--flatpak`: revisa también los componentes de los runtimes Flatpak instalados (vea la guía para saber qué cuesta y qué no puede decir)
 - `--container ID`: revisa los paquetes de un contenedor podman o docker (repetible); las imágenes de Alpine, Debian, Ubuntu, Fedora, openSUSE, Gentoo, Rocky, AlmaLinux y Red Hat (UBI) se leen desde un sistema de archivos raíz exportado y no se ejecuta nada dentro
-- `--packages-from FILE`: revisa los paquetes listados en FILE (un `name@version` por línea) en lugar de los instalados
+- `--packages-from FILE`: revisa los paquetes listados en FILE (un `name@version` o un purl por línea) en lugar de los instalados
 - `ignore_file` (configuración): hallazgos aceptados; las entradas caducadas son errores
 - `-q, --quiet`: solo errores
 

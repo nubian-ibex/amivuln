@@ -3344,6 +3344,42 @@ async fn an_osv_page_that_cannot_be_read_is_never_complete() {
     }
 }
 
+/// A line of a package list may be a purl, which can name the source package a
+/// `name@version` line cannot.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_package_list_line_may_be_a_purl_naming_the_source() {
+    let (_server, home) = ubuntu_osv().await;
+    let list = home.path().join("list.txt");
+    std::fs::write(
+        &list,
+        "# exported with dpkg-query\npkg:deb/ubuntu/libssl3@0.0.1-1?upstream=openssl\n\
+         openssl@9.9.9-1\n",
+    )
+    .unwrap();
+    let mut cmd = Command::cargo_bin("amivuln").unwrap();
+    cmd.env_clear()
+        .env("HOME", home.path())
+        .env("XDG_CACHE_HOME", home.path().join("cache"))
+        .env("PATH", "/nonexistent")
+        .arg("--config")
+        .arg(home.path().join("cfg.toml"))
+        .args(["--distro", "ubuntu:98.10", "-f", "json", "--packages-from"])
+        .arg(&list);
+    let out = tokio::task::spawn_blocking(move || cmd.output().unwrap())
+        .await
+        .unwrap();
+    let v = json(&out);
+    assert_eq!(out.status.code(), Some(0), "{v}");
+    assert_eq!(v["complete"], true, "{v}");
+    let libssl = v["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["package"]["name"] == "libssl3")
+        .unwrap_or_else(|| panic!("{v}"));
+    assert_eq!(libssl["findings"][0]["id"], "CVE-2026-0001", "{v}");
+}
+
 /// A list or an SBOM that names no package checks nothing, which must not read
 /// as clean.
 #[tokio::test(flavor = "multi_thread")]
