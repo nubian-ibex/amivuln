@@ -326,16 +326,36 @@ purl's `upstream` qualifier (as Syft writes it) or from the
 `aquasecurity:trivy:SrcName` property (Trivy). Without it, on Debian, Ubuntu,
 Alpine and openSUSE, a name OSV holds no advisory under makes the result
 incomplete (exit 2), because it may be a binary's name; on Rocky Linux every
-package without a source does. The same applies to `name@version` and to
-`--packages-from`, which cannot name a source: give the source package's name
-there, or check an SBOM or the container itself. A package that never had an
-advisory, given without its source, is reported the same way (ADR-0019).
+package without a source does. The same applies to `name@version`, which
+cannot name a source: give the source package's name there, write the package
+as a purl (see [Package lists](#package-lists)), or check an SBOM or the
+container itself. A package that never had an advisory, given without its
+source, is reported the same way (ADR-0019).
 
 On RHEL, Rocky Linux and AlmaLinux, a package of a module stream (a version
 with `.module`) also needs its stream, because Red Hat lists the unfixed CVEs by
 stream. A host, a container and an SBOM from Syft or Trivy carry it, as does the
-`modularitylabel` qualifier of a purl; `name@version` and `--packages-from`
-cannot, so such a package makes the result incomplete (exit 2, ADR-0020).
+`modularitylabel` qualifier of a purl; `name@version` cannot, so such a package
+makes the result incomplete (exit 2, ADR-0020).
+
+## Package lists
+
+`amivuln --packages-from list.txt --distro D` checks a list exported from
+another host. Each line is a `name@version` or a purl; blank lines and lines
+that start with `#` are ignored. A purl line also states the source package and
+the module stream, so the result matches reading the host itself. On Debian,
+or on Ubuntu with `pkg:deb/ubuntu`:
+
+```bash
+dpkg-query -W -f 'pkg:deb/debian/${Package}@${Version}?upstream=${source:Package} ${db:Status-Status}\n' |
+    sed -n 's/ installed$//p' > list.txt
+```
+
+On Rocky Linux, with `pkg:rpm/almalinux` or `pkg:rpm/redhat` on the others:
+
+```bash
+rpm -qa --qf 'pkg:rpm/rocky/%{NAME}@%{VERSION}-%{RELEASE}?epoch=%{EPOCHNUM}&upstream=%{SOURCERPM}&modularitylabel=%{MODULARITYLABEL}\n' > list.txt
+```
 
 ## Resilient networks
 

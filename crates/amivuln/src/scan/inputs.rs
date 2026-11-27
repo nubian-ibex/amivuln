@@ -13,9 +13,9 @@ use super::{
 /// Largest inventory file accepted.
 pub(super) const MAX_INVENTORY_BYTES: u64 = 8 * 1024 * 1024;
 
-/// Reads `--packages-from FILE`: one `name@version` per line, `#` comments and
-/// blank lines ignored. Lets a pipeline check a package list exported from
-/// another host, for example `rpm -qa --qf '%{NAME}@%{EPOCH}:%{VERSION}-%{RELEASE}\n'`.
+/// Reads `--packages-from FILE`: one `name@version` or purl per line, `#`
+/// comments and blank lines ignored. Lets a pipeline check a package list
+/// exported from another host; a purl line can also name the source package.
 pub(super) fn read_inventory(
     path: &Path,
     eco: Ecosystem,
@@ -34,6 +34,15 @@ pub(super) fn read_inventory(
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
+        // `:` is in no package name, so the prefix cannot be one.
+        if line.starts_with("pkg:") {
+            let pkg = amivuln_resolve::from_purl(line, Some(eco))
+                .map_err(|e| format!("{}:{}: {e}", path.display(), i + 1))?;
+            if !is_signing_key(&pkg) {
+                out.push((line.to_owned(), pkg));
+            }
+            continue;
+        }
         let (name, version) = line.rsplit_once('@').ok_or_else(|| {
             format!(
                 "{}:{}: expected name@version, got {:?}",
@@ -49,6 +58,11 @@ pub(super) fn read_inventory(
         out.push((name.to_owned(), pkg));
     }
     Ok(out)
+}
+
+/// The signing keys rpm lists among its packages carry no software.
+fn is_signing_key(package: &PackageRef) -> bool {
+    package.name == "gpg-pubkey" && matches!(package.version, amivuln_core::Version::Rpm(_))
 }
 
 /// What a component states beside its purl.
@@ -205,8 +219,7 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
             {
                 amivuln_resolve::set_module(&mut pkg, &label);
             }
-            // The signing keys rpm lists among its packages carry no software.
-            if kind == "rpm" && pkg.name == "gpg-pubkey" {
+            if is_signing_key(&pkg) {
                 continue;
             }
             packages.push((purl, pkg));

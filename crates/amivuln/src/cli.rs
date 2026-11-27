@@ -102,8 +102,9 @@ pub struct Global {
     /// `OpenVEX` documents stating that a product is not affected (repeatable).
     #[arg(long, global = true, value_name = "FILE")]
     pub vex: Vec<std::path::PathBuf>,
-    /// Check the packages listed in FILE (one `name@version` per line) instead of
-    /// the installed ones; for example a list exported from another host.
+    /// Check the packages listed in FILE (one `name@version` or purl per line)
+    /// instead of the installed ones; for example a list exported from another
+    /// host.
     #[arg(long, global = true, value_name = "FILE")]
     pub packages_from: Option<std::path::PathBuf>,
     /// Check the OS packages listed in a `CycloneDX` JSON SBOM (rpm, deb and alpm

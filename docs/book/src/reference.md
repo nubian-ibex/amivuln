@@ -37,7 +37,7 @@
 - `--mitigations`: also look up the mitigation Red Hat publishes for each affected CVE (sends the CVE ids to access.redhat.com)
 - `--flatpak`: also check the components of the installed Flatpak runtimes (see the guide for what it costs and what it cannot tell)
 - `--container ID`: check the packages of a podman or docker container (repeatable); Alpine, Debian, Ubuntu, Fedora, openSUSE, Gentoo, Rocky, AlmaLinux and Red Hat (UBI) images are read from an exported root file system and nothing runs inside; CentOS Stream is not supported (exit 64), and a Fedora-family container needs `rpm` on the host (exit 3 without it, Flatcar for example)
-- `--packages-from FILE`: check the packages listed in FILE (one `name@version` per line) instead of the installed ones; on Debian, Ubuntu, Alpine and openSUSE the name is read as the source package's (see Checking an SBOM in the guide). A list, an SBOM or a package database that names no package is reported as unresolved (exit 3)
+- `--packages-from FILE`: check the packages listed in FILE (one `name@version` or purl per line) instead of the installed ones; on Debian, Ubuntu, Alpine and openSUSE a `name@version` name is read as the source package's, and a purl line can name the source (see Package lists in the guide). A list, an SBOM or a package database that names no package is reported as unresolved (exit 3)
 - `ignore_file` (configuration): accepted findings; expired entries are errors
 - `-q, --quiet`: only errors
 
