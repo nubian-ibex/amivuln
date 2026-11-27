@@ -289,34 +289,7 @@ pub fn osv_assess(pkg: &PackageRef, osv: &OsvData, vex: &[VexStatement]) -> Asse
     cves.sort_unstable();
     cves.dedup();
     for cve in cves {
-        if only_in_other_modules(pkg, osv, &cve) {
-            continue;
-        }
-        let candidates = fixes_for_package(pkg, osv, &cve);
-        // Several advisories can fix one CVE (Red Hat issues one per minor
-        // stream): at or above any published fix is patched, otherwise the
-        // lowest fix is the one to move to.
-        let chosen = candidates
-            .iter()
-            .find(|f| {
-                matches!(
-                    pkg.version.compare(f),
-                    Some(Ordering::Greater | Ordering::Equal)
-                )
-            })
-            .or_else(|| {
-                candidates
-                    .iter()
-                    .min_by(|a, b| a.compare(b).unwrap_or(Ordering::Equal))
-            });
-        // `querybatch` already matched this exact version against the
-        // advisory's ranges, so a record that offers no fix at all is an
-        // open issue: affected, with nothing to upgrade to.
-        let mut verdict =
-            source_release_verdict(pkg, osv, &cve).unwrap_or_else(|| match chosen.cloned() {
-                Some(fix_version) => classify(&pkg.version, &DistroStatus::Fixed(fix_version)),
-                None => Verdict::Affected { fixed_in: None },
-            });
+        let mut verdict = judge(pkg, osv, &cve);
         apply_vex(&mut verdict, vex, &cve);
         by_cve.insert(cve, verdict);
     }
@@ -347,11 +320,17 @@ fn source_release_verdict(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Option<
         return None;
     };
     let mut fixes = osv.fixes_for(cve);
-    fixes.retain(|(_, fix)| !outside_its_module(pkg, fix));
+    let rpm = |text: &str| Version::Rpm(text.parse().unwrap_or_else(|never| match never {}));
+    let source_fixes = fixes.iter().filter(|(name, _)| name == source).count();
+    fixes.retain(|(_, fix)| !another_world(pkg, &rpm(fix)));
+    let source_left = fixes.iter().filter(|(name, _)| name == source).count();
+    // Every fix of the source package was built for another stream (ADR-0021).
+    if source_fixes > 0 && source_left == 0 {
+        return Some(Verdict::Unverified);
+    }
     if fixes.iter().any(|(name, _)| *name == pkg.name) {
         return None;
     }
-    let rpm = |text: &str| Version::Rpm(text.parse().unwrap_or_else(|never| match never {}));
     let installed = rpm(vr);
     let mut lowest: Option<(Version, &str)> = None;
     for (_, fix) in fixes.iter().filter(|(name, _)| name == source) {
@@ -371,37 +350,55 @@ fn source_release_verdict(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Option<
     })
 }
 
-/// A RHEL, Rocky Linux or `AlmaLinux` fix built for a module stream, which
-/// says nothing about a package installed outside one (ADR-0018).
-fn outside_its_module(pkg: &PackageRef, fix: &str) -> bool {
-    matches!(
+/// The product line an rpm version is of: the first component of the version
+/// (`22` of `1:22.23.4`), which a module stream pins.
+fn product_line(version: &Version) -> &str {
+    match version {
+        Version::Rpm(evr) => evr.version().split('.').next().unwrap_or_default(),
+        _ => "",
+    }
+}
+
+/// Whether a fix was built for another world than the package's: a module
+/// build cannot judge a package outside a module (ADR-0018), and on a package
+/// of a module stream a fix of another product line belongs to another stream
+/// (ADR-0021). Such a fix neither settles nor shapes the verdict.
+fn another_world(pkg: &PackageRef, fix: &Version) -> bool {
+    if !matches!(
         pkg.ecosystem,
         Ecosystem::Rhel(_) | Ecosystem::Rocky(_) | Ecosystem::Alma(_)
-    ) && is_module_build(fix)
-        && !is_module_build(&pkg.version.to_string())
+    ) {
+        return false;
+    }
+    let Version::Rpm(evr) = fix else {
+        return false;
+    };
+    if !is_module_build(evr.to_string().as_str()) {
+        return false;
+    }
+    let Version::Rpm(installed) = &pkg.version else {
+        return true;
+    };
+    // A module stream pins the product's major version, so another major is
+    // another stream's build.
+    if !is_module_build(installed.to_string().as_str()) {
+        return true;
+    }
+    product_line(&Version::Rpm(installed.clone())) != product_line(&Version::Rpm(evr.clone()))
 }
 
-/// Whether every fix of `cve` naming this package or its source belongs to a
-/// module the package is not in: the CVE is then not this package's.
-fn only_in_other_modules(pkg: &PackageRef, osv: &OsvData, cve: &str) -> bool {
-    let fixes = osv.fixes_for(cve);
-    let mut named = fixes
-        .iter()
-        .filter(|(name, _)| *name == pkg.name || Some(name) == pkg.source_name.as_ref())
-        .peekable();
-    named.peek().is_some() && named.all(|(_, fix)| outside_its_module(pkg, fix))
-}
-
-/// Every fix OSV records for `cve` that applies to this package, in the
-/// package's own version scheme.
+/// The verdict of one CVE for `pkg`, from the fixes the matched advisories
+/// name for it.
 ///
-/// One advisory can cover several packages, so a fix counts only when it names
-/// this one: by the name OSV files it under, and on the RPM distributions also
-/// by the source package, whose records sit beside the binary ones. A fix
-/// that names no package at all belongs to the whole advisory. When nothing
-/// matches there is no fix for this package: another package's version says
-/// nothing about it.
-fn fixes_for_package(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Vec<Version> {
+/// - No fix named for this package: `querybatch` already matched this version
+///   against the advisory's ranges, so this is an open issue: affected, with
+///   nothing to move to.
+/// - Every fix named for it was built for another module stream (ADR-0021):
+///   whether the package is affected is unknown. Red Hat's unfixed entry for
+///   its stream still reports it as affected.
+/// - Otherwise: at or above any published fix of its own world is patched,
+///   otherwise the lowest one is the fix to move to.
+fn judge(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Verdict {
     let parse = |fix: &str| match &pkg.version {
         Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
         Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
@@ -411,16 +408,58 @@ fn fixes_for_package(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Vec<Version>
     // fix filed under the source: `source_release_verdict` does that.
     let own_version = matches!(pkg.ecosystem, Ecosystem::Rocky(_)) && pkg.source_vr.is_some();
     let by_source = matches!(pkg.version, Version::Rpm(_)) && !own_version;
-    osv.fixes_for(cve)
+    let named = |name: &str| {
+        name.is_empty()
+            || name == pkg.osv_name()
+            || (by_source && Some(name) == pkg.source_name.as_deref())
+    };
+    let fixes: Vec<Version> = osv
+        .fixes_for(cve)
         .iter()
-        .filter(|(name, fix)| {
-            (name.is_empty()
-                || name == pkg.osv_name()
-                || (by_source && Some(name) == pkg.source_name.as_ref()))
-                && !outside_its_module(pkg, fix)
-        })
+        .filter(|(name, _)| named(name))
         .map(|(_, fix)| parse(fix))
-        .collect()
+        .collect();
+    // A fix of another world cannot judge this package: a module build never
+    // judges a package outside a module (ADR-0018), and on a package of a
+    // module stream a fix of another product line belongs to another stream
+    // (ADR-0021).
+    let mut in_world: Vec<&Version> = Vec::new();
+    for fix in &fixes {
+        if !another_world(pkg, fix) {
+            in_world.push(fix);
+        }
+    }
+    let Some(first) = in_world.first() else {
+        // Every fix belonged to another module stream: whether the package is
+        // affected is unknown (ADR-0021).
+        if fixes.is_empty() && own_version {
+            // A Rocky Linux subpackage is judged by its source's release,
+            // which may say unverified when every source fix is of another
+            // stream.
+            return source_release_verdict(pkg, osv, cve)
+                .unwrap_or(Verdict::Affected { fixed_in: None });
+        }
+        return if fixes.is_empty() {
+            Verdict::Affected { fixed_in: None }
+        } else {
+            Verdict::Unverified
+        };
+    };
+    let chosen = match in_world.iter().find(|f| {
+        matches!(
+            pkg.version.compare(f),
+            Some(Ordering::Greater | Ordering::Equal)
+        )
+    }) {
+        Some(f) => f,
+        // Not empty, so the lowest is always found.
+        None => in_world
+            .iter()
+            .min_by(|a, b| a.compare(b).unwrap_or(Ordering::Equal))
+            .unwrap_or(first),
+    };
+    source_release_verdict(pkg, osv, cve)
+        .unwrap_or_else(|| classify(&pkg.version, &DistroStatus::Fixed((*chosen).clone())))
 }
 
 /// Maps the textual severity of an advisory database to a [`Severity`].
@@ -807,6 +846,89 @@ mod tests {
     }
 
     #[test]
+    fn a_fix_of_another_stream_cannot_judge_a_module_package() {
+        // The installed build is the newest of its stream (nodejs 22.23.4); the
+        // only advisories that match its version are of streams 24 and 26.
+        let fix = |major: u32| format!("1:{major}.13.0-0.module+el8.10.0+23888+24fa7806");
+        let doc = |fixes: &[String]| {
+            serde_json::json!({
+                "id": "RHSA-2099:0004",
+                "upstream": ["CVE-2099-0004"],
+                "affected": fixes.iter().map(|f| serde_json::json!({
+                    "package": {"name": "nodejs", "ecosystem": "Red Hat:enterprise_linux:8::appstream"},
+                    "ranges": [{"type": "ECOSYSTEM", "events": [
+                        {"introduced": "0"}, {"fixed": f}
+                    ]}]
+                })).collect::<Vec<_>>()
+            })
+        };
+        let osv = |fixes: &[String]| {
+            OsvData::parse_advisory(
+                doc(fixes).to_string().as_bytes(),
+                "Red Hat:enterprise_linux:8::appstream",
+            )
+            .unwrap()
+        };
+        let package = |version: &str| PackageRef {
+            ecosystem: Ecosystem::Rhel(8),
+            ..rhel_pkg("nodejs", version)
+        };
+        let up_to_date = package("1:22.23.4-2.module+el8.10.0+25285+c731a801");
+        // Only another stream's fix: unverified, never affected nor clean.
+        let other = osv(&[fix(24), fix(26)]);
+        assert_eq!(
+            osv_findings(&up_to_date, &other, &no_vex())[0].verdict,
+            Verdict::Unverified
+        );
+        assert_eq!(osv_assess(&up_to_date, &other, &no_vex()).resolved, []);
+        // The same stream's fix applies and settles it.
+        let same = osv(&[fix(22)]);
+        assert_eq!(osv_findings(&up_to_date, &same, &no_vex()), []);
+        // Both streams: the own one decides.
+        let both = osv(&[fix(24), fix(22)]);
+        assert_eq!(osv_findings(&up_to_date, &both, &no_vex()), []);
+        // An older build of the stream is affected by the own stream's fix.
+        let older = package("1:22.10.0-1.module+el8.10.0+25285+c731a801");
+        let found = osv_findings(&older, &same, &no_vex());
+        assert_eq!(found.len(), 1);
+        assert_eq!(
+            found[0].verdict,
+            Verdict::Affected {
+                fixed_in: Some(Version::Rpm(fix(22).parse().unwrap_or_else(|n| match n {})))
+            }
+        );
+    }
+
+    #[test]
+    fn a_module_only_cve_is_unverified_outside_the_module() {
+        // The base stream has no fix and Red Hat states nothing for it: 1.2.4
+        // dropped the CVE silently.
+        let doc = serde_json::json!({
+            "id": "ALSA-2099:0005",
+            "upstream": ["CVE-2099-0005"],
+            "affected": [{
+                "package": {"name": "perl-Carp", "ecosystem": "AlmaLinux:8"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"}, {"fixed": "1.50-439.module_el8.6.0+2766+8bf0b7ce"}
+                ]}]
+            }]
+        });
+        let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), "AlmaLinux:8").unwrap();
+        let outside = rhel_pkg("perl-Carp", "1.42-396.el8");
+        let assessment = osv_assess(&outside, &osv, &no_vex());
+        // The CVE is on the target as unverified, never as clean nor affected.
+        assert_eq!(
+            assessment
+                .findings
+                .iter()
+                .map(|f| (f.id.as_str(), f.verdict.clone()))
+                .collect::<Vec<_>>(),
+            [("CVE-2099-0005", Verdict::Unverified)]
+        );
+        assert_eq!(assessment.resolved, []);
+    }
+
+    #[test]
     fn a_rocky_subpackage_is_compared_by_its_source_release() {
         // perl-IO has its own version, so the fix filed under `perl` says
         // nothing about it: the release of the source package does.
@@ -899,8 +1021,8 @@ mod tests {
             package("perl-IO", "1.38-423.el8_10", Some("5.26.3-423.el8_10")),
         ] {
             assert_eq!(
-                osv_findings(&outside, &osv, &no_vex()),
-                [],
+                osv_findings(&outside, &osv, &no_vex())[0].verdict,
+                Verdict::Unverified,
                 "{}",
                 outside.name
             );
@@ -944,7 +1066,7 @@ mod tests {
                 ..rhel_pkg("perl-Carp", version)
             };
             let outside = osv_findings(&package("1.42-396.el8"), &osv, &no_vex());
-            assert_eq!(outside, [], "{ecosystem:?}");
+            assert_eq!(outside[0].verdict, Verdict::Unverified, "{ecosystem:?}");
             let older = format!("1.42-1{}", fix.split_once("-439").unwrap().1);
             let inside = osv_findings(&package(&older), &osv, &no_vex());
             assert_eq!(inside.len(), 1, "{ecosystem:?} {older}");
