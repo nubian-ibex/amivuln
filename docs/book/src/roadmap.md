@@ -121,14 +121,12 @@ Found while testing and not fixed yet.
   dpkg and apk databases are, would drop the dependency.
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
-- The packages of an Arch image are reported with the provenance `user_input`.
 - The fixes of one module stream are not told apart from another's. A package can
   be reported as affected with the fix version of another stream (an AlmaLinux 8
   image with an old `nodejs:20` showed 336 findings beside the 91 `dnf` lists),
   and a CVE Red Hat does not list for its stream can read as patched because of
   another stream's fix. Dropping those findings is not safe: Red Hat defers or
   says nothing about most of them.
-- A host or container whose rpm database lists no package reads as complete.
 - Rocky Linux and AlmaLinux 10 are not supported.
 - Only an Ubuntu interim release is judged past its support by date. Another
   release that is past support, and for which OSV still holds old advisories, is
