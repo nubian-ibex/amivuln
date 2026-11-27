@@ -56,8 +56,16 @@ applied on RHEL and AlmaLinux to packages outside the module.
 module stream got none of the CVEs Red Hat lists as unfixed for its stream, and
 read as complete (ADR-0020). A UBI 8 image with `nodejs:22` missed 51.
 
-Every version before 1.2.4 is yanked on crates.io; the release notes of 1.0.0,
-1.1.0, 1.2.0, 1.2.1, 1.2.2 and 1.2.3 say why.
+1.2.5 followed on 2026-11-27 with the rest of the module stream work (ADR-0021):
+a package of a stream no longer reads as affected by the fixes of the others,
+and a package of the base stream has the CVEs only a module fixed reported as
+unverified instead of dropped. An empty package database, list or SBOM is
+unresolved (exit 3) instead of complete, an SBOM of AlmaLinux or Rocky Linux
+built by Syft is read, and the packages of an Arch image are no longer marked as
+user input.
+
+Every version before 1.2.5 is yanked on crates.io; the release notes of 1.0.0
+to 1.2.4 say why.
 
 ## What 1.0 meant, and what is still open
 
