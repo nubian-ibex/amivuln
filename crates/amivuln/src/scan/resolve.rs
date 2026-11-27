@@ -212,6 +212,27 @@ pub(crate) fn running_services() -> Result<Vec<String>, ResolveError> {
     amivuln_resolve::list_running_services(&SystemRunner::default())
 }
 
+/// Adds the installed packages. A database that lists none was not read: a
+/// report with nothing in it would call the host clean.
+fn add_installed(
+    list: Result<Vec<PackageRef>, ResolveError>,
+    resolved: &mut Vec<(String, PackageRef)>,
+    unresolved: &mut Vec<Unresolved>,
+) {
+    match list {
+        Ok(list) if list.is_empty() => unresolved.push(Unresolved {
+            input: "--all".into(),
+            reason: "the package database lists no installed package, so nothing was checked"
+                .into(),
+        }),
+        Ok(list) => resolved.extend(list.into_iter().map(|p| (p.name.clone(), p))),
+        Err(e) => unresolved.push(Unresolved {
+            input: "--all".into(),
+            reason: e.to_string(),
+        }),
+    }
+}
+
 pub(crate) fn resolve_all(
     targets: &[String],
     all: bool,
@@ -234,16 +255,13 @@ pub(crate) fn resolve_all(
         // A host is never a language ecosystem or a runtime.
         Ecosystem::Flatpak | Ecosystem::Go | Ecosystem::Crates => None,
     };
-    if all {
-        match backend.as_ref().map(|b| b.resolver().list_all()) {
-            Some(Ok(list)) => resolved.extend(list.into_iter().map(|p| (p.name.clone(), p))),
-            Some(Err(e)) => unresolved.push(Unresolved {
-                input: "--all".into(),
-                reason: e.to_string(),
-            }),
-            // Language ecosystems have no host database.
-            None => {}
-        }
+    // Language ecosystems have no host database.
+    if all && let Some(backend) = &backend {
+        add_installed(
+            backend.resolver().list_all(),
+            &mut resolved,
+            &mut unresolved,
+        );
     }
     for t in targets {
         // A file is identified by its owner, else its own `.note.package`,
@@ -277,6 +295,15 @@ pub(crate) fn resolve_all(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_empty_package_database_is_never_read_as_clean() {
+        let (mut resolved, mut unresolved) = (Vec::new(), Vec::new());
+        add_installed(Ok(Vec::new()), &mut resolved, &mut unresolved);
+        assert!(resolved.is_empty());
+        assert_eq!(unresolved.len(), 1);
+        assert_eq!(unresolved[0].input, "--all");
+    }
 
     #[test]
     fn a_gentoo_atom_is_a_name_and_a_path_is_still_a_path() {

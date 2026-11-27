@@ -475,7 +475,8 @@ fn pacman_packages(stdout: &str, eco: Ecosystem) -> Vec<PackageRef> {
         let Some((name, version)) = line.split_once(' ') else {
             continue;
         };
-        if let Ok(pkg) = crate::from_name_version(eco, name, version) {
+        if let Ok(mut pkg) = crate::from_name_version(eco, name, version) {
+            pkg.provenance = amivuln_core::Provenance::PackageDb;
             packages.push(pkg);
         }
     }
@@ -622,6 +623,10 @@ mod tests {
         assert_eq!(rpm.len(), 2);
         assert_eq!(rpm[0].version.to_string(), "1:1.26.2-1.fc41");
         let pac = pacman_packages("nginx 1.26.2-1\nopenssl 3.2.2-1\n", Ecosystem::Arch);
+        assert!(
+            pac.iter()
+                .all(|p| p.provenance == amivuln_core::Provenance::PackageDb)
+        );
         assert_eq!(pac.len(), 2);
         assert_eq!(pac[1].name, "openssl");
     }
