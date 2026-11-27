@@ -3380,6 +3380,51 @@ async fn a_package_list_line_may_be_a_purl_naming_the_source() {
     assert_eq!(libssl["findings"][0]["id"], "CVE-2026-0001", "{v}");
 }
 
+/// A new openSUSE release has advisories for few packages: one that has none
+/// does not mean OSV holds no data for the release.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_new_leap_with_only_kernel_advisories_is_covered() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .respond_with(|req: &wiremock::Request| {
+            let asked: serde_json::Value = serde_json::from_slice(&req.body).unwrap();
+            let results: Vec<_> = asked["queries"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|q| {
+                    if q["package"]["name"] == "kernel-default" {
+                        serde_json::json!({"vulns": [{"id": "openSUSE-SU-2026:0001-1"}]})
+                    } else {
+                        serde_json::json!({})
+                    }
+                })
+                .collect();
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "results": results }))
+        })
+        .mount(&server)
+        .await;
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join("cfg.toml"),
+        format!(
+            "[network]\nallow_insecure_http = true\n[sources.distro]\nurl = \"{}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    let (code, v) = ask_ubuntu(
+        &home,
+        "opensuse:98.1",
+        "pkg:rpm/opensuse/bash@5.2-1?upstream=bash",
+    )
+    .await;
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(v["complete"], true, "{v}");
+}
+
 /// A list or an SBOM that names no package checks nothing, which must not read
 /// as clean.
 #[tokio::test(flavor = "multi_thread")]

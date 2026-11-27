@@ -425,18 +425,20 @@ pub(super) async fn query_osv(
     slots.into_iter().filter_map(|s| s.answer).collect()
 }
 
-/// A source package whose advisories every release of a distribution has. The
-/// question tells "a clean package" from "a release OSV holds no data for".
-fn probe_package(eco: Ecosystem) -> Option<&'static str> {
+/// Source packages whose advisories every release of a distribution has, or is
+/// the first to get. Asking them tells "a clean package" from "a release OSV
+/// holds no data for"; none for a distribution that is not judged by OSV.
+fn probe_packages(eco: Ecosystem) -> &'static [&'static str] {
     match eco {
-        Ecosystem::Ubuntu(_) => Some("linux"),
-        Ecosystem::Opensuse(_) => Some("openssl-3"),
+        Ecosystem::Ubuntu(_) => &["linux"],
+        // A new openSUSE release gets kernel updates before any of OpenSSL.
+        Ecosystem::Opensuse(_) => &["openssl-3", "kernel-default"],
         Ecosystem::Alpine(_)
         | Ecosystem::Debian(_)
         | Ecosystem::Rocky(_)
         | Ecosystem::Alma(_)
-        | Ecosystem::Rhel(_) => Some("openssl"),
-        _ => None,
+        | Ecosystem::Rhel(_) => &["openssl"],
+        _ => &[],
     }
 }
 
@@ -470,9 +472,9 @@ async fn distro_coverage(
     let mut status = SourceStatus::Ok;
     let mut silent = std::collections::BTreeMap::new();
     for (_, pkg) in packages {
-        let Some(probe) = probe_package(pkg.ecosystem) else {
+        if probe_packages(pkg.ecosystem).is_empty() {
             continue;
-        };
+        }
         let ecosystems = pkg.ecosystem.osv_ecosystems();
         let Some(first) = ecosystems.first().cloned() else {
             continue;
@@ -503,12 +505,16 @@ async fn distro_coverage(
             .iter()
             .all(|(e, ids)| ids.is_empty() || !ecosystems.contains(e))
         {
-            silent.insert(ecosystems, (probe, probe_version(pkg.ecosystem)));
+            silent.insert(ecosystems, pkg.ecosystem);
         }
     }
-    for (ecosystems, (name, version)) in silent {
+    for (ecosystems, eco) in silent {
+        let version = probe_version(eco);
         let mut probe = Vec::new();
-        for ecosystem in &ecosystems {
+        for (name, ecosystem) in probe_packages(eco)
+            .iter()
+            .flat_map(|name| ecosystems.iter().map(move |e| (name, e)))
+        {
             let body = match amivuln_sources::osv::batch_request(name, ecosystem, version) {
                 Ok(body) => body,
                 Err(e) => return SourceStatus::Failed(e.to_string()),
