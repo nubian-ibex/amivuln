@@ -52,12 +52,12 @@ the wrong release (ADR-0014).
 one package hid it in another that has no fix, and fixes of module streams were
 applied on RHEL and AlmaLinux to packages outside the module.
 
-Fixed after 1.2.3, for the next release: on RHEL, Rocky Linux and AlmaLinux, a
-package of a module stream got none of the CVEs Red Hat lists as unfixed for its
-stream, and read as complete (ADR-0020). A UBI 8 image with `nodejs:22` missed 51.
+1.2.4 followed the same day. On RHEL, Rocky Linux and AlmaLinux, a package of a
+module stream got none of the CVEs Red Hat lists as unfixed for its stream, and
+read as complete (ADR-0020). A UBI 8 image with `nodejs:22` missed 51.
 
-Every version before 1.2.3 is yanked on crates.io; the release notes of 1.0.0,
-1.1.0, 1.2.0, 1.2.1 and 1.2.2 say why.
+Every version before 1.2.4 is yanked on crates.io; the release notes of 1.0.0,
+1.1.0, 1.2.0, 1.2.1, 1.2.2 and 1.2.3 say why.
 
 ## What 1.0 meant, and what is still open
 
