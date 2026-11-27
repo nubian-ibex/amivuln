@@ -271,8 +271,20 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         Some(Ecosystem::Ubuntu(v)) if (kind, namespace) == ("deb", "ubuntu") => {
             Ecosystem::Ubuntu(v)
         }
-        Some(Ecosystem::Rocky(v)) if (kind, namespace) == ("rpm", "rocky") => Ecosystem::Rocky(v),
-        Some(Ecosystem::Alma(v)) if (kind, namespace) == ("rpm", "alma") => Ecosystem::Alma(v),
+        // `rocky` and `alma` are the spelling of this command; Syft writes
+        // `rocky-linux` and `almalinux`.
+        Some(Ecosystem::Rocky(v))
+            if (kind, namespace) == ("rpm", "rocky")
+                || (kind, namespace) == ("rpm", "rocky-linux") =>
+        {
+            Ecosystem::Rocky(v)
+        }
+        Some(Ecosystem::Alma(v))
+            if (kind, namespace) == ("rpm", "alma")
+                || (kind, namespace) == ("rpm", "almalinux") =>
+        {
+            Ecosystem::Alma(v)
+        }
         Some(Ecosystem::Rhel(v)) if (kind, namespace) == ("rpm", "redhat") => Ecosystem::Rhel(v),
         Some(Ecosystem::Alpine(v)) if (kind, namespace) == ("apk", "alpine") => {
             Ecosystem::Alpine(v)
@@ -297,32 +309,12 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         .rsplit_once('@')
         .ok_or_else(|| bad("the purl has no @version"))?;
     let name = percent_decode(name).ok_or_else(|| bad("bad percent-encoding in the name"))?;
-    let mut version =
+    let version =
         percent_decode(version).ok_or_else(|| bad("bad percent-encoding in the version"))?;
 
-    let mut arch = None;
-    let mut slot = None;
-    let mut upstream = None;
-    let mut module = None;
-    for kv in query.split('&').filter(|s| !s.is_empty()) {
-        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
-        let v = percent_decode(v).ok_or_else(|| bad("bad percent-encoding in a qualifier"))?;
-        match k {
-            "arch" => arch = Some(v),
-            "slot" if ecosystem == Ecosystem::Gentoo => slot = Some(v),
-            "upstream" => upstream = Some(v),
-            "modularitylabel" => module = Some(v),
-            // Alpine and Arch versions have no epoch qualifier to read.
-            "epoch"
-                if (is_rpm(ecosystem)
-                    || matches!(ecosystem, Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)))
-                    && !version.contains(':') =>
-            {
-                version = format!("{v}:{version}");
-            }
-            _ => {}
-        }
-    }
+    let q = qualifiers(query, ecosystem, &version)?;
+    let arch = q.arch;
+    let version = q.version.unwrap_or(version);
     if ecosystem == Ecosystem::Gentoo {
         gentoo_name(&name)?;
     } else if !valid_name(&name) || name.contains('@') {
@@ -341,14 +333,59 @@ pub fn from_purl(purl: &str, expect: Option<Ecosystem>) -> Result<PackageRef, Re
         return Err(bad(format!("invalid version {version:?}")));
     }
     let mut package = make(ecosystem, &name, &version, arch);
-    package.slot = slot;
-    if let Some(upstream) = upstream {
+    package.slot = q.slot;
+    if let Some(upstream) = q.upstream {
         set_upstream_source(&mut package, &upstream);
     }
-    if let Some(label) = module {
+    if let Some(label) = q.module {
         set_module(&mut package, &label);
     }
     Ok(package)
+}
+
+/// The parts of the query string a purl may carry.
+struct Qualifiers {
+    arch: Option<String>,
+    slot: Option<String>,
+    upstream: Option<String>,
+    module: Option<String>,
+    /// An epoch read into the version (`1:2.66-4`).
+    version: Option<String>,
+}
+
+/// Reads the query string of a purl. An epoch counts for every distribution
+/// whose versions carry one; Alpine and Arch have none.
+fn qualifiers(
+    query: &str,
+    ecosystem: Ecosystem,
+    version: &str,
+) -> Result<Qualifiers, ResolveError> {
+    let mut q = Qualifiers {
+        arch: None,
+        slot: None,
+        upstream: None,
+        module: None,
+        version: None,
+    };
+    for kv in query.split('&').filter(|s| !s.is_empty()) {
+        let (k, v) = kv.split_once('=').unwrap_or((kv, ""));
+        let v = percent_decode(v).ok_or_else(|| bad("bad percent-encoding in a qualifier"))?;
+        match k {
+            "arch" => q.arch = Some(v),
+            "slot" if ecosystem == Ecosystem::Gentoo => q.slot = Some(v),
+            "upstream" => q.upstream = Some(v),
+            "modularitylabel" => q.module = Some(v),
+            "epoch"
+                if (is_rpm(ecosystem)
+                    || matches!(ecosystem, Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)))
+                    && !version.contains(':') =>
+            {
+                q.version = Some(format!("{v}:{version}"));
+            }
+            _ => {}
+        }
+    }
+    Ok(q)
 }
 
 #[cfg(test)]
@@ -458,6 +495,28 @@ mod tests {
         ] {
             let p = from_purl(purl, Some(Ecosystem::Debian(12))).unwrap();
             assert_eq!(p.version.to_string(), "1:2.66-4", "{purl}");
+        }
+    }
+
+    #[test]
+    fn the_purl_namespaces_syft_writes_are_read() {
+        for (purl, eco, release) in [
+            (
+                "pkg:rpm/almalinux/acl@2.4.0-1.el8_10",
+                Ecosystem::Alma(8),
+                8,
+            ),
+            (
+                "pkg:rpm/rocky-linux/curl-minimal@7.61.1-30.el8",
+                Ecosystem::Rocky(8),
+                8,
+            ),
+        ] {
+            let p = from_purl(purl, Some(eco)).unwrap();
+            assert_eq!(p.ecosystem, eco, "{purl}");
+            assert!(
+                matches!(p.ecosystem, Ecosystem::Alma(r) | Ecosystem::Rocky(r) if r == release)
+            );
         }
     }
 

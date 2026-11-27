@@ -115,8 +115,6 @@ Found while testing and not fixed yet.
   and a CVE Red Hat does not list for its stream can read as patched because of
   another stream's fix. Dropping those findings is not safe: Red Hat defers or
   says nothing about most of them.
-- A purl of `pkg:rpm/almalinux`, as Syft writes for AlmaLinux, is refused with an
-  error; only `pkg:rpm/alma` is read.
 - A host or container whose rpm database lists no package reads as complete.
 - Rocky Linux and AlmaLinux 10 are not supported.
 - Only an Ubuntu interim release is judged past its support by date. Another
