@@ -245,11 +245,24 @@ pub(crate) fn resolve_scope(
 ) -> Result<Scope, String> {
     let (mut resolved, unresolved) = resolve_all(targets, all, eco, probe);
     let mut unresolved = unresolved;
+    // A list or a document that names no package checks nothing; saying so
+    // keeps a failed export from reading as clean.
+    let nothing = |input: &str| Unresolved {
+        input: input.to_owned(),
+        reason: "it names no package, so nothing was checked".to_owned(),
+    };
     if let Some(path) = &cli.global.packages_from {
-        resolved.extend(read_inventory(path, eco)?);
+        let packages = read_inventory(path, eco)?;
+        if packages.is_empty() {
+            unresolved.push(nothing("--packages-from"));
+        }
+        resolved.extend(packages);
     }
     if let Some(path) = &cli.global.sbom {
         let (pkgs, skipped) = read_sbom(path, eco)?;
+        if pkgs.is_empty() && skipped.is_empty() {
+            unresolved.push(nothing("--sbom"));
+        }
         resolved.extend(pkgs);
         unresolved.extend(skipped);
     }
