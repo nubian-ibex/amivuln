@@ -323,7 +323,9 @@ To gate only on OS packages, filter the SBOM first, for example with
 Several distributions file advisories under the **source** package, so the
 source matters: `libssl3` is built from `openssl`. amivuln reads it from the
 purl's `upstream` qualifier (as Syft writes it) or from the
-`aquasecurity:trivy:SrcName` property (Trivy). Without it, on Debian, Ubuntu,
+`aquasecurity:trivy:SrcName` property (Trivy). On Debian and Ubuntu the
+source's version counts too, since it may differ from the binary's: write it as
+`upstream=name@version`. Without a source, on Debian, Ubuntu,
 Alpine and openSUSE, a name OSV holds no advisory under makes the result
 incomplete (exit 2), because it may be a binary's name; on Rocky Linux every
 package without a source does. The same applies to `name@version`, which
@@ -347,7 +349,7 @@ the module stream, so the result matches reading the host itself. On Debian,
 or on Ubuntu with `pkg:deb/ubuntu`:
 
 ```bash
-dpkg-query -W -f 'pkg:deb/debian/${Package}@${Version}?upstream=${source:Package} ${db:Status-Status}\n' |
+dpkg-query -W -f 'pkg:deb/debian/${Package}@${Version}?upstream=${source:Package}@${source:Version} ${db:Status-Status}\n' |
     sed -n 's/ installed$//p' > list.txt
 ```
 

@@ -399,6 +399,7 @@ fn another_world(pkg: &PackageRef, fix: &Version) -> bool {
 /// - Otherwise: at or above any published fix of its own world is patched,
 ///   otherwise the lowest one is the fix to move to.
 fn judge(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Verdict {
+    let installed = pkg.advisory_version();
     let parse = |fix: &str| match &pkg.version {
         Version::Rpm(_) => Version::Rpm(fix.parse().unwrap_or_else(|never| match never {})),
         Version::Apk(_) => Version::Apk(fix.parse().unwrap_or_else(|never| match never {})),
@@ -447,7 +448,7 @@ fn judge(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Verdict {
     };
     let chosen = match in_world.iter().find(|f| {
         matches!(
-            pkg.version.compare(f),
+            installed.compare(f),
             Some(Ordering::Greater | Ordering::Equal)
         )
     }) {
@@ -459,7 +460,7 @@ fn judge(pkg: &PackageRef, osv: &OsvData, cve: &str) -> Verdict {
             .unwrap_or(first),
     };
     source_release_verdict(pkg, osv, cve)
-        .unwrap_or_else(|| classify(&pkg.version, &DistroStatus::Fixed((*chosen).clone())))
+        .unwrap_or_else(|| classify(&installed, &DistroStatus::Fixed((*chosen).clone())))
 }
 
 /// Maps the textual severity of an advisory database to a [`Severity`].
@@ -962,6 +963,38 @@ mod tests {
                 ))
             }
         );
+    }
+
+    /// Debian advisories state versions of the source package, which a binary
+    /// package may not share: `dmsetup` has an epoch `lvm2` has not.
+    #[test]
+    fn a_deb_package_is_compared_by_its_source_version() {
+        let doc = serde_json::json!({
+            "id": "DEBIAN-CVE-2099-0009",
+            "upstream": ["CVE-2099-0009"],
+            "affected": [{
+                "package": {"name": "lvm2", "ecosystem": "Debian:13"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"}, {"fixed": "2.03.31-3"}
+                ]}]
+            }]
+        });
+        let osv = OsvData::parse_advisory(doc.to_string().as_bytes(), "Debian:13").unwrap();
+        let dmsetup = |source_vr: &str| {
+            let mut p = amivuln_resolve::from_name_version(
+                Ecosystem::Debian(13),
+                "dmsetup",
+                "2:1.02.205-2",
+            )
+            .unwrap();
+            amivuln_resolve::set_source(&mut p, "lvm2", Some(source_vr));
+            p
+        };
+        assert_eq!(
+            osv_findings(&dmsetup("2.03.31-2"), &osv, &no_vex()).len(),
+            1
+        );
+        assert_eq!(osv_findings(&dmsetup("2.03.31-3"), &osv, &no_vex()), []);
     }
 
     #[test]

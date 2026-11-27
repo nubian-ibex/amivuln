@@ -3425,6 +3425,18 @@ async fn a_new_leap_with_only_kernel_advisories_is_covered() {
     assert_eq!(v["complete"], true, "{v}");
 }
 
+/// OSV is asked about the source package at the source package's version.
+#[tokio::test(flavor = "multi_thread")]
+async fn osv_is_asked_the_source_version_of_a_deb_package() {
+    let (_server, home) = ubuntu_osv().await;
+    for upstream in ["openssl%400.0.1-1", "openssl@0.0.1-1"] {
+        let target = format!("pkg:deb/ubuntu/libssl3@9:9.9-1?upstream={upstream}");
+        let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", &target).await;
+        assert_eq!(code, Some(0), "{v}");
+        assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
+    }
+}
+
 /// A list or an SBOM that names no package checks nothing, which must not read
 /// as clean.
 #[tokio::test(flavor = "multi_thread")]
