@@ -3261,6 +3261,89 @@ async fn a_binary_name_without_its_source_is_never_clean() {
     assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
 }
 
+/// OSV answering one CVE per page for openssl on an interim Ubuntu: the second
+/// page is served only with the first one's token, and with `second` as the
+/// HTTP status.
+async fn paged_osv(second: u16) -> (MockServer, tempfile::TempDir) {
+    let server = MockServer::start().await;
+    // An empty token is how a last page reads here: no token at all.
+    let page = |id: &str, token: &str| serde_json::json!({"results": [{"vulns": [{"id": id}], "next_page_token": token}]});
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .and(body_string_contains("\"page_token\":\"second\""))
+        .respond_with(ResponseTemplate::new(second).set_body_json(page("UBUNTU-CVE-2026-0002", "")))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/v1/querybatch"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(page("UBUNTU-CVE-2026-0001", "second")),
+        )
+        .with_priority(5)
+        .mount(&server)
+        .await;
+    for n in 1..=2 {
+        let id = format!("UBUNTU-CVE-2026-000{n}");
+        Mock::given(method("GET"))
+            .and(path(format!("/v1/vulns/{id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": id,
+                "upstream": [format!("CVE-2026-000{n}")],
+                "affected": [{
+                    "package": {"name": "openssl", "ecosystem": "Ubuntu:98.10"},
+                    "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}]}]
+                }]
+            })))
+            .mount(&server)
+            .await;
+    }
+    let home = tempfile::tempdir().unwrap();
+    std::fs::write(
+        home.path().join("cfg.toml"),
+        format!(
+            "[network]\nallow_insecure_http = true\nretries = 0\n[sources.distro]\nurl = \"{}\"\n\
+             [sources.kev]\nenabled = false\n[sources.epss]\nenabled = false\n",
+            server.uri()
+        ),
+    )
+    .unwrap();
+    (server, home)
+}
+
+/// OSV cuts a long answer into pages: reading the first one alone reports a
+/// vulnerable package as having fewer CVEs, or none of the newest.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_page_of_an_osv_answer_is_read() {
+    let (_server, home) = paged_osv(200).await;
+    // Twice: the second run answers from the cache and must be as complete.
+    for run in 1..=2 {
+        let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", "openssl@0.0.1-1").await;
+        assert_eq!(code, Some(0), "run {run}: {v}");
+        assert_eq!(v["complete"], true, "run {run}: {v}");
+        let ids: Vec<_> = v["targets"][0]["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(ids.len(), 2, "run {run}: {v}");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_osv_page_that_cannot_be_read_is_never_complete() {
+    let (_server, home) = paged_osv(500).await;
+    for run in 1..=2 {
+        let (code, v) = ask_ubuntu(&home, "ubuntu:98.10", "openssl@0.0.1-1").await;
+        assert_eq!(code, Some(2), "run {run}: {v}");
+        assert_eq!(v["complete"], false, "run {run}: {v}");
+        assert!(v.to_string().contains("page"), "run {run}: {v}");
+        // What was read is still reported.
+        assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
+    }
+}
+
 /// A list or an SBOM that names no package checks nothing, which must not read
 /// as clean.
 #[tokio::test(flavor = "multi_thread")]
