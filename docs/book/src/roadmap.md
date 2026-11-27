@@ -114,6 +114,11 @@ above so that it sees the final code. All of it is still open:
 
 Found while testing and not fixed yet.
 
+- CentOS Stream (`ID=centos`) is not supported, as a host or a container.
+- The rpm database of a Fedora-family container is read with the host's `rpm`,
+  so a host without it (Flatcar, which ships none) leaves such a container
+  unresolved (exit 3). Reading the rpm database in the amivuln process, as the
+  dpkg and apk databases are, would drop the dependency.
 - A Rocky Linux package list is always incomplete, because it cannot name the
   source packages.
 - The packages of an Arch image are reported with the provenance `user_input`.
