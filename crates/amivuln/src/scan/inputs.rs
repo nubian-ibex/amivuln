@@ -65,11 +65,37 @@ fn is_signing_key(package: &PackageRef) -> bool {
     package.name == "gpg-pubkey" && matches!(package.version, amivuln_core::Version::Rpm(_))
 }
 
+/// The source package a component states, in the parts it states them.
+struct StatedSource {
+    name: String,
+    epoch: Option<String>,
+    version: Option<String>,
+    release: Option<String>,
+}
+
+impl StatedSource {
+    /// The source's version as the ecosystem compares it, when stated: its
+    /// version-release on rpm, `epoch:version-revision` on Debian and Ubuntu,
+    /// where the epoch and the revision may be absent.
+    fn version_for(&self, eco: Ecosystem) -> Option<String> {
+        let version = self.version.as_deref()?;
+        if matches!(eco, Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)) {
+            let epoch = self.epoch.as_ref().map(|e| format!("{e}:"));
+            let release = self.release.as_ref().map(|r| format!("-{r}"));
+            return Some(format!(
+                "{}{version}{}",
+                epoch.unwrap_or_default(),
+                release.unwrap_or_default()
+            ));
+        }
+        Some(format!("{version}-{}", self.release.as_deref()?))
+    }
+}
+
 /// What a component states beside its purl.
 #[derive(Default)]
 pub(super) struct Stated {
-    /// The source package's name and, when given, its version-release.
-    source: Option<(String, Option<String>)>,
+    source: Option<StatedSource>,
     /// The modularity label of the rpm.
     module: Option<String>,
 }
@@ -99,14 +125,17 @@ fn module_label(component: &serde_json::Value) -> Option<String> {
     .map(str::to_owned)
 }
 
-/// The source Trivy states in a component's properties: its name and, when
-/// both parts are there, its version-release.
-fn trivy_source(component: &serde_json::Value) -> Option<(String, Option<String>)> {
-    let trivy = |name: &str| property(component, &[&format!("aquasecurity:trivy:{name}")]);
-    let release = trivy("SrcVersion")
-        .zip(trivy("SrcRelease"))
-        .map(|(version, release)| format!("{version}-{release}"));
-    Some((trivy("SrcName")?.to_owned(), release))
+/// The source Trivy states in a component's properties.
+fn trivy_source(component: &serde_json::Value) -> Option<StatedSource> {
+    let trivy = |name: &str| {
+        property(component, &[&format!("aquasecurity:trivy:{name}")]).map(str::to_owned)
+    };
+    Some(StatedSource {
+        name: trivy("SrcName")?,
+        epoch: trivy("SrcEpoch"),
+        version: trivy("SrcVersion"),
+        release: trivy("SrcRelease"),
+    })
 }
 
 /// Syft names the source of a deb or apk package only when it differs from the
@@ -210,9 +239,10 @@ pub(super) fn read_sbom(path: &Path, eco: Ecosystem) -> Result<Scope, String> {
             let mut pkg = amivuln_resolve::from_purl(&purl, Some(eco))
                 .map_err(|e| format!("{}: {purl}: {e}", path.display()))?;
             if pkg.source_name.is_none()
-                && let Some((name, release)) = stated.source
+                && let Some(source) = stated.source
             {
-                amivuln_resolve::set_source(&mut pkg, &name, release.as_deref());
+                let version = source.version_for(pkg.ecosystem);
+                amivuln_resolve::set_source(&mut pkg, &source.name, version.as_deref());
             }
             if pkg.module_stream.is_none()
                 && let Some(label) = stated.module
@@ -617,6 +647,43 @@ mod tests {
             sbom(&components, Ecosystem::Rocky(8)),
             // An rpm without a source stays unknown: Trivy always states it.
             [pair("device-mapper", Some("lvm2")), pair("zlib", None)]
+        );
+    }
+
+    /// Trivy states the parts of a deb source's version one by one.
+    #[test]
+    fn the_source_version_trivy_states_for_a_deb_package_is_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("bom.json");
+        let component = |name: &str, props: &[(&str, &str)]| {
+            serde_json::json!({
+                "purl": format!("pkg:deb/debian/{name}@1.02-1?epoch=2"),
+                "properties": props.iter().map(|(k, v)| serde_json::json!({
+                    "name": format!("aquasecurity:trivy:{k}"), "value": v
+                })).collect::<Vec<_>>(),
+            })
+        };
+        let doc = serde_json::json!({"bomFormat": "CycloneDX", "components": [
+            component("dmsetup", &[("SrcName", "lvm2"), ("SrcVersion", "2.03.31"), ("SrcRelease", "2")]),
+            component("libtalloc2", &[
+                ("SrcName", "samba"), ("SrcEpoch", "2"),
+                ("SrcVersion", "4.22.11+dfsg"), ("SrcRelease", "0+deb13u1"),
+            ]),
+            component("native", &[("SrcName", "base"), ("SrcVersion", "13.8")]),
+        ]});
+        std::fs::write(&file, doc.to_string()).unwrap();
+        let (packages, _) = read_sbom(&file, Ecosystem::Debian(13)).unwrap();
+        let sources: Vec<_> = packages
+            .iter()
+            .map(|(_, p)| (p.name.as_str(), p.source_vr.as_deref()))
+            .collect();
+        assert_eq!(
+            sources,
+            [
+                ("dmsetup", Some("2.03.31-2")),
+                ("libtalloc2", Some("2:4.22.11+dfsg-0+deb13u1")),
+                ("native", Some("13.8")),
+            ]
         );
     }
 

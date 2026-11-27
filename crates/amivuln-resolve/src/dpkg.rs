@@ -44,10 +44,11 @@ pub(crate) fn read_bounded(path: &Path, limit: u64) -> Result<String, ResolveErr
 
 /// Parses `status` content into the installed packages.
 ///
-/// OSV keys Debian and Ubuntu advisories by the source package, so the
-/// `Source:` field (`openssl (3.0.11-1)`, the version only when it differs)
-/// names the package a binary such as `libssl3` is asked about as. A package
-/// that was removed but kept its configuration (`config-files`) is not
+/// OSV keys Debian and Ubuntu advisories by the source package and its
+/// version, so the `Source:` field (`openssl`, or `lvm2 (2.03.31-2)` when the
+/// version differs) names what a binary such as `libssl3` is asked about as. A
+/// signed package is asked about as what `Built-Using:` says was signed. A
+/// package that was removed but kept its configuration (`config-files`) is not
 /// installed and is skipped.
 pub(crate) fn parse_status(status: &str, eco: Ecosystem) -> Vec<PackageRef> {
     entries(status, eco)
@@ -83,17 +84,60 @@ fn entries(status: &str, eco: Ecosystem) -> Vec<Entry> {
         // Read from the database, so a missing `Source:` means the source is
         // the package itself, not that nobody said.
         package.provenance = Provenance::PackageDb;
-        package.source_name = fields
-            .get("Source")
-            .and_then(|s| s.split_whitespace().next())
-            .filter(|source| source != name)
-            .map(str::to_owned);
+        if let Some((source, source_version)) = fields.get("Source").map(|s| source_field(s)) {
+            let signed = fields
+                .get("Built-Using")
+                .filter(|_| is_signing_source(eco, source))
+                .and_then(|built| built_from(source, built));
+            let (source, source_version) = signed.unwrap_or((source, source_version));
+            crate::set_source(&mut package, source, source_version);
+            if package.source_name.as_deref() == Some(package.name.as_str()) {
+                package.source_name = None;
+            }
+        }
         out.push(Entry {
             package,
             arch: fields.get("Architecture").map(|a| (*a).to_owned()),
         });
     }
     out
+}
+
+/// `name (version)`, the version only when it is not the binary's.
+fn source_field(field: &str) -> (&str, Option<&str>) {
+    match field.split_once(' ') {
+        Some((name, version)) => (
+            name,
+            version
+                .trim()
+                .strip_prefix('(')
+                .and_then(|v| v.strip_suffix(')')),
+        ),
+        None => (field, None),
+    }
+}
+
+/// Whether advisories name the source that was signed instead of this one.
+/// Debian files none under a signed source; Ubuntu does for its boot loaders,
+/// so only its kernels are looked through.
+fn is_signing_source(eco: Ecosystem, source: &str) -> bool {
+    source.starts_with("linux-signed")
+        || (matches!(eco, Ecosystem::Debian(_)) && source.contains("-signed"))
+}
+
+/// The source and version a signed package was built from, out of a
+/// `Built-Using:` field such as `linux (= 6.12.118-1)`.
+fn built_from<'a>(signed: &str, built_using: &'a str) -> Option<(&'a str, Option<&'a str>)> {
+    let mut entries = built_using.split(',').filter_map(|entry| {
+        let (name, version) = entry.trim().split_once(" (= ")?;
+        Some((name, version.strip_suffix(')')?))
+    });
+    let (name, version) = if signed.starts_with("linux-signed") {
+        entries.find(|(name, _)| name.starts_with("linux"))?
+    } else {
+        entries.next()?
+    };
+    Some((name, Some(version)))
 }
 
 /// The same file seen through `/bin` and `/usr/bin` (merged `/usr`): dpkg
@@ -340,6 +384,75 @@ Version: 2.36-9+deb12u7
         assert_eq!(found[0].source_name, None);
         assert_eq!(found[1].source_name.as_deref(), Some("openssl"));
         assert_eq!(found[2].source_name.as_deref(), Some("glibc"));
+    }
+
+    /// Name, source and source version of each package of a status file.
+    fn sources(status: &str, eco: Ecosystem) -> Vec<(String, Option<String>, Option<String>)> {
+        parse_status(status, eco)
+            .into_iter()
+            .map(|p| (p.name, p.source_name, p.source_vr))
+            .collect()
+    }
+
+    fn row(
+        name: &str,
+        source: Option<&str>,
+        vr: Option<&str>,
+    ) -> (String, Option<String>, Option<String>) {
+        (
+            name.to_owned(),
+            source.map(str::to_owned),
+            vr.map(str::to_owned),
+        )
+    }
+
+    #[test]
+    fn the_version_of_the_source_is_kept_when_it_differs() {
+        let status = "Package: dmsetup\nSource: lvm2 (2.03.31-2)\nVersion: 2:1.02.205-2\n\n\
+                      Package: bash\nSource: bash (5.2.15-2)\nVersion: 5.2.15-2+b7\n\n\
+                      Package: libssl3\nSource: openssl\nVersion: 3.0.11-1\n";
+        assert_eq!(
+            sources(status, Ecosystem::Debian(13)),
+            [
+                row("dmsetup", Some("lvm2"), Some("2.03.31-2")),
+                row("bash", None, Some("5.2.15-2")),
+                row("libssl3", Some("openssl"), None),
+            ]
+        );
+    }
+
+    /// A signed image is packaged by a source of its own that advisories do not
+    /// name: what was signed is what has them.
+    #[test]
+    fn a_signed_package_is_judged_by_what_was_signed() {
+        let debian = "Package: linux-image-6.12.118+deb13-amd64\n\
+                      Source: linux-signed-amd64 (6.12.118+1)\nVersion: 6.12.118-1\n\
+                      Built-Using: linux (= 6.12.118-1)\n\n\
+                      Package: grub-efi-amd64-signed\n\
+                      Source: grub-efi-amd64-signed (1+2.12+9)\nVersion: 1+2.12+9\n\
+                      Built-Using: grub2 (= 2.12-9)\n\n\
+                      Package: linux-image-6.12.1-amd64\n\
+                      Source: linux-signed-amd64 (6.12.1+1)\nVersion: 6.12.1-1\n";
+        assert_eq!(
+            sources(debian, Ecosystem::Debian(13)),
+            [
+                row("linux-image-6.12.118+deb13-amd64", Some("linux"), None),
+                row("grub-efi-amd64-signed", Some("grub2"), Some("2.12-9")),
+                row("linux-image-6.12.1-amd64", Some("linux"), None),
+            ]
+        );
+        // Ubuntu files advisories under its signed boot loader's own name.
+        let ubuntu = "Package: grub-efi-amd64-signed\nSource: grub2-signed (1.215)\n\
+                      Version: 1.215+2.14-2ubuntu1\nBuilt-Using: grub2 (= 2.14-2ubuntu1)\n\n\
+                      Package: linux-image-6.8.0-31-generic\nSource: linux-signed-hwe-6.8 (6.8.0-31.31)\n\
+                      Version: 6.8.0-31.31\nBuilt-Using: linux-hwe-6.8 (= 6.8.0-31.31)\n";
+        assert_eq!(
+            sources(ubuntu, Ecosystem::Ubuntu(2404)),
+            [
+                row("grub-efi-amd64-signed", Some("grub2-signed"), Some("1.215")),
+                row("linux-image-6.8.0-31-generic", Some("linux-hwe-6.8"), None),
+            ]
+        );
     }
 
     #[test]

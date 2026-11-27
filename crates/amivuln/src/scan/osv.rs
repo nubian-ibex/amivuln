@@ -595,7 +595,7 @@ pub(super) async fn load_osv(
         if osv_ecosystems.is_empty() {
             return fail(format!("package {} has no OSV data", pkg.name));
         }
-        let Some(version) = osv_query_version(pkg.ecosystem, &pkg.version) else {
+        let Some(version) = osv_query_version(pkg.ecosystem, &pkg.advisory_version()) else {
             return fail(format!(
                 "package {} has a version kind OSV cannot match for this distro; check the --distro value",
                 pkg.name

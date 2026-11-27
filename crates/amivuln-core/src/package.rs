@@ -282,8 +282,9 @@ pub struct PackageRef {
     pub name: String,
     /// Source package name, when it differs (advisories often use it).
     pub source_name: Option<String>,
-    /// The source package's version-release, kept when it differs from the
-    /// binary's: a fix filed under the source name compares against it.
+    /// The source package's version, kept when it differs from the binary's:
+    /// its version-release on rpm, where a fix filed under the source name
+    /// compares against it, and its whole version on Debian and Ubuntu.
     pub source_vr: Option<String>,
     /// The module stream an rpm package was installed from, as `nodejs:22`,
     /// when the input states it.
@@ -320,6 +321,19 @@ impl PackageRef {
             | Ecosystem::Ubuntu(_)
             | Ecosystem::Opensuse(_) => self.source_name.as_deref().unwrap_or(&self.name),
             _ => &self.name,
+        }
+    }
+
+    /// The version advisories are compared with. Debian and Ubuntu state the
+    /// source package's, which a binary package may not share (`dmsetup` has
+    /// an epoch its source `lvm2` has not).
+    #[must_use]
+    pub fn advisory_version(&self) -> std::borrow::Cow<'_, Version> {
+        match (self.ecosystem, &self.source_vr) {
+            (Ecosystem::Debian(_) | Ecosystem::Ubuntu(_), Some(source)) => std::borrow::Cow::Owned(
+                Version::Deb(source.parse().unwrap_or_else(|never| match never {})),
+            ),
+            _ => std::borrow::Cow::Borrowed(&self.version),
         }
     }
 }

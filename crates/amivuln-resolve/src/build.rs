@@ -77,20 +77,47 @@ fn make(ecosystem: Ecosystem, name: &str, version: &str, arch: Option<String>) -
     }
 }
 
-/// Records the source package an input names for `package`, and its
-/// version-release when it has one of its own. A value no package manager
-/// would accept is left out, so the source stays unknown.
+/// Records the source package an input names for `package`, and its version
+/// when it has one of its own (on rpm its version-release). A value no package
+/// manager would accept is left out, so the source stays unknown.
 pub fn set_source(package: &mut PackageRef, name: &str, release: Option<&str>) {
     if !valid_name(name) || name.contains('@') {
         return;
     }
+    if let Some(kernel) = signed_kernel_source(package.ecosystem, name) {
+        // The signed image carries the kernel's own version.
+        package.source_name = Some(kernel);
+        package.source_vr = None;
+        return;
+    }
     package.source_name = Some(name.to_owned());
+    if matches!(
+        package.ecosystem,
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_)
+    ) {
+        let binary = package.version.to_string();
+        package.source_vr = release
+            .filter(|v| *v != binary && valid_deb_version(v))
+            .map(str::to_owned);
+    }
     if is_rpm(package.ecosystem) {
         let binary = package.version.to_string();
         let binary = binary.split_once(':').map_or(binary.as_str(), |(_, vr)| vr);
         package.source_vr = release
             .filter(|vr| *vr != binary && valid_version(vr))
             .map(str::to_owned);
+    }
+}
+
+/// The kernel source behind a signed kernel source (`linux-signed-amd64`,
+/// `linux-signed-hwe-6.8`), which advisories never name.
+fn signed_kernel_source(ecosystem: Ecosystem, source: &str) -> Option<String> {
+    let variant = source.strip_prefix("linux-signed")?;
+    match ecosystem {
+        // Debian has one signed source per architecture.
+        Ecosystem::Debian(_) => Some("linux".to_owned()),
+        Ecosystem::Ubuntu(_) => Some(format!("linux{variant}")),
+        _ => None,
     }
 }
 
@@ -117,10 +144,10 @@ pub(crate) fn module_stream(label: &str) -> Option<String> {
 /// (`name@version` for some deb packages) or the source rpm's file name.
 fn set_upstream_source(package: &mut PackageRef, upstream: &str) {
     match package.ecosystem {
-        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => {
-            let name = upstream.split_once('@').map_or(upstream, |(name, _)| name);
-            set_source(package, name, None);
-        }
+        Ecosystem::Debian(_) | Ecosystem::Ubuntu(_) => match upstream.split_once('@') {
+            Some((name, version)) => set_source(package, name, Some(version)),
+            None => set_source(package, upstream, None),
+        },
         Ecosystem::Alpine(_) => set_source(package, upstream, None),
         eco if is_rpm(eco) => {
             if upstream.strip_suffix(".rpm").is_none() {
@@ -528,6 +555,40 @@ mod tests {
         )
         .unwrap();
         assert_eq!(p.module_stream.as_deref(), Some("nodejs:20"));
+    }
+
+    #[test]
+    fn a_deb_upstream_version_and_signed_source_are_read() {
+        let source = |purl: &str, eco| {
+            let p = from_purl(purl, Some(eco)).unwrap();
+            (p.source_name, p.source_vr)
+        };
+        assert_eq!(
+            source(
+                "pkg:deb/debian/dmsetup@2:1.02.205-2?upstream=lvm2%402.03.31-2",
+                Ecosystem::Debian(13)
+            ),
+            (Some("lvm2".to_owned()), Some("2.03.31-2".to_owned()))
+        );
+        for (purl, eco, name) in [
+            (
+                "pkg:deb/debian/linux-image-amd64@6.12.118-1?upstream=linux-signed-amd64%406.12.118%2B1",
+                Ecosystem::Debian(13),
+                "linux",
+            ),
+            (
+                "pkg:deb/ubuntu/linux-image-x@6.8.0-31.31?upstream=linux-signed-hwe-6.8",
+                Ecosystem::Ubuntu(2404),
+                "linux-hwe-6.8",
+            ),
+            (
+                "pkg:deb/ubuntu/linux-image-y@6.8.0-31.31?upstream=linux-signed",
+                Ecosystem::Ubuntu(2404),
+                "linux",
+            ),
+        ] {
+            assert_eq!(source(purl, eco), (Some(name.to_owned()), None), "{purl}");
+        }
     }
 
     #[test]
