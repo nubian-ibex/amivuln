@@ -3260,3 +3260,31 @@ async fn a_binary_name_without_its_source_is_never_clean() {
     assert_eq!(v["complete"], true, "{v}");
     assert_eq!(v["targets"][0]["findings"][0]["id"], "CVE-2026-0001", "{v}");
 }
+
+/// A list or an SBOM that names no package checks nothing, which must not read
+/// as clean.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_empty_list_or_sbom_is_never_read_as_clean() {
+    let (_server, home) = ubuntu_osv().await;
+    let list = home.path().join("list.txt");
+    std::fs::write(&list, "# nothing here\n\n").unwrap();
+    let sbom = home.path().join("bom.json");
+    std::fs::write(&sbom, r#"{"bomFormat":"CycloneDX","components":[]}"#).unwrap();
+    for (flag, file) in [("--packages-from", &list), ("--sbom", &sbom)] {
+        let mut cmd = Command::cargo_bin("amivuln").unwrap();
+        cmd.env_clear()
+            .env("HOME", home.path())
+            .env("XDG_CACHE_HOME", home.path().join("cache"))
+            .env("PATH", "/nonexistent")
+            .arg("--config")
+            .arg(home.path().join("cfg.toml"))
+            .args(["--distro", "ubuntu:98.10", "-f", "json", flag])
+            .arg(file);
+        let out = tokio::task::spawn_blocking(move || cmd.output().unwrap())
+            .await
+            .unwrap();
+        let v = json(&out);
+        assert_eq!(out.status.code(), Some(3), "{flag}: {v}");
+        assert_eq!(v["unresolved"][0]["input"], flag, "{v}");
+    }
+}
