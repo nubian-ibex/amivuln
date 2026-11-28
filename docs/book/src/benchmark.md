@@ -88,7 +88,8 @@ Fedora 44 and 45 (workstation and VM, KDE), EndeavourOS (Arch-based, KDE),
 Ubuntu 26.10 (KDE) and 24.04, Debian 13.8 (GNOME) and 12, openSUSE Leap 16.1
 (XFCE) and 15.6, Alpine 3.18 to 3.22, Rocky Linux 8 and 9.3, AlmaLinux 8 and
 9.3, Red Hat UBI 8, 9 and 10, CentOS Stream 9 (refused), Gentoo derivatives
-(Calculate Linux, refused: no GLSA tree) and Flatcar (no package database;
+(Calculate Linux and Argent, both refused: their Portage trees carry no GLSA
+advisories) and Flatcar (no package database;
 its containers are read through the runner above).
 
 ## Accuracy
