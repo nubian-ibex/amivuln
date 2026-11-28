@@ -64,8 +64,19 @@ unresolved (exit 3) instead of complete, an SBOM of AlmaLinux or Rocky Linux
 built by Syft is read, and the packages of an Arch image are no longer marked as
 user input.
 
-Every version before 1.2.5 is yanked on crates.io; the release notes of 1.0.0
-to 1.2.4 say why.
+1.3.0 followed the same day, for four defects that read vulnerable systems
+as clean. On Debian and Ubuntu the signed kernel image (the running one
+included) showed no CVE, and fixes were compared with the version of the
+binary package instead of its source's, which read as clean of fixed CVEs
+(`login` and `bsdutils` on Debian 13.0) and as affected by fixed ones. Of a
+package with more than about 1000 OSV advisories only the first ones were
+read, and the result read as complete. A Fedora image of another release
+than the host's was judged by the host's updates. A package list may now
+also be written in purls, which name the source package and the module
+stream. Every version before 1.3.0 is yanked on crates.io; the release
+notes of 1.0.0 to 1.2.5 say why. After 1.3.0, a container of an
+unsupported distribution is refused with the usage exit code (64) instead
+of reading as complete with no targets.
 
 ## What 1.0 meant, and what is still open
 
