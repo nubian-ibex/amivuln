@@ -76,6 +76,7 @@ distro.alpine = invalid Alpine release {value}; use a form like alpine:3.20
 distro.opensuse = invalid openSUSE release {value}; use opensuse:15.6 or opensuse:tumbleweed
 distro.unsupported = unsupported --distro {value}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, gentoo, rhel:N, rocky:NN or alma:NN
 distro.host = this distribution is not supported yet; see the supported distributions in the documentation, or use --distro (for example fedora:NN, debian:NN or arch) to query for one of them
+distro.container = the container is {value}: this distribution is not supported yet; see the supported distributions in the documentation
 file.too_large = {path} is larger than {limit} bytes
 sbom.too_many = the SBOM has more than {limit} components
 sbom.not_json = {path}: not valid JSON: {error}

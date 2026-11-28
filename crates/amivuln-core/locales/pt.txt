@@ -77,6 +77,7 @@ distro.alpine = versão inválida do Alpine {value}; use algo como alpine:3.20
 distro.opensuse = versão inválida do openSUSE {value}; use opensuse:15.6 ou opensuse:tumbleweed
 distro.unsupported = --distro não suportado {value}; use fedora:NN, arch, debian:NN, ubuntu:NN.NN, alpine:N.NN, opensuse:NN.N, gentoo, rhel:N, rocky:NN ou alma:NN
 distro.host = esta distribuição ainda não é suportada; veja as distribuições suportadas na documentação, ou use --distro (por exemplo fedora:NN, debian:NN ou arch) para consultar uma delas
+distro.container = o contêiner é {value}: esta distribuição ainda não é suportada; veja as distribuições suportadas na documentação
 file.too_large = {path} é maior que {limit} bytes
 sbom.too_many = o SBOM tem mais de {limit} componentes
 sbom.not_json = {path}: JSON inválido: {error}

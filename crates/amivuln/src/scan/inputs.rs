@@ -320,10 +320,7 @@ pub(crate) fn resolve_scope(
                 }));
                 let _ = container_eco;
             }
-            Err(e) => unresolved.push(Unresolved {
-                input: format!("--container {container_id}"),
-                reason: e.to_string(),
-            }),
+            Err(e) => unresolved.push(container_failure(container_id, e)?),
         }
     }
     if cli.global.extras.kernel {
@@ -485,6 +482,24 @@ fn read_flatpak(resolved: &mut Vec<(String, PackageRef)>, unresolved: &mut Vec<U
         });
     }
     resolved.extend(found.packages.into_iter().map(|p| (p.name.clone(), p)));
+}
+
+/// The unresolved entry a container failure leaves, or the usage error for a
+/// distribution amivuln refuses, like an unsupported host.
+fn container_failure(
+    id: &str,
+    error: amivuln_resolve::ContainerError,
+) -> Result<Unresolved, String> {
+    match error {
+        amivuln_resolve::ContainerError::Unsupported(distro) => Err(tr_args(
+            "distro.container",
+            &[("value", &format!("{id} ({distro})"))],
+        )),
+        e => Ok(Unresolved {
+            input: format!("--container {id}"),
+            reason: e.to_string(),
+        }),
+    }
 }
 
 /// Reads a container's installed packages: export, then the package database.
@@ -651,6 +666,25 @@ mod tests {
     }
 
     /// Trivy states the parts of a deb source's version one by one.
+    #[test]
+    fn an_unsupported_container_is_a_usage_error_and_the_rest_is_unresolved() {
+        let refused = container_failure(
+            "web",
+            amivuln_resolve::ContainerError::Unsupported("centos".to_owned()),
+        );
+        assert_eq!(
+            refused.unwrap_err(),
+            "the container is web (centos): this distribution is not supported yet; see the supported distributions in the documentation"
+        );
+        let failed = container_failure(
+            "web",
+            amivuln_resolve::ContainerError::HostToolMissing("rpm".to_owned()),
+        )
+        .unwrap();
+        assert_eq!(failed.input, "--container web");
+        assert!(failed.reason.contains("rpm"), "{}", failed.reason);
+    }
+
     #[test]
     fn the_source_version_trivy_states_for_a_deb_package_is_read() {
         let dir = tempfile::tempdir().unwrap();
