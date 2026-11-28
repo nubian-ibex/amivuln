@@ -6,8 +6,7 @@
 #   BIN      the amivuln binary (the published static one on remote hosts)
 #   HOST     a label for the machine
 #   MODE     host    : machine cases only (VMs, this host)
-#              plus, on hosts with containers:
-#   CONTAINERS  the space separated image list to scan
+#              containers: machine cases plus the images of IMAGES
 #   DOCKER_NESTED  1: --container cases also run through a Debian runner with
 #              the host's docker CLI and socket mounted (rows marked -nested)
 #
